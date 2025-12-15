@@ -1,0 +1,96 @@
+{
+  "templateId": "dribble_side_onehand_oneside",
+  "mode": "dribbling",
+  "camera": "side",
+  "displayName": "侧面｜单手单侧运球(落点在脚尖前方一点)",
+  "categoryWeights": { "posture": 0.4, "execution": 0.4, "consistency": 0.2 },
+  "options": { "handedness": "auto" },
+  "metrics": [
+    {
+      "metricId": "P_knee_over_toe",
+      "category": "posture",
+      "weight": 0.25,
+      "type": "range",
+      "computeKey": "kneeOverToeSide",
+      "params": { 
+        "L": -0.15, 
+        "U": -0.05, 
+        "margin": 0.15 
+      },
+      "hint_bad": "膝盖前冲过多:重心太靠前容易失去平衡，尝试臀部向后坐。"
+    },
+    {
+      "metricId": "P_hip_position",
+      "category": "posture",
+      "weight": 0.20,
+      "type": "range",
+      "computeKey": "hipForwardRatioSide",
+      "params": { 
+        "L": -0.30, 
+        "U": -0.14, 
+        "margin": 0.22 
+      },
+      "hint_bad": "髋部前顶:不要挺肚子，保持屈髋姿态，重心落在脚掌中后部。"
+    },
+    {
+      "metricId": "P_trunk_lean",
+      "category": "posture",
+      "weight": 0.30,
+      "type": "target",
+      "computeKey": "trunkLeanDegSide",
+      "params": { "target": 25, "tol": 10, "margin": 15 },
+      "hint_bad": "前倾角度不佳:保持 15°–35° 的前倾，既能保护球又能随时启动。"
+    },
+    {
+      "metricId": "P_hand_reach_control",
+      "category": "posture",
+      "weight": 0.25,
+      "type": "range",
+      "computeKey": "handForwardOffsetSide",
+      "params": { "L": 0.12, "U": 0.40, "margin": 0.20 },
+      "hint_bad": "手伸得太远:让运球点靠近身体侧前方，手臂不要过度伸直。"
+    },
+
+    {
+      "metricId": "E_dribble_spot_x",
+      "category": "execution",
+      "weight": 0.70,
+      "type": "target",
+      "computeKey": "wristToToeForwardOffsetSide",
+      "params": { 
+        "target": 0.28, 
+        "tol": 0.15, 
+        "margin": 0.22 
+      },
+      "hint_bad": "落点位置:球应落在脚尖前方约 1-2 个球的位置 (归一化值 0.25 左右)。"
+    },
+    {
+      "metricId": "E_dribble_height",
+      "category": "execution",
+      "weight": 0.30,
+      "type": "range",
+      "computeKey": "wristHeightRatioToHip",
+      "params": { "L": 0.40, "U": 0.68, "margin": 0.32 },
+      "hint_bad": "运球高度:控制在膝盖到髋部之间，太低影响速度。"
+    },
+
+    {
+      "metricId": "C_spot_consistency",
+      "category": "consistency",
+      "weight": 0.60,
+      "type": "target",
+      "computeKey": "stdWristToToeForwardOffsetPerCycle",
+      "params": { "target": 0.05, "tol": 0.04, "margin": 0.08 },
+      "hint_bad": "前后落点飘:定点运球时，球的落点要像打桩机一样固定。"
+    },
+    {
+      "metricId": "C_height_consistency",
+      "category": "consistency",
+      "weight": 0.40,
+      "type": "target",
+      "computeKey": "stdWristHeightRatioToHipPerCycle",
+      "params": { "target": 0.04, "tol": 0.025, "margin": 0.052 },
+      "hint_bad": "高度不稳定:保持节奏，不要忽高忽低。"
+    }
+  ]
+}

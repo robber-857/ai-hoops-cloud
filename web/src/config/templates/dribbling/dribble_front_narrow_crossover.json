@@ -1,0 +1,75 @@
+{
+  "templateId": "dribble_front_narrow_crossover",
+  "mode": "dribbling",
+  "camera": "front",
+  "displayName": "正面｜窄距 Crossover",
+  "categoryWeights": { "posture": 1.0, "execution": 1.0, "consistency": 1.0 },
+  "options": { "handedness": "auto" },
+  "metrics": [
+    {
+      "metricId": "P_toe_forward_L",
+      "category": "posture",
+      "weight": 0.20,
+      "type": "target",
+      "computeKey": "toeAngleDegLeft",
+      "params": { "target": 0, "tol": 13, "margin": 10 },
+      "hint_bad": "脚尖尽量朝前,站姿更稳更快。"
+    },
+    {
+      "metricId": "P_toe_forward_R",
+      "category": "posture",
+      "weight": 0.20,
+      "type": "target",
+      "computeKey": "toeAngleDegRight",
+      "params": { "target": 0, "tol": 13, "margin": 10 },
+      "hint_bad": "脚尖尽量朝前,减少晃动与掉球风险。"
+    },
+    {
+      "metricId": "P_shoulder_stance_ratio",
+      "category": "posture",
+      "weight": 0.60,
+      "type": "target",
+      "computeKey": "shoulderStanceRatio",
+      "params": { "target": 2.0, "tol": 0.25, "margin": 0.37 },
+      "hint_bad": "站距过宽/过窄:窄距 crossover 建议 SW/ST≈2(约2倍左右最好)。"
+    },
+
+    {
+      "metricId": "E_cross_midline_rate",
+      "category": "execution",
+      "weight": 0.60,
+      "type": "range",
+      "computeKey": "crossMidlineRate",
+      "params": { "L": 0.62, "U": 1.00, "margin": 0.20 },
+      "hint_bad": "跨越中线不明显:球要切过身体中线。"
+    },
+    {
+      "metricId": "E_overreach_control",
+      "category": "execution",
+      "weight": 0.40,
+      "type": "range",
+      "computeKey": "overreachControlFront",
+      "params": { "L": 0.05, "U": 0.24, "margin": 0.25 },
+      "hint_bad": "甩得过大:控球容易飘,过中线但不要过度伸展。"
+    },
+
+    {
+      "metricId": "C_receive_x_consistency",
+      "category": "consistency",
+      "weight": 0.5,
+      "type": "target",
+      "computeKey": "stdWristXAtContactPerCycleNormByST",
+      "params": { "target": 0.06, "tol": 0.03, "margin": 0.08 },
+      "hint_bad": "落点不稳定:先慢速练落点一致,再加速。"
+    },
+    {
+      "metricId": "C_height_consistency",
+      "category": "consistency",
+      "weight": 0.50,
+      "type": "target",
+      "computeKey": "stdWristHeightRatioToHipPerCycle",
+      "params": { "target": 0.042, "tol": 0.03, "margin": 0.052 },
+      "hint_bad": "高度不稳定:保持节奏，不要忽高忽低。"
+   }
+  ]
+}

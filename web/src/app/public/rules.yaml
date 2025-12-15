@@ -1,0 +1,8 @@
+# public/rules.yaml
+advices:
+  - id: knee_power
+    if: "knee_r@release < 110 and apex_height < 2.6"
+    say: "出手时膝弯不足，建议：下蹲更充分以抬高弧顶。"
+  - id: elbow_align
+    if: "abs(elbow_r_carry@release) > 12"
+    say: "出手携带角偏大，建议：肘-腕与投篮方向保持一致。"

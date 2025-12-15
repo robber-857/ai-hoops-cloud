@@ -1,0 +1,84 @@
+{
+  "templateId": "dribble_side_narrow_crossover",
+  "mode": "dribbling",
+  "camera": "side",
+  "displayName": "侧面｜窄距 Crossover",
+  "categoryWeights": { "posture": 1.0, "execution": 1.0, "consistency": 1.0 },
+  "options": { "handedness": "auto" },
+  "metrics": [
+    {
+      "metricId": "P_hand_forward_offset",
+      "category": "posture",
+      "weight": 0.22,
+      "type": "range",
+      "computeKey": "handForwardOffsetSideab",
+      "params": { "L": 0.0, "U": 0.35, "margin": 0.20 },
+      "hint_bad": "手太往前探导致前倾:手臂放松更接近自然下垂,球放在身体旁侧。"
+    },
+    {
+      "metricId": "P_elbow_angle",
+      "category": "posture",
+      "weight": 0.15,
+      "type": "range",
+      "computeKey": "elbowAngleDeg",
+      "params": { "L": 145, "U": 179, "margin": 20 },
+      "hint_bad": "肘角太小/太僵:保持放松,肘角更打开(≥145°)。"
+    },
+    {
+      "metricId": "P_shoulder_arm_angle",
+      "category": "posture",
+      "weight": 0.13,
+      "type": "range",
+      "computeKey": "shoulderArmAngleDeg",
+      "params": { "L": 60, "U": 120, "margin": 20 },
+      "hint_bad": "上臂抬得过前/过高:肩放松,让手更自然垂直下落。"
+    },
+    {
+      "metricId": "P_knee_over_toe",
+      "category": "posture",
+      "weight": 0.18,
+      "type": "boolean",
+      "computeKey": "kneeOverToeSide",
+      "params": { "epsFootLen": 0.05 },
+      "hint_bad": "膝盖超过脚尖:重心太靠前,臀部再“坐回去”。"
+    },
+    {
+      "metricId": "P_hip_not_forward",
+      "category": "posture",
+      "weight": 0.15,
+      "type": "range",
+      "computeKey": "hipForwardRatioSideab",
+      "params": { "L": 0, "U": 0.22, "margin": 0.20 },
+      "hint_bad": "髋部前顶:重心回到脚中,臀向后坐更稳。"
+    },
+    {
+      "metricId": "P_trunk_lean",
+      "category": "posture",
+      "weight": 0.17,
+      "type": "target",
+      "computeKey": "trunkLeanDegSide",
+      "params": { "target": 20, "tol": 10, "margin": 10 },
+      "hint_bad": "前倾过多/过少:保持轻微前倾(约15–35°)。"
+    },
+
+    {
+      "metricId": "E_dribble_height_ratio",
+      "category": "execution",
+      "weight": 1.0,
+      "type": "range",
+      "computeKey": "wristHeightRatioToHip",
+      "params": { "L": 0.30, "U": 0.57, "margin": 0.22 },
+      "hint_bad": "运球高度偏高:以髋以下为主,保持可控与速度。"
+    },
+
+    {
+      "metricId": "C_height_consistency",
+      "category": "consistency",
+      "weight": 1.0,
+      "type": "target",
+      "computeKey": "stdWristHeightRatioToHipPerCycle",
+      "params": { "target": 0.06, "tol": 0.04, "margin": 0.06 },
+      "hint_bad": "高度波动大:先定点低运稳定节奏,再逐步提速。"
+    }
+  ]
+}

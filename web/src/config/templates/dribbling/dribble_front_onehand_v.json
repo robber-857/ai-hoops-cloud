@@ -1,0 +1,67 @@
+{
+  "templateId": "dribble_front_onehand_v",
+  "mode": "dribbling",
+  "camera": "front",
+  "displayName": "正面｜单手 V 运球(接球落点：按四等分)",
+  "categoryWeights": { "posture": 1.0, "execution": 1.0, "consistency": 1.0 },
+  "options": { "handedness": "auto" },
+  "rulesNote": "左手模板：接球点更偏右侧(3-4份)；右手模板：接球点更偏左侧(1-2份)。",
+  "metrics": [
+    {
+      "metricId": "P_toe_forward_L",
+      "category": "posture",
+      "weight": 0.50,
+      "type": "target",
+      "computeKey": "toeAngleDegLeft",
+      "params": { "target": 5, "tol": 12, "margin": 12},
+      "hint_bad": "左脚外八：脚尖朝前,V运球更稳。"
+    },
+    {
+      "metricId": "P_toe_forward_R",
+      "category": "posture",
+      "weight": 0.50,
+      "type": "target",
+      "computeKey": "toeAngleDegRight",
+      "params": { "target": 5, "tol": 12, "margin": 12 },
+      "hint_bad": "右脚外八：脚尖朝前,减少晃动与掉球。"
+    },
+
+    {
+      "metricId": "E_wrist_align_over_opposite_foot",
+      "category": "execution",
+      "weight": 0.45,
+      "type": "target",
+      "computeKey": "wristAlignOppFootAtPeak",
+      "params": { "target": 0.0, "tol": 0.08, "margin": 0.175 },
+      "hint_bad": "运到另一侧时手没到位：手腕应到对侧脚上方附近。"
+    },
+    {
+      "metricId": "E_receive_zone_quarters",
+      "category": "execution",
+      "weight": 0.55,
+      "type": "range",
+      "computeKey": "receiveZoneQuarterNorm",
+      "params": {"L": 0.35,"U": 0.65,"margin": 0.05},
+      "hint_bad":"球尽量在身体正前方接球，让落球点尽量靠近中间，保持落球点稳定"
+    },
+
+    {
+      "metricId": "C_receive_point_consistency",
+      "category": "consistency",
+      "weight": 1.0,
+      "type": "target",
+      "computeKey": "stdWristXAtContactPerCycleNormByST",
+      "params": { "target": 0.08, "tol": 0.045, "margin": 0.13 },
+      "hint_bad": "接球落点飘：先慢速固定落点,再提升速度与强度。"
+    },
+    {
+      "metricId": "C_height_consistency",
+      "category": "consistency",
+      "weight": 0.50,
+      "type": "target",
+      "computeKey": "stdWristHeightRatioToHipPerCycle",
+      "params": { "target": 0.042, "tol": 0.03, "margin": 0.052 },
+      "hint_bad": "高度不稳定:保持节奏，不要忽高忽低。"
+   }
+  ]
+}

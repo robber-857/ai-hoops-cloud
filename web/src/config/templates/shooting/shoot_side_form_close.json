@@ -1,0 +1,83 @@
+{
+  "templateId": "shoot_side_form_close",
+  "mode": "shooting",
+  "camera": "side",
+  "displayName": "侧面｜近距离 Form Shot",
+  "ageGroups": ["6-8", "9-12", "13-15", "16-18"],
+  "options": { "shootingHand": "right" },
+  "overallWeights": { "posture": 0.4, "execution": 0.4, "consistency": 0.2 },
+  "metrics": [
+    {
+      "metricId": "P_trunk_lean",
+      "category": "posture",
+      "weight": 0.30,
+      "type": "target",
+      "computeKey": "trunkLeanDegSide",
+      "params": { "target": 18, "tol": 10, "margin": 12 },
+      "hint_bad": "身体前倾过多/过少：保持轻微前倾，便于发力与控球。"
+    },
+    {
+      "metricId": "P_knee_over_toe",
+      "category": "posture",
+      "weight": 0.20,
+      "type": "boolean",
+      "computeKey": "kneeOverToeSide",
+      "params": { "epsFootLen": 0.05 },
+      "hint_bad": "膝盖顶到脚尖前：重心太靠前，臀部坐回去更稳。"
+    },
+    {
+      "metricId": "P_knee_dip_depth",
+      "category": "posture",
+      "weight": 0.50,
+      "type": "rangeByAge",
+      "computeKey": "minKneeAngleDuringLoad",
+      "params": {
+        "ranges": {
+          "6-8":   { "L": 90,  "U": 150, "margin": 20 },
+          "9-12":  { "L": 100, "U": 150, "margin": 20 },
+          "13-15": { "L": 110, "U": 160, "margin": 20 },
+          "16-18": { "L": 110, "U": 160, "margin": 20 }
+        }
+      },
+      "hint_bad": "下蹲不足/过度：近距离更重视顺序和稳定，蹲到可控范围即可。"
+    },
+
+    {
+      "metricId": "E_forearm_vertical",
+      "category": "execution",
+      "weight": 0.40,
+      "type": "range",
+      "computeKey": "forearmVerticalDeg",
+      "params": { "L": 0, "U": 20, "margin": 15 },
+      "hint_bad": "前臂不够竖直：让肘更在球下方，出手更直更稳。"
+    },
+    {
+      "metricId": "E_follow_through_hold",
+      "category": "execution",
+      "weight": 0.35,
+      "type": "range",
+      "computeKey": "followThroughHoldSeconds",
+      "params": { "L": 0.15, "U": 0.60, "margin": 0.20 },
+      "hint_bad": "随球保持不足：出手后手腕保持0.2–0.4秒，形成稳定手感。"
+    },
+    {
+      "metricId": "E_sequence_leg_then_arm",
+      "category": "execution",
+      "weight": 0.25,
+      "type": "boolean",
+      "computeKey": "legThenArmSequence",
+      "params": {},
+      "hint_bad": "发力顺序乱：先下肢带动，再肘伸、腕甩。"
+    },
+
+    {
+      "metricId": "C_post_release_stability",
+      "category": "consistency",
+      "weight": 1.0,
+      "type": "target",
+      "computeKey": "postReleaseTorsoJitterNorm",
+      "params": { "target": 0.03, "tol": 0.03, "margin": 0.05 },
+      "hint_bad": "收势不稳：出手后保持身体稳定，落地站住。"
+    }
+  ]
+}

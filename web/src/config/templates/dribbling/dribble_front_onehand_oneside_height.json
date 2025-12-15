@@ -1,0 +1,53 @@
+{
+  "templateId": "dribble_front_onehand_oneside_height",
+  "mode": "dribbling",
+  "camera": "front",
+  "displayName": "正面｜单手单侧运球(hip_high)",
+  "categoryWeights": { "posture": 1.0, "execution": 1.0, "consistency": 1.0 },
+  "options": { "handedness": "auto", "heightLevel": "hip_high" },
+  "metrics": [
+    {
+      "metricId": "P_stance_ratio",
+      "category": "posture",
+      "weight": 0.6,
+      "type": "range",
+      "computeKey": "shoulderStanceRatio",
+      "params": { "L": 1.75, "U": 2.2, "margin": 0.50 },
+      "hint_bad": "站姿偏窄/偏宽:建议脚间距≈肩宽的 1.5–2.5 倍，理想[1.75-2.2]"
+    },
+    {
+      "metricId": "P_guide_hand_chest_box",
+      "category": "posture",
+      "weight": 0.4,
+      "type": "range",
+      "computeKey": "guideHandInChestBoxRate",
+      "params": { "L": 0.75, "U": 1.00, "margin": 0.40 },
+      "hint_bad": "保护手不到位:非运球手肘到腕放胸前,增加护球效率。"
+    },
+
+    {
+      "metricId": "E_height_target_hip_only",
+      "category": "execution",
+      "weight": 1.0,
+      "type": "rangeByOption",
+      "computeKey": "wristHeightRatioToShoulder",
+      "params": {
+        "optionKey": "heightLevel",
+        "ranges": {
+          "hip_high": { "L": 0.45, "U": 0.75, "margin": 0.52 }
+        }
+      },
+      "hint_bad": "运球高度保持在髋部目标区间:先慢速稳定在髋附近，再逐步提速。"
+    },
+
+    {
+      "metricId": "C_height_consistency",
+      "category": "consistency",
+      "weight": 1.0,
+      "type": "target",
+      "computeKey": "stdWristHeightRatioToShoulderPerCycle",
+      "params": { "target": 0.05, "tol": 0.012, "margin": 0.02 },
+      "hint_bad": "高度波动大:先慢速稳住高度,再逐步提速。"
+    }
+  ]
+}

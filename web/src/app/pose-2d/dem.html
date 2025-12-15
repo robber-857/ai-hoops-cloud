@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Neon Score Demo</title>
+  <style>
+    :root {
+      /* 数字和激光的主色（RGB）*/
+      --led: 0, 247, 255;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at top, #141433, #050510);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #e5f7ff;
+    }
+
+    .card {
+      position: relative;
+      width: 320px;
+      height: 190px;
+      border-radius: 28px;
+      padding: 20px 24px;
+      overflow: hidden;
+      /* 底色偏深一点，好衬托激光 */
+      background: radial-gradient(circle at 20% 0%, #08707b, #02454c 45%, #01252a 100%);
+      isolation: isolate;
+    }
+
+    /* 边缘强光晕 */
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: -2px;
+      border-radius: inherit;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 0% 0%, rgba(var(--led), 0.9), transparent 60%),
+        radial-gradient(circle at 100% 0%, rgba(var(--led), 0.6), transparent 55%),
+        radial-gradient(circle at 0% 100%, rgba(var(--led), 0.5), transparent 55%),
+        radial-gradient(circle at 100% 100%, rgba(var(--led), 0.5), transparent 55%);
+      mix-blend-mode: screen;
+      opacity: 0.9;
+      z-index: 1;
+    }
+
+    /* X 型激光层：两条对角线激光在内部移动 */
+    .card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      background-image:
+        linear-gradient(
+          135deg,
+          transparent 0%,
+          transparent 40%,
+          rgba(var(--led), 0.45) 50%,
+          transparent 60%,
+          transparent 100%
+        ),
+        linear-gradient(
+          -135deg,
+          transparent 0%,
+          transparent 40%,
+          rgba(var(--led), 0.4) 50%,
+          transparent 60%,
+          transparent 100%
+        );
+      background-size: 220% 220%, 220% 220%;
+      mix-blend-mode: screen;
+      opacity: 0.65;
+      animation: x-lasers 5.4s linear infinite;
+      z-index: 0;
+    }
+
+    @keyframes x-lasers {
+      0% {
+        background-position: 0% 0%, 100% 100%;
+      }
+      50% {
+        background-position: 50% 100%, 50% 0%;
+      }
+      100% {
+        background-position: 100% 0%, 0% 100%;
+      }
+    }
+
+    .card-inner {
+      position: relative;
+      z-index: 2;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* OVERALL 字段放大 */
+    .label {
+      font-size: 16px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.22em;
+      opacity: 0.9;
+      margin-bottom: 4px;
+    }
+
+    .sub {
+      font-size: 14px;
+      opacity: 0.75;
+      margin-top: 6px;
+    }
+
+    /* 霓虹数字主体：不再抖动，只保持光晕 */
+    .led-num {
+      position: relative;
+      display: inline-block;
+      font-size: 64px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      color: rgb(var(--led));
+      text-shadow:
+        0 0 12px rgba(var(--led), 0.9),
+        0 0 26px rgba(var(--led), 0.8),
+        0 0 46px rgba(var(--led), 0.6);
+    }
+
+    /* 数字上的扫描高光，只做水平扫，不抖动 */
+    @keyframes led-sweep {
+      0% {
+        background-position: -60% 50%;
+      }
+      100% {
+        background-position: 160% 50%;
+      }
+    }
+
+    .led-num::after {
+      content: attr(data-text);
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background-image: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.0) 0%,
+        rgba(255, 255, 255, 1.0) 30%,
+        rgba(255, 255, 255, 0.0) 55%,
+        rgba(255, 255, 255, 0.85) 75%,
+        rgba(255, 255, 255, 0.0) 100%
+      );
+      background-size: 220% 100%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: transparent;
+      mix-blend-mode: screen;
+      opacity: 0.98;
+      animation: led-sweep 2.2s linear infinite;
+    }
+
+    .bar {
+      width: 100%;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.25);
+      overflow: hidden;
+      margin-top: 16px;
+    }
+
+    .bar-fill {
+      height: 100%;
+      width: 54%;
+      border-radius: inherit;
+      background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.1),
+        rgba(var(--led), 0.95)
+      );
+      box-shadow: 0 0 12px rgba(var(--led), 0.8);
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="card-inner">
+      <div>
+        <div class="label">OVERALL</div>
+        <div class="led-num" data-text="54">54</div>
+        <div class="sub">Weighted</div>
+      </div>
+      <div class="bar">
+        <div class="bar-fill"></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
