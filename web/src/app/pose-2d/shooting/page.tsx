@@ -7,31 +7,41 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { routes } from '@/lib/routes';
 
-// 动态加载上传组件，避免 SSR
 const UploadDropzone = dynamic(
   () => import('../../../components/Pose2D/UploadDropZone'),
   { ssr: false }
 );
 
-// 动态加载分析视图组件
 const PoseAnalysisView = dynamic(
   () => import('../../../components/Pose2D/PoseAnalysisView'),
   { ssr: false }
 );
 
 export default function ShootingPage() {
-  const [videoFile, setVideoFile] = useState<File | null>(null); // 保存用户上传的视频文件
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  // [New] 增加云端 URL 状态
+  const [cloudVideoUrl, setCloudVideoUrl] = useState<string | null>(null);
 
   const handleClear = () => {
     setVideoFile(null);
+    setCloudVideoUrl(null);
+  };
+
+  // [修复核心] 确保同时接收 File 和 URL
+  const handleFileSelect = (file: File | null, url?: string) => {
+    console.log("📂 File Selected:", file?.name);
+    console.log("☁️ Cloud URL Received:", url);
+    
+    setVideoFile(file);
+    if (url) {
+      setCloudVideoUrl(url); 
+    }
   };
 
   return (
     <main className="min-h-screen bg-gray-900 text-white p-4 sm:p-6 lg:p-8 flex flex-col items-center">
-      {/* 限制最大宽度，保证在大屏上不拉伸太长 */}
       <div className="w-full max-w-5xl mx-auto space-y-6 sm:space-y-8">
         
-        {/* Header 区域：字体大小自适应 */}
         <header className="text-center">
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500 leading-tight">
             2D Pose Analysis
@@ -41,11 +51,8 @@ export default function ShootingPage() {
           </p>
         </header>
 
-        {/* --- 导航栏 --- 
-            响应式布局：手机端垂直堆叠(flex-col)，平板/电脑端水平排列(sm:flex-row)
-        */}
         <div className="flex flex-col sm:flex-row justify-center items-stretch sm:items-center gap-3 sm:gap-4">
-          {/* 当前是 Shooting 页面，所以高亮这个按钮 */}
+          {/* Shooting 按钮高亮 */}
           <Button 
             variant="default" 
             className="w-full sm:w-auto bg-sky-600 hover:bg-sky-700 border-none shadow-[0_0_15px_rgba(2,132,199,0.3)]" 
@@ -62,20 +69,19 @@ export default function ShootingPage() {
             <Link href={routes.pose2d.report}>Export report</Link>
           </Button>
         </div>
-        {/* --- 结束导航栏 --- */}
 
-        {/* 主卡片容器：增加 overflow-hidden 和 min-h 提升质感 */}
         <Card className="border-slate-800/70 bg-slate-900/65 backdrop-blur-xl shadow-2xl overflow-hidden min-h-[400px]">
-          {videoFile ? (
+          {/* [关键逻辑] 优先传递 cloudVideoUrl */}
+          {(videoFile || cloudVideoUrl) ? (
             <PoseAnalysisView 
               file={videoFile} 
+              videoUrl={cloudVideoUrl} // [New] 传入 HTTPS 链接
               onClear={handleClear} 
-              analysisType="shooting" // 关键：传入投篮模式
+              analysisType="shooting" 
             />
           ) : (
             <div className="p-2 sm:p-4 h-full flex flex-col justify-center">
-               {/* 这里的 Padding 调整是为了让 UploadDropzone 在手机上不至于贴边太紧 */}
-               <UploadDropzone onFileSelect={setVideoFile} />
+               <UploadDropzone onFileSelect={handleFileSelect} />
             </div>
           )}
         </Card>

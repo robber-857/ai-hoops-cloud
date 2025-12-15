@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation"; 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,10 +10,11 @@ import { routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import globalConfig from "@/config/templates/global.json";
 import { getAllTemplates, getTemplateById, ActionTemplate } from "@/config/templates";
-import { calculateRealScore, ScoreResult, Grade } from "@/lib/scoring";
-import { useAnalysisStore } from "@/store/analysisStore";
+import { calculateRealScore, ScoreResult, Grade, AngleData } from "@/lib/scoring";
+import { useAnalysisStore, FrameSample } from "@/store/analysisStore";
 import MetricTimelineCard from "@/components/Pose2D/MetricTimelineCard";
-import { ChevronLeft, Share2, Download, Activity, CheckCircle2, AlertCircle } from "lucide-react";
+import { ChevronLeft, Share2, Download, Activity, CheckCircle2, AlertCircle, Check, Link as LinkIcon } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient"; 
 
 type CSSVarStyle = React.CSSProperties & Record<`--${string}`, string | number>;
 
@@ -29,7 +31,7 @@ type Tone = {
   accent: string;
   cardBg: string;
   borderClass: string;
-  led: string; // "r g b"
+  led: string;
   badgeClass: string;
 };
 
@@ -61,7 +63,6 @@ const gradeTone = (g: Grade): Tone => {
       badgeClass: "bg-emerald-400/20 text-emerald-50 border-emerald-300/70",
     };
   }
-  // C / D
   return {
     accent: "#3B82F6",
     cardBg: "#1D4ED8",
@@ -156,27 +157,46 @@ const ScoreCard = ({
 };
 
 export default function ReportPage() {
-  const { currentScore, currentAngles, currentVideoUrl, currentTemplate, currentTimeline } =
-    useAnalysisStore();
+  const { currentScore, currentAngles, currentVideoUrl, currentTemplate, currentTimeline } = useAnalysisStore();
+
+  const searchParams = useSearchParams();
+  const reportId = searchParams.get('id');
 
   const [ageGroup, setAgeGroup] = useState<string>("16-18");
   const [selectedMode, setSelectedMode] = useState<"shooting" | "dribbling">("dribbling");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  
+  // Local Result
   const [result, setResult] = useState<ScoreResult | null>(null);
+
+  // Cloud Result
+  const [dbResult, setDbResult] = useState<ScoreResult | null>(null);
+  const [dbTimeline, setDbTimeline] = useState<FrameSample[] | null>(null);
+  const [dbVideoUrl, setDbVideoUrl] = useState<string | null>(null);
+  const [dbSavedMetrics, setDbSavedMetrics] = useState<AngleData[] | null>(null);
+
   const [isMounted, setIsMounted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   useEffect(() => setIsMounted(true), []);
 
+  // 1. 初始化 Template (本地逻辑：仅当没有 reportId 时运行)
   useEffect(() => {
-    if (currentTemplate) {
+    if (currentTemplate && !reportId) {
       setSelectedMode(currentTemplate.mode);
       setSelectedTemplateId(currentTemplate.templateId);
     }
-  }, [currentTemplate]);
+  }, [currentTemplate, reportId]);
 
   const templates: ActionTemplate[] = getAllTemplates(selectedMode);
 
+  // 2. 确保 selectedTemplateId 有效 (本地逻辑：防止 ID 为空)
   useEffect(() => {
+    // [关键修复] 如果是云端查看模式 (有 reportId)，绝对不要运行这个“自动重置为默认值”的逻辑
+    // 否则刚从数据库加载好的模板ID，瞬间被这里重置成了 templates[0]
+    if (reportId) return;
+
     if (templates && templates.length > 0) {
       const currentExists = templates.find((t) => t.templateId === selectedTemplateId);
       if (!selectedTemplateId || !currentExists) {
@@ -185,36 +205,116 @@ export default function ReportPage() {
     } else {
       setSelectedTemplateId("");
     }
-  }, [selectedMode, templates, selectedTemplateId]);
+  }, [selectedMode, templates, selectedTemplateId, reportId]);
 
-  // scoring logic
+  // 3. 评分逻辑 (包含本地计算 和 云端重算)
   useEffect(() => {
-    if (selectedTemplateId && currentAngles && currentAngles.length > 0) {
-      const template = getTemplateById(selectedTemplateId);
-      if (template) {
-        const realResult = calculateRealScore(template, currentAngles, {
-          ageGroup,
-          handedness: "right",
-        });
-        setResult(realResult);
-      }
-    } else if (currentAngles && currentAngles.length > 0 && !result && currentScore) {
-      setResult(currentScore);
+    // A. 本地模式
+    if (!reportId && currentAngles && currentAngles.length > 0) {
+        if (selectedTemplateId) {
+           const template = getTemplateById(selectedTemplateId);
+           if (template) {
+             const r = calculateRealScore(template, currentAngles, { ageGroup, handedness: "right" });
+             setResult(r);
+           }
+        } else if (!result && currentScore) {
+           setResult(currentScore);
+        }
     }
-  }, [selectedTemplateId, currentAngles, currentScore, ageGroup]); // eslint-disable-line react-hooks/exhaustive-deps
+    
+    // B. 云端模式 (切换模板实时重算)
+    // 只有当数据库里的原始 metrics 下载成功后，才允许重算
+    if (reportId && dbSavedMetrics && selectedTemplateId) {
+        const template = getTemplateById(selectedTemplateId);
+        if (template) {
+          console.log("🔄 Recalculating cloud score for:", selectedTemplateId);
+          const r = calculateRealScore(template, dbSavedMetrics, { ageGroup, handedness: "right" });
+          setDbResult(r);
+        }
+    }
+  }, [selectedTemplateId, currentAngles, currentScore, ageGroup, reportId, dbSavedMetrics]);
+
+
+  // 4. [核心修复] 云端数据加载逻辑
+  useEffect(() => {
+    if (!reportId) return;
+
+    async function fetchReport() {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('analysis_reports')
+          .select('*')
+          .eq('id', reportId)
+          .single();
+
+        if (error || !data) {
+          console.error("Failed to load report", error);
+        } else {
+          console.log("📥 Loaded report:", data);
+          setDbResult(data.score_data);
+          setDbTimeline(data.timeline_data);
+          setDbVideoUrl(data.video_url);
+
+          if (data.score_data && data.score_data.saved_metrics) {
+             setDbSavedMetrics(data.score_data.saved_metrics);
+          }
+
+          // [关键] 恢复模板选择状态
+          if (data.template_id) {
+            const t = getTemplateById(data.template_id);
+            if (t) {
+              console.log("🎯 Restoring Template:", t.displayName);
+              // 1. 必须先切换 Mode，这样下拉框的 options 才会变成正确的列表
+              setSelectedMode(t.mode);
+              // 2. 然后再设置 ID
+              setSelectedTemplateId(data.template_id);
+            }
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchReport();
+  }, [reportId]);
+
+  const handleShare = () => {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url).then(() => {
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    });
+  };
 
   if (!isMounted) return null;
 
-  const overallGrade: Grade = result ? result.grade : "F";
+  // 决定显示哪些数据
+  const finalResult = reportId ? dbResult : result;
+  const finalVideoUrl = reportId ? dbVideoUrl : currentVideoUrl;
+  const finalTimeline = reportId ? dbTimeline : currentTimeline;
+
+  if (loading) {
+     return (
+        <div className="min-h-screen bg-[#F4F4F4] flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+             <div className="w-8 h-8 border-4 border-[#E35757] border-t-transparent rounded-full animate-spin"></div>
+             <p className="text-slate-500 font-medium">Loading Report...</p>
+          </div>
+        </div>
+     );
+  }
+
+  const overallGrade: Grade = finalResult ? finalResult.grade : "F";
   const overallTone = gradeTone(overallGrade);
-  const overallNum = result ? Math.round(result.overall) : 0;
+  const overallNum = finalResult ? Math.round(finalResult.overall) : 0;
 
   return (
     <div className="min-h-screen bg-[#F4F4F4] text-slate-900 font-sans pb-20 relative overflow-x-hidden">
       <div className="pointer-events-none absolute inset-0 tech-grid opacity-[0.35]" />
 
-      {/* [UI调整] Header: 在移动端减少 padding, 隐藏非核心按钮 
-      */}
       <header className="border-b border-[#E35757]/20 bg-[#E35757] sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 h-14 sm:h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-4">
@@ -233,38 +333,24 @@ export default function ReportPage() {
             <div>
               <h1 className="text-base sm:text-lg font-extrabold text-white leading-tight">Analysis Report</h1>
               <p className="text-[10px] sm:text-xs text-white/80 hidden sm:block">
-                Generated on {new Date().toLocaleDateString()}
+                {reportId ? `Report ID: ...${reportId.slice(-6)}` : `Generated on ${new Date().toLocaleDateString()}`}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="flex bg-white rounded-xl p-1 border border-white/30 shadow-sm scale-90 sm:scale-100 origin-right">
-              <button
-                onClick={() => setSelectedMode("shooting")}
-                className={cn(
-                  "px-2 sm:px-3 py-1 text-xs rounded-lg transition-all font-semibold",
-                  selectedMode === "shooting"
-                    ? "bg-[#E35757] text-white shadow"
-                    : "text-slate-600 hover:text-slate-900"
-                )}
+            {reportId && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleShare}
+                className="gap-2 bg-white text-[#E35757] hover:bg-white/90 h-8 px-2 sm:h-9 sm:px-4 font-bold shadow-sm transition-all active:scale-95"
               >
-                Shot
-              </button>
-              <button
-                onClick={() => setSelectedMode("dribbling")}
-                className={cn(
-                  "px-2 sm:px-3 py-1 text-xs rounded-lg transition-all font-semibold",
-                  selectedMode === "dribbling"
-                    ? "bg-[#E35757] text-white shadow"
-                    : "text-slate-600 hover:text-slate-900"
-                )}
-              >
-                Dribble
-              </button>
-            </div>
+                {isCopied ? <Check className="w-4 h-4" /> : <LinkIcon className="w-4 h-4" />}
+                <span className="hidden sm:inline">{isCopied ? "Copied" : "Share"}</span>
+              </Button>
+            )}
 
-            {/* 桌面端显示按钮, 移动端隐藏 */}
             <Button
               variant="outline"
               size="sm"
@@ -273,24 +359,12 @@ export default function ReportPage() {
               <Download className="w-4 h-4" />
               PDF
             </Button>
-
-            {/* 移动端仅显示图标 */}
-            <Button
-              variant="default"
-              size="sm"
-              className="gap-2 bg-white text-[#E35757] hover:bg-white/90 h-8 px-2 sm:h-9 sm:px-4"
-            >
-              <Share2 className="w-4 h-4" />
-              <span className="hidden sm:inline">Share</span>
-            </Button>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto p-3 sm:p-6 space-y-4 sm:space-y-6 relative">
         
-        {/* [UI调整] Selector Section: Flex布局在移动端自动换行 
-        */}
         <section className="rounded-2xl bg-white/90 border border-slate-200 shadow-sm p-3 sm:p-4">
           <div className="flex flex-col md:flex-row md:items-end gap-3 sm:gap-4">
             <div className="w-full md:max-w-sm relative">
@@ -302,6 +376,8 @@ export default function ReportPage() {
                   className="w-full appearance-none bg-white border border-slate-200 text-slate-900 text-sm rounded-xl p-2.5 pr-9 focus:ring-2 focus:ring-[#E35757]/25 focus:border-[#E35757] outline-none cursor-pointer hover:border-slate-300 transition-all shadow-sm"
                   value={selectedTemplateId}
                   onChange={(e) => setSelectedTemplateId(e.target.value)}
+                  // 只有当有 saved_metrics 时才允许切换（否则切了分也不变）
+                  disabled={!!reportId && !dbSavedMetrics} 
                 >
                   {templates.map((t) => (
                     <option key={t.templateId} value={t.templateId}>
@@ -339,10 +415,9 @@ export default function ReportPage() {
           </div>
         </section>
 
-        {result ? (
+        {finalResult ? (
           <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500">
-            {/* [UI调整] Score Cards: 手机端2列(grid-cols-2), iPad/Desktop 4列(md:grid-cols-4)
-            */}
+            {/* Score Cards */}
             <section className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
               {/* Overall Card */}
               <Card
@@ -371,7 +446,7 @@ export default function ReportPage() {
                           overallTone.badgeClass
                         )}
                       >
-                        {result.grade}
+                        {finalResult.grade}
                       </Badge>
                     </div>
                     <div className="mt-3 sm:mt-4 flex items-baseline gap-3">
@@ -395,7 +470,7 @@ export default function ReportPage() {
                       <div
                         className="h-full rounded-full transition-all duration-1000 ease-out"
                         style={{
-                          width: `${result.overall}%`,
+                          width: `${finalResult.overall}%`,
                           background: overallTone.accent,
                         }}
                       />
@@ -406,31 +481,27 @@ export default function ReportPage() {
 
               <ScoreCard
                 title="POSTURE"
-                score={result.breakdown.posture}
-                weight={result.weights.posture}
+                score={finalResult.breakdown.posture}
+                weight={finalResult.weights.posture}
                 icon={Activity}
               />
               <ScoreCard
                 title="EXECUTION"
-                score={result.breakdown.execution}
-                weight={result.weights.execution}
+                score={finalResult.breakdown.execution}
+                weight={finalResult.weights.execution}
                 icon={Activity}
               />
               <ScoreCard
                 title="CONSISTENCY"
-                score={result.breakdown.consistency}
-                weight={result.weights.consistency}
+                score={finalResult.breakdown.consistency}
+                weight={finalResult.weights.consistency}
                 icon={Activity}
               />
             </section>
 
-            {/* [UI调整] 核心内容区: 
-              - 手机端: 单列垂直堆叠 (grid-cols-1)
-              - 桌面端: 左右 2:1 分栏 (lg:grid-cols-3)
-            */}
+            {/* Main Content: Video + Chart */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
               
-              {/* Left Column (Video + Chart) */}
               <div className="lg:col-span-2 space-y-4 sm:space-y-6">
                 <Card className="rounded-2xl bg-white/90 border border-slate-200 overflow-hidden shadow-sm">
                   <CardHeader className="pb-3 border-b border-slate-100 px-4 pt-4">
@@ -443,9 +514,10 @@ export default function ReportPage() {
                     </CardTitle>
                   </CardHeader>
                   <div className="aspect-video bg-black relative flex items-center justify-center">
-                    {currentVideoUrl ? (
+                    {/* [Modified] 使用 finalVideoUrl */}
+                    {finalVideoUrl ? (
                       <video
-                        src={currentVideoUrl}
+                        src={finalVideoUrl}
                         className="w-full h-full object-contain"
                         controls
                         playsInline
@@ -457,32 +529,33 @@ export default function ReportPage() {
                   </div>
                 </Card>
 
-                {currentTimeline && currentTimeline.length > 0 && (
+                {/* [Modified] 使用 finalTimeline */}
+                {finalTimeline && finalTimeline.length > 0 && (
                   <div className="lightify-timeline rounded-2xl bg-white border border-slate-200 shadow-sm p-0 overflow-visible">
-                    <MetricTimelineCard timeline={currentTimeline} templateId={selectedTemplateId} />
+                    <MetricTimelineCard timeline={finalTimeline} templateId={selectedTemplateId} />
                   </div>
                 )}
               </div>
 
-              {/* Right Column (Findings List) */}
+              {/* Right Column: Findings */}
               <div className="lg:col-span-1">
                 <Card className="rounded-2xl bg-white/90 border border-slate-200 h-full shadow-sm flex flex-col overflow-hidden min-h-[400px]">
                   <CardHeader className="pb-3 border-b border-slate-100 px-4 pt-4">
                     <CardTitle className="text-base font-semibold text-slate-900 flex items-center justify-between">
                       <span>Top Findings</span>
-                      {result && (
+                      {finalResult && (
                         <Badge
                           variant="secondary"
                           className="text-[10px] bg-white text-slate-500 border border-slate-200"
                         >
-                          {result.findings.length} Issues
+                          {finalResult.findings.length} Issues
                         </Badge>
                       )}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-0 flex-1 overflow-y-auto max-h-[500px] lg:max-h-[600px] custom-scrollbar">
                     <div className="space-y-0 divide-y divide-slate-100">
-                      {result?.findings.map((finding, idx) => {
+                      {finalResult?.findings.map((finding, idx) => {
                         const isBad = finding.score < 70;
                         return (
                           <div key={idx} className="p-3 sm:p-4 hover:bg-slate-50 transition-colors">
@@ -520,7 +593,7 @@ export default function ReportPage() {
                         );
                       })}
 
-                      {(!result || result.findings.length === 0) && (
+                      {(!finalResult || finalResult.findings.length === 0) && (
                         <div className="flex flex-col items-center justify-center py-12 text-slate-400 gap-2">
                           <CheckCircle2 className="w-8 h-8 opacity-40" />
                           <p className="text-sm font-semibold">No critical findings found.</p>
@@ -541,7 +614,7 @@ export default function ReportPage() {
       </main>
 
       <style jsx global>{`
-        /* 背景网格 */
+        /* 保留你原来的样式 */
         .tech-grid {
           background-image: linear-gradient(
               to right,
