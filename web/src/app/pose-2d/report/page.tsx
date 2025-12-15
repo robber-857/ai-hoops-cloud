@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react"; // [修改1] 引入 Suspense
 import Link from "next/link";
 import { useSearchParams } from "next/navigation"; 
 import { Button } from "@/components/ui/button";
@@ -156,7 +156,8 @@ const ScoreCard = ({
   );
 };
 
-export default function ReportPage() {
+// [修改2] 原来的 ReportPage 改名为 ReportContent，作为内部组件
+function ReportContent() {
   const { currentScore, currentAngles, currentVideoUrl, currentTemplate, currentTimeline } = useAnalysisStore();
 
   const searchParams = useSearchParams();
@@ -181,7 +182,8 @@ export default function ReportPage() {
 
   useEffect(() => setIsMounted(true), []);
 
-  // 1. 初始化 Template (本地逻辑：仅当没有 reportId 时运行)
+  // 1. 初始化 Template (仅限本地模式)
+  // [关键] 如果有 reportId，绝对不运行这个逻辑，防止覆盖云端数据
   useEffect(() => {
     if (currentTemplate && !reportId) {
       setSelectedMode(currentTemplate.mode);
@@ -191,10 +193,9 @@ export default function ReportPage() {
 
   const templates: ActionTemplate[] = getAllTemplates(selectedMode);
 
-  // 2. 确保 selectedTemplateId 有效 (本地逻辑：防止 ID 为空)
+  // 2. 确保 selectedTemplateId 有效
   useEffect(() => {
-    // [关键修复] 如果是云端查看模式 (有 reportId)，绝对不要运行这个“自动重置为默认值”的逻辑
-    // 否则刚从数据库加载好的模板ID，瞬间被这里重置成了 templates[0]
+    // [关键修复] 如果是云端查看模式 (有 reportId)，禁用这个自动重置逻辑
     if (reportId) return;
 
     if (templates && templates.length > 0) {
@@ -207,7 +208,7 @@ export default function ReportPage() {
     }
   }, [selectedMode, templates, selectedTemplateId, reportId]);
 
-  // 3. 评分逻辑 (包含本地计算 和 云端重算)
+  // 3. 评分逻辑
   useEffect(() => {
     // A. 本地模式
     if (!reportId && currentAngles && currentAngles.length > 0) {
@@ -222,12 +223,12 @@ export default function ReportPage() {
         }
     }
     
-    // B. 云端模式 (切换模板实时重算)
-    // 只有当数据库里的原始 metrics 下载成功后，才允许重算
+    // B. 云端模式 (切换模板重算)
+    // 只有当 dbSavedMetrics 下载成功后，才允许重算
     if (reportId && dbSavedMetrics && selectedTemplateId) {
         const template = getTemplateById(selectedTemplateId);
         if (template) {
-          console.log("🔄 Recalculating cloud score for:", selectedTemplateId);
+          // console.log("🔄 Recalculating cloud score for:", selectedTemplateId);
           const r = calculateRealScore(template, dbSavedMetrics, { ageGroup, handedness: "right" });
           setDbResult(r);
         }
@@ -235,7 +236,7 @@ export default function ReportPage() {
   }, [selectedTemplateId, currentAngles, currentScore, ageGroup, reportId, dbSavedMetrics]);
 
 
-  // 4. [核心修复] 云端数据加载逻辑
+  // 4. 云端数据加载
   useEffect(() => {
     if (!reportId) return;
 
@@ -260,14 +261,14 @@ export default function ReportPage() {
              setDbSavedMetrics(data.score_data.saved_metrics);
           }
 
-          // [关键] 恢复模板选择状态
+          // [关键修复] 恢复模板
           if (data.template_id) {
             const t = getTemplateById(data.template_id);
             if (t) {
               console.log("🎯 Restoring Template:", t.displayName);
-              // 1. 必须先切换 Mode，这样下拉框的 options 才会变成正确的列表
+              // 1. 先切换 Mode，让 templates 列表正确
               setSelectedMode(t.mode);
-              // 2. 然后再设置 ID
+              // 2. 强制设置 ID (覆盖任何默认值)
               setSelectedTemplateId(data.template_id);
             }
           }
@@ -291,7 +292,6 @@ export default function ReportPage() {
 
   if (!isMounted) return null;
 
-  // 决定显示哪些数据
   const finalResult = reportId ? dbResult : result;
   const finalVideoUrl = reportId ? dbVideoUrl : currentVideoUrl;
   const finalTimeline = reportId ? dbTimeline : currentTimeline;
@@ -614,7 +614,7 @@ export default function ReportPage() {
       </main>
 
       <style jsx global>{`
-        /* 保留你原来的样式 */
+        /* 背景网格 */
         .tech-grid {
           background-image: linear-gradient(
               to right,
@@ -797,5 +797,21 @@ export default function ReportPage() {
         }
       `}</style>
     </div>
+  );
+}
+
+// [修改3] 导出默认的 Page 组件 (包含 Suspense 边界)
+export default function ReportPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#F4F4F4] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+           <div className="w-8 h-8 border-4 border-[#E35757] border-t-transparent rounded-full animate-spin"></div>
+           <p className="text-slate-500 font-medium">Loading...</p>
+        </div>
+      </div>
+    }>
+      <ReportContent />
+    </Suspense>
   );
 }
