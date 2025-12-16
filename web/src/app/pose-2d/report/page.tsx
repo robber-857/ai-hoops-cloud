@@ -318,7 +318,7 @@ function ReportContent() {
       <div className="pointer-events-none absolute inset-0 tech-grid opacity-[0.35]" />
 
       {/* [Modified] Header: 添加了 relative 定位，并插入了居中的 Logo */}
-      <header className="border-b border-[#E35757]/20 bg-[#E35757] sticky top-0 z-50 relative">
+      <header className="border-b border-[#E35757]/20 bg-[#CF1041] sticky top-0 z-50 relative">
         <div className="max-w-7xl mx-auto px-4 h-14 sm:h-16 flex items-center justify-between relative">
           {/* 左侧内容：添加了 relative z-10 确保在 Logo 之上 */}
           <div className="flex items-center gap-2 sm:gap-4 relative z-10">
@@ -345,10 +345,10 @@ function ReportContent() {
           {/* [New] 居中 Logo：绝对定位到 Header 中心 */}
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
             <Image
-              src="/logo.png"
+              src="/logoonreport.png"
               alt="App Logo"
               // 设置高度为 h-8 (32px) 在小屏上，h-10 (40px) 在大屏上，宽度自适应
-              className="h-42 w-auto sm:h-47 object-contain"
+              className="h-10 w-auto sm:h-12 object-contain"
               priority // 优先加载 Logo
               width={1080}  // 填一个大概的数值即可，CSS 会覆盖它
               height={540}  // 填一个大概的数值即可
