@@ -46,8 +46,9 @@ export default function ShootingPage() {
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500 leading-tight">
             2D Pose Analysis
           </h1>
-          <p className="text-sm sm:text-base text-gray-400 mt-3 sm:mt-4 max-w-2xl mx-auto">
-            Upload the video to analysis shooting form.
+          <p
+            className="text-sm sm:text-base text-gray-400 mt-3 sm:mt-4 max-w-2xl mx-auto text-justify">
+            To drag the progress bar, double-click the position you want to jump to. The video will automatically replay after it finishes. To obtain a stable score, please ensure the video plays for more than 10 seconds before clicking the view analysis button. During the upload process, please stay on the current page and do not switch screens. If you see a black screen, please wait a moment as the inference model loads. Please click the pause button two seconds before the video ends, and then click view analysis.
           </p>
         </header>
 
