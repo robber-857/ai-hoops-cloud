@@ -17,7 +17,7 @@
         "U": -0.05, 
         "margin": 0.15 
       },
-      "hint_bad": "膝盖前冲过多:重心太靠前容易失去平衡，尝试臀部向后坐。"
+      "hint_bad": "Knees leaning forward too much: If your center of gravity is too far forward, you are likely to lose your balance. Try sitting back with your hips."
     },
     {
       "metricId": "P_hip_position",
@@ -30,7 +30,7 @@
         "U": -0.14, 
         "margin": 0.22 
       },
-      "hint_bad": "髋部前顶:不要挺肚子，保持屈髋姿态，重心落在脚掌中后部。"
+      "hint_bad": "Hip thrust forward: Do not stick out your stomach, maintain a flexed hip posture, and place your weight on the middle and back of your feet."
     },
     {
       "metricId": "P_trunk_lean",
@@ -39,7 +39,7 @@
       "type": "target",
       "computeKey": "trunkLeanDegSide",
       "params": { "target": 25, "tol": 10, "margin": 15 },
-      "hint_bad": "前倾角度不佳:保持 15°–35° 的前倾，既能保护球又能随时启动。"
+      "hint_bad": "Poor forward tilt angle: Maintain a forward tilt of 15°–35° to both protect the ball and allow for immediate start."
     },
     {
       "metricId": "P_hand_reach_control",
@@ -48,7 +48,7 @@
       "type": "range",
       "computeKey": "handForwardOffsetSide",
       "params": { "L": 0.12, "U": 0.40, "margin": 0.20 },
-      "hint_bad": "手伸得太远:让运球点靠近身体侧前方，手臂不要过度伸直。"
+      "hint_bad": "Reaching too far: Keep the dribbling point close to the side and in front of your body, and do not overextend your arms."
     },
 
     {
@@ -62,7 +62,7 @@
         "tol": 0.15, 
         "margin": 0.22 
       },
-      "hint_bad": "落点位置:球应落在脚尖前方约 1-2 个球的位置 (归一化值 0.25 左右)。"
+      "hint_bad": "Landing point: The ball should land approximately 1-2 ball lengths in front of your toes."
     },
     {
       "metricId": "E_dribble_height",
@@ -71,7 +71,7 @@
       "type": "range",
       "computeKey": "wristHeightRatioToHip",
       "params": { "L": 0.40, "U": 0.68, "margin": 0.32 },
-      "hint_bad": "运球高度:控制在膝盖到髋部之间，太低影响速度。"
+      "hint_bad": "Dribbling height: Control it between the knee and hip; too high or too low will affect speed."
     },
 
     {
@@ -81,7 +81,7 @@
       "type": "target",
       "computeKey": "stdWristToToeForwardOffsetPerCycle",
       "params": { "target": 0.05, "tol": 0.04, "margin": 0.08 },
-      "hint_bad": "前后落点飘:定点运球时，球的落点要像打桩机一样固定。"
+      "hint_bad": "Forward and backward landing point drift: When dribbling in a fixed position, the ball's landing point should be fixed like a pile driver."
     },
     {
       "metricId": "C_height_consistency",
@@ -90,7 +90,7 @@
       "type": "target",
       "computeKey": "stdWristHeightRatioToHipPerCycle",
       "params": { "target": 0.04, "tol": 0.025, "margin": 0.052 },
-      "hint_bad": "高度不稳定:保持节奏，不要忽高忽低。"
+      "hint_bad": "Unstable dribbling height: Maintain a rhythm and avoid erratic dribbling height."
     }
   ]
 }

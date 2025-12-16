@@ -13,7 +13,7 @@
       "type": "range",
       "computeKey": "shoulderStanceRatio",
       "params": { "L": 1.75, "U": 2.2, "margin": 0.50 },
-      "hint_bad": "站姿偏窄/偏宽:建议脚间距≈肩宽的 1.5–2.5 倍，理想[1.75-2.2]"
+      "hint_bad": "Make sure you have a good distance between your feet; the ratio of your stance distance to your shoulder width should be between 1.55 and 2.45."
     },
     {
       "metricId": "P_guide_hand_chest_box",
@@ -22,7 +22,7 @@
       "type": "range",
       "computeKey": "guideHandInChestBoxRate",
       "params": { "L": 0.75, "U": 1.00, "margin": 0.40 },
-      "hint_bad": "保护手不到位:非运球手肘到腕放胸前,增加护球效率。"
+      "hint_bad": "The non-dribbling hand is not always placed in front of the chest: Keeping the non-dribbling elbow to wrist in front of the chest increases ball protection efficiency."
     },
 
     {
@@ -37,7 +37,7 @@
           "hip_high": { "L": 0.45, "U": 0.75, "margin": 0.52 }
         }
       },
-      "hint_bad": "运球高度保持在髋部目标区间:先慢速稳定在髋附近，再逐步提速。"
+      "hint_bad": "Maintain dribbling height within the hip target range: first, dribble slowly and steadily near the hip, then gradually increase speed."
     },
 
     {
@@ -47,7 +47,7 @@
       "type": "target",
       "computeKey": "stdWristHeightRatioToShoulderPerCycle",
       "params": { "target": 0.05, "tol": 0.012, "margin": 0.02 },
-      "hint_bad": "高度波动大:先慢速稳住高度,再逐步提速。"
+      "hint_bad": "Large fluctuations in dribbling height: First, stabilize the height slowly, then gradually increase the speed."
     }
   ]
 }

@@ -6,8 +6,13 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "IFSPORT",
+  title: "IFSPORT BASKETBALL AI ANALYSIS",
   description: "Next.js Tailwind v4 Setup",
+  icons: {
+    icon: '/icon.png', 
+    shortcut: '/icon.png',
+    apple: '/icon.png',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
