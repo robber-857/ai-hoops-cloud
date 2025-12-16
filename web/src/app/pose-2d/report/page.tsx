@@ -335,7 +335,7 @@ function ReportContent() {
               </Link>
             </Button>
             <div>
-              <h1 className="text-base sm:text-lg font-extrabold text-white leading-tight">Analysis Report</h1>
+              <h1 className="text-base sm:text-lg font-extrabold text-white/90 leading-tight">Back</h1>
               <p className="text-[10px] sm:text-xs text-white/80 hidden sm:block">
                 {reportId ? `Report ID: ...${reportId.slice(-6)}` : `Generated on ${new Date().toLocaleDateString()}`}
               </p>
@@ -345,13 +345,13 @@ function ReportContent() {
           {/* [New] 居中 Logo：绝对定位到 Header 中心 */}
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
             <Image
-              src="/icon.png"
+              src="/logo.png"
               alt="App Logo"
               // 设置高度为 h-8 (32px) 在小屏上，h-10 (40px) 在大屏上，宽度自适应
-              className="h-8 w-auto sm:h-10 object-contain"
+              className="h-42 w-auto sm:h-47 object-contain"
               priority // 优先加载 Logo
-              width={120}  // 填一个大概的数值即可，CSS 会覆盖它
-              height={60}  // 填一个大概的数值即可
+              width={1080}  // 填一个大概的数值即可，CSS 会覆盖它
+              height={540}  // 填一个大概的数值即可
             />
           </div>
 
