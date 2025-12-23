@@ -226,7 +226,7 @@ export default function PoseAnalysisView({
     }
 
     if (allFramesRef.current.length === 0) {
-      alert("No motion data captured. Please play the video for a few seconds.");
+      alert("If you find the black screen time is too long, please try again in an area with a smooth internet connection. After the screen displays, play for a few seconds before clicking the button.");
       return;
     }
 
