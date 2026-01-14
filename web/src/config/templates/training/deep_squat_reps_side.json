@@ -1,0 +1,73 @@
+{
+  "templateId": "deep_squat_reps_side",
+  "mode": "training",
+  "camera": "side",
+  "displayName": "深蹲｜徒手深蹲(侧面/重复次数)",
+  "categoryWeights": { "posture": 0.4, "execution": 0.4, "consistency": 0.2 },
+  "options": { "repTarget": 10 },
+  "metrics": [
+    {
+      "metricId": "P_trunk_lean",
+      "category": "posture",
+      "weight": 0.50,
+      "type": "range",
+      "computeKey": "trunkLeanDegSide",
+      "params": { "L": 0, "U": 45, "margin": 15 },
+      "hint_bad": "上身过度前倾：下蹲时保持挺胸，不要像鞠躬一样趴下去。"
+    },
+    {
+      "metricId": "P_knee_travel",
+      "category": "posture",
+      "weight": 0.50,
+      "type": "range",
+      "computeKey": "kneeOverToeOffsetXSide",
+      "params": { "L": -0.05, "U": 0.15, "margin": 0.15 },
+      "hint_bad": "膝盖过度前冲导致重心不稳：先屈髋向后坐，再屈膝，让臀部主导动作。"
+    },
+    {
+      "metricId": "E_squat_depth",
+      "category": "execution",
+      "weight": 0.60,
+      "type": "target",
+      "computeKey": "hipBelowKneeRatioSide",
+      "params": { "target": 0.05, "tol": 0.05, "margin": 0.10 },
+      "hint_bad": "下蹲深度不足：蹲得不够深，试着让大腿根部（髋）低于膝盖水平线。"
+    },
+    {
+      "metricId": "E_full_extension",
+      "category": "execution",
+      "weight": 0.20,
+      "type": "target",
+      "computeKey": "topKneeAngleDeg",
+      "params": { "target": 175, "tol": 10, "margin": 15 },
+      "hint_bad": "站起不充分：每次起身后，髋部和膝盖要完全伸直还原。"
+    },
+    {
+      "metricId": "E_rep_rhythm",
+      "category": "execution",
+      "weight": 0.20,
+      "type": "range",
+      "computeKey": "repTempoSec",
+      "params": { "L": 1.5, "U": 4.0, "margin": 2.0 },
+      "hint_bad": "动作速度失控：控制下蹲和起立的节奏，不要利用惯性快速弹起。"
+    },
+    {
+      "metricId": "C_depth_consistency",
+      "category": "consistency",
+      "weight": 0.60,
+      "type": "target",
+      "computeKey": "stdHipBelowKneeRatioSidePerRep",
+      "params": { "target": 0.03, "tol": 0.02, "margin": 0.05 },
+      "hint_bad": "深度不一致：确保每一次下蹲都达到相同的深度。"
+    },
+    {
+      "metricId": "C_form_consistency",
+      "category": "consistency",
+      "weight": 0.40,
+      "type": "target",
+      "computeKey": "stdTrunkLeanDegSidePerRep",
+      "params": { "target": 4.0, "tol": 2.0, "margin": 5.0 },
+      "hint_bad": "动作模式不稳定：保持核心收紧，每次下蹲的上身角度应保持一致。"
+    }
+  ]
+}

@@ -13,11 +13,11 @@ const UploadDropzone = dynamic(
 );
 
 const PoseAnalysisView = dynamic(
-  () => import('../../../components/Pose2D/PoseAnalysisView'),
+  () => import('../../../components/Pose2D/PoseAnalysisView'), 
   { ssr: false }
 );
 
-export default function ShootingPage() {
+export default function TrainingPage() {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [cloudVideoUrl, setCloudVideoUrl] = useState<string | null>(null);
 
@@ -41,31 +41,34 @@ export default function ShootingPage() {
       <div className="w-full max-w-5xl mx-auto space-y-6 sm:space-y-8">
         
         <header className="text-center">
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500 leading-tight">
-            Shooting form Analysis
+          {/* 使用 Emerald 绿色渐变区分 Training 模块 */}
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-500 leading-tight">
+            Basic Training Analysis
           </h1>
           <p
             className="text-sm sm:text-base text-gray-400 mt-3 sm:mt-4 max-w-2xl mx-auto text-justify">
-            To drag the progress bar, double-click the position you want to jump to. The video will automatically replay after it finishes. To obtain a stable score, please ensure the video plays for more than 10 seconds before clicking the view analysis button. During the upload process, please stay on the current page and do not switch screens. If you see a black screen, please wait a moment as the inference model loads. Please click the pause button two seconds before the video ends, and then click view analysis.
+            Upload videos of basic training movements (High Knees, Plank, Wall Sit, Squats). 
+            Please ensure the video is filmed from the <strong>SIDE view</strong> for accurate posture analysis. 
+            To obtain a stable score, please ensure the video plays for more than 10 seconds before clicking the view analysis button. 
+            During the upload process, please stay on the current page.If you see a black screen, please wait a moment as the inference model loads. Please click the pause button two seconds before the video ends, and then click view analysis.
           </p>
         </header>
 
         <div className="flex flex-col sm:flex-row justify-center items-stretch sm:items-center gap-3 sm:gap-4">
-          {/* Shooting 按钮高亮 (Active) */}
-          <Button 
-            variant="default" 
-            className="w-full sm:w-auto bg-sky-600 hover:bg-sky-700 border-none shadow-[0_0_15px_rgba(2,132,199,0.3)]" 
-            asChild
-          >
-            <Link href={routes.pose2d.shooting}>Shooting form analysis</Link>
+          <Button variant="outline" className="w-full sm:w-auto" asChild>
+            <Link href={routes.pose2d.shooting}>Shooting</Link>
           </Button>
           
           <Button variant="outline" className="w-full sm:w-auto" asChild>
-            <Link href={routes.pose2d.dribbling}>Dribbling Posture Analysis</Link>
+            <Link href={routes.pose2d.dribbling}>Dribbling</Link>
           </Button>
 
-          {/* [New] Basic Training 按钮 */}
-          <Button variant="outline" className="w-full sm:w-auto" asChild>
+          {/* 高亮 Training 按钮 */}
+          <Button 
+            variant="default" 
+            className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 border-none shadow-[0_0_15px_rgba(16,185,129,0.3)]" 
+            asChild
+          >
             <Link href={routes.pose2d.training}>Basic Training</Link>
           </Button>
           
@@ -80,11 +83,12 @@ export default function ShootingPage() {
               file={videoFile} 
               videoUrl={cloudVideoUrl} 
               onClear={handleClear} 
-              analysisType="shooting" 
+              // [关键] 传入新的分析类型，这样系统会去加载 Training 目录下的模板
+              analysisType="training" 
             />
           ) : (
-            <div className="p-2 sm:p-4 h-full flex flex-col justify-center">
-               <UploadDropzone onFileSelect={handleFileSelect} />
+            <div className="p-4 sm:p-8 h-full flex flex-col justify-center">
+              <UploadDropzone onFileSelect={handleFileSelect} />
             </div>
           )}
         </Card>

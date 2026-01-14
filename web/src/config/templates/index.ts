@@ -1,6 +1,6 @@
 // src/config/templates/index.ts
 
-// 1. 导入 JSON 模板文件 (请确保你的 JSON 文件确实在对应的子文件夹中)
+// 1. 导入 JSON 模板文件
 import dribbleFrontNarrow from './dribbling/dribble_front_narrow_crossover.json';
 import dribbleFrontOneHandHeight from './dribbling/dribble_front_onehand_oneside_height.json';
 import dribbleFrontOneHandV from './dribbling/dribble_front_onehand_v.json';
@@ -8,6 +8,13 @@ import dribbleSideNarrowCrossover from './dribbling/dribble_side_narrow_crossove
 import dribbleSideOneHandOneSide from './dribbling/dribble_side_onehand_oneside.json';
 import shootFrontFormClose from './shooting/shoot_front_form_close.json';
 import shootSideFormClose from './shooting/shoot_side_form_close.json';
+
+// [Modified] 更新了 Training 模板的引用文件名
+import trainingHighKnees from "./training/high_knees_in_place_side.json";
+import trainingPlank from "./training/pushup_hold_high_plank.json";
+import trainingWallSit from "./training/wall_sit_half_hold.json";
+import trainingWallQuarter from "./training/wall_sit_quarter_hold.json";
+import trainingSquat from "./training/deep_squat_reps_side.json";
 
 // 2. 定义类型接口
 export interface MetricRange {
@@ -46,7 +53,9 @@ export interface Weights {
 
 export interface ActionTemplate {
   templateId: string;
-  mode: 'shooting' | 'dribbling';
+
+  // 建议统一使用 "training" 以匹配你的路由和代码逻辑
+  mode: 'shooting' | 'dribbling' | 'training'; 
   camera: 'front' | 'side';
   displayName: string;
   ageGroups?: string[];
@@ -58,7 +67,6 @@ export interface ActionTemplate {
 }
 
 // 3. 注册所有模板
-// 使用双重断言确保 JSON 数据兼容接口
 const rawTemplates = [
   dribbleFrontNarrow,
   dribbleFrontOneHandHeight,
@@ -67,6 +75,11 @@ const rawTemplates = [
   dribbleSideOneHandOneSide,
   shootFrontFormClose,
   shootSideFormClose,
+  trainingHighKnees,
+  trainingPlank,
+  trainingWallSit,
+  trainingWallQuarter,
+  trainingSquat
 ] as unknown as ActionTemplate[];
 
 // 建立 ID 映射以便快速查找
@@ -80,8 +93,16 @@ export function getTemplateById(id: string): ActionTemplate | undefined {
   return templatesMap[id];
 }
 
-export function getAllTemplates(mode?: 'shooting' | 'dribbling'): ActionTemplate[] {
+// [Modified] 更新筛选逻辑
+// 如果你 JSON 里写的是 "fitness"，但外面传参是 "training"，这里要做个兼容
+export function getAllTemplates(mode?: 'shooting' | 'dribbling' | 'training'): ActionTemplate[] {
   const all = Object.values(templatesMap);
-  if (mode) return all.filter(t => t.mode === mode);
+  if (mode) {
+    if (mode === 'training') {
+      // 同时也返回 mode 为 'fitness' 的模板，兼容刚才 JSON 文件里的写法
+      return all.filter(t => t.mode === 'training');
+    }
+    return all.filter(t => t.mode === mode);
+  }
   return all;
 }

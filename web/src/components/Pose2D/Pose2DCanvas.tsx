@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect, useState } from "react";
 import { useMediaPipePose } from "@/hooks/useMediaPipePose";
-import type { Results } from "@mediapipe/pose";
+import type { Results, NormalizedLandmark } from "@mediapipe/pose"; // [Fix] 导入 NormalizedLandmark 以修复 any
 // 导入类型定义，避免循环依赖建议使用 import type
 import type { AnalysisType, AngleData } from "./PoseAnalysisView";
 import { extractDribbleFrame, DribbleFrame } from "@/lib/dribbleTemporal";
@@ -30,6 +30,20 @@ interface Pose2DCanvasProps {
   onFrameCaptured?: (frame: DribbleFrame) => void;// 新增一个回调专门传原始帧数据
 }
 const FACE_IDX = new Set<number>([0,1,2,3,4,5,6,7,8,9,10]);
+
+// 在文件头部 imports 下方，添加一个简单的本地计算函数，
+// 避免去修改 angles2d.ts 导致未知错误
+// 计算三点夹角 (A-B-C)
+// [Fix] 使用 NormalizedLandmark 替换 any，修复 ESLint 报错
+function calcLocalAngle(a: NormalizedLandmark, b: NormalizedLandmark, c: NormalizedLandmark) {
+  // 增加空值和可见性检查 (使用 ?? 0 处理可能的 undefined)
+  if(!a || !b || !c || (a.visibility ?? 0) < 0.5 || (b.visibility ?? 0) < 0.5 || (c.visibility ?? 0) < 0.5) return 0;
+  
+  const rad = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
+  let deg = Math.abs(rad * 180.0 / Math.PI);
+  if (deg > 180.0) deg = 360 - deg;
+  return deg;
+}
 
 export default function Pose2DCanvas({ videoUrl, isPlaying, onVideoEnd, onTime, seekTo, analysisType,
   onAnglesUpdate, onProcessing,onFrameCaptured}: Pose2DCanvasProps) {
@@ -247,9 +261,12 @@ export default function Pose2DCanvas({ videoUrl, isPlaying, onVideoEnd, onTime, 
             newAngleData.push({ name: "Elbow Angle", value: angles.elbow, unit: "°" });
             newAngleData.push({ name: "Shoulder Angle", value: angles.shoulder, unit: "°" });
           }
-        } else if (analysisType === "dribbling") {
+        } else if (analysisType === "dribbling"|| analysisType === "training") {
           const crouchAngle = calculateCrouchAngle(landmarks);
           const stanceRatio = calculateStanceToShoulderRatio(landmarks);
+          // [建议新增] 推送更多用于静态分析的基础数据，防止动态计算失败
+          const trunkLean = calculateTrunkLean(landmarks); 
+          newAngleData.push({ name: "trunkLeanDegSide", value: trunkLean, unit: "°" });
 
           if (crouchAngle !== null) {
             newAngleData.push({
@@ -267,6 +284,27 @@ export default function Pose2DCanvas({ videoUrl, isPlaying, onVideoEnd, onTime, 
               unit: "ratio", // 修改单位
             });
           }
+          
+          // [New] 为平板支撑增加“身体直线度” (Hip Angle)
+          // 自动取可见性高的一侧
+          const lk = landmarks[25], rk = landmarks[26];
+          // 增加判空保护
+          if (lk && rk) {
+              const isLeft = (lk.visibility ?? 0) > (rk.visibility ?? 0);
+              const hipAngle = calcLocalAngle(
+                isLeft ? landmarks[11] : landmarks[12], // Shoulder
+                isLeft ? landmarks[23] : landmarks[24], // Hip
+                isLeft ? landmarks[27] : landmarks[28]  // Ankle
+              );
+              if (hipAngle > 0) {
+                newAngleData.push({
+                name: "bodyLineDeg", // 这个名字只是显示用
+                value: Math.round(hipAngle),
+                unit: "°",
+              });
+              }
+          }
+
           // [新增] 提取 DribbleFrame 并回传
           if (results.poseLandmarks && onFrameCaptured) {
           // 直接调用我们写好的提取函数

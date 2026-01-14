@@ -1,0 +1,55 @@
+{
+  "templateId": "wall_sit_quarter_hold",
+  "mode": "training",
+  "camera": "side",
+  "displayName": "靠墙四分之一蹲保持｜浅靠墙静蹲(侧面/约135°)",
+  "categoryWeights": { "posture": 0.5, "execution": 0.3, "consistency": 0.2 },
+  "options": { "targetHoldSec": 60 },
+  "metrics": [
+    {
+      "metricId": "P_knee_angle_135",
+      "category": "posture",
+      "weight": 0.50,
+      "type": "target",
+      "computeKey": "avgKneeAngleDeg",
+      "params": { "target": 135, "tol": 10, "margin": 20 },
+      "hint_bad": "下蹲深度不对：这是浅蹲，膝盖保持约 135 度微屈即可。"
+    },
+    {
+      "metricId": "P_trunk_vertical",
+      "category": "posture",
+      "weight": 0.30,
+      "type": "target",
+      "computeKey": "trunkLeanDegSide",
+      "params": { "target": 0, "tol": 5, "margin": 10 },
+      "hint_bad": "背部未贴墙：保持上半身完全垂直并贴紧墙面。"
+    },
+    {
+      "metricId": "P_knee_safe_zone",
+      "category": "posture",
+      "weight": 0.20,
+      "type": "range",
+      "computeKey": "kneeOverToeOffsetXSide",
+      "params": { "L": -0.10, "U": 0.05, "margin": 0.10 },
+      "hint_bad": "膝盖压力过大：小腿应接近垂直地面，膝盖不要过度前顶。"
+    },
+    {
+      "metricId": "E_hold_duration",
+      "category": "execution",
+      "weight": 1.0,
+      "type": "target",
+      "computeKey": "holdDurationSec",
+      "params": { "target": 30, "tol": 15, "margin": 40 },
+      "hint_bad": "一次训练尽量保持30s左右。"
+    },
+    {
+      "metricId": "C_stability",
+      "category": "consistency",
+      "weight": 1.0,
+      "type": "target",
+      "computeKey": "stdKneeAngleDeg",
+      "params": { "target": 3.0, "tol": 2.0, "margin": 5.0 },
+      "hint_bad": "姿势晃动：保持静止不动。"
+    }
+  ]
+}

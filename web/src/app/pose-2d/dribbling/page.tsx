@@ -26,10 +26,9 @@ export default function DribblingPage() {
     setCloudVideoUrl(null);
   };
 
-  // [修复核心] 确保同时接收 File 和 URL
   const handleFileSelect = (file: File | null, url?: string) => {
     console.log("📂 File Selected:", file?.name);
-    console.log("☁️ Cloud URL Received:", url); // 调试用，确保这里打印出了 https://...
+    console.log("☁️ Cloud URL Received:", url); 
     
     setVideoFile(file);
     if (url) {
@@ -43,7 +42,7 @@ export default function DribblingPage() {
         
         <header className="text-center">
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500 leading-tight">
-            2D Pose Analysis
+            Dribbling motion analysis
           </h1>
           <p
             className="text-sm sm:text-base text-gray-400 mt-3 sm:mt-4 max-w-2xl mx-auto text-justify">
@@ -51,17 +50,24 @@ export default function DribblingPage() {
           </p>
         </header>
 
+        {/* 导航按钮组 */}
         <div className="flex flex-col sm:flex-row justify-center items-stretch sm:items-center gap-3 sm:gap-4">
           <Button variant="outline" className="w-full sm:w-auto" asChild>
-            <Link href={routes.pose2d.shooting}>Shooting form analysis</Link>
+            <Link href={routes.pose2d.shooting}>Shooting</Link>
           </Button>
           
+          {/* 当前页面高亮 (Dribbling) */}
           <Button 
             variant="default" 
             className="w-full sm:w-auto bg-sky-600 hover:bg-sky-700 border-none shadow-[0_0_15px_rgba(2,132,199,0.3)]" 
             asChild
           >
-            <Link href={routes.pose2d.dribbling}>Dribbling Posture Analysis</Link>
+            <Link href={routes.pose2d.dribbling}>Dribbling</Link>
+          </Button>
+
+          {/* [New] Training 按钮 */}
+          <Button variant="outline" className="w-full sm:w-auto" asChild>
+            <Link href={routes.pose2d.training}>Basic Training</Link>
           </Button>
           
           <Button variant="outline" className="w-full sm:w-auto" asChild>
@@ -70,14 +76,10 @@ export default function DribblingPage() {
         </div>
 
         <Card className="border-slate-800/70 bg-slate-900/65 backdrop-blur-xl shadow-2xl overflow-hidden min-h-[400px]">
-          {/* [关键逻辑] 
-             只要有 videoFile (本地预览) 或者 cloudVideoUrl (云端) 就显示分析器。
-             我们将 cloudVideoUrl 传给 videoUrl 属性，PoseAnalysisView 会优先使用它。
-          */}
           {(videoFile || cloudVideoUrl) ? (
             <PoseAnalysisView 
               file={videoFile} 
-              videoUrl={cloudVideoUrl} // 这里传进去的必须是 https://...
+              videoUrl={cloudVideoUrl} 
               onClear={handleClear} 
               analysisType="dribbling" 
             />

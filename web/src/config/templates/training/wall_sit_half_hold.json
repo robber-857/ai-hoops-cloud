@@ -1,0 +1,55 @@
+{
+  "templateId": "wall_sit_half_hold",
+  "mode": "training",
+  "camera": "side",
+  "displayName": "靠墙半蹲保持｜标准靠墙静蹲(侧面/约90°)",
+  "categoryWeights": { "posture": 0.5, "execution": 0.3, "consistency": 0.2 },
+  "options": { "targetHoldSec": 45 },
+  "metrics": [
+    {
+      "metricId": "P_knee_angle_90",
+      "category": "posture",
+      "weight": 0.50,
+      "type": "target",
+      "computeKey": "avgKneeAngleDeg",
+      "params": { "target": 90, "tol": 10, "margin": 15 },
+      "hint_bad": "下蹲深度不对：大腿应与地面平行，膝盖呈90度直角。"
+    },
+    {
+      "metricId": "P_trunk_vertical",
+      "category": "posture",
+      "weight": 0.30,
+      "type": "target",
+      "computeKey": "trunkLeanDegSide",
+      "params": { "target": 0, "tol": 5, "margin": 10 },
+      "hint_bad": "背部未贴墙：上半身必须完全垂直于地面，紧贴墙壁。"
+    },
+    {
+      "metricId": "P_knee_position",
+      "category": "posture",
+      "weight": 0.20,
+      "type": "range",
+      "computeKey": "kneeOverToeOffsetXSide",
+      "params": { "L": -0.05, "U": 0.08, "margin": 0.12 },
+      "hint_bad": "膝盖位置不佳：调整脚与墙的距离，确保膝盖不超过脚尖太多。"
+    },
+    {
+      "metricId": "E_hold_duration",
+      "category": "execution",
+      "weight": 1.0,
+      "type": "target",
+      "computeKey": "holdDurationSec",
+      "params": { "target": 30, "tol": 15, "margin": 30 },
+      "hint_bad": "尽量坚持到目标时间(30s)。"
+    },
+    {
+      "metricId": "C_depth_stability",
+      "category": "consistency",
+      "weight": 1.0,
+      "type": "target",
+      "computeKey": "stdKneeAngleDeg",
+      "params": { "target": 3.0, "tol": 2.0, "margin": 5.0 },
+      "hint_bad": "身体起伏：不要上下滑动，像钉子一样钉在墙上。"
+    }
+  ]
+}

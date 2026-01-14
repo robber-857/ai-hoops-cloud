@@ -1,0 +1,55 @@
+{
+  "templateId": "pushup_hold_high_plank",
+  "mode": "training",
+  "camera": "side",
+  "displayName": "俯卧撑状态保持｜高位平板(侧面)",
+  "categoryWeights": { "posture": 0.4, "execution": 0.4, "consistency": 0.2 },
+  "options": { "targetHoldSec": 30 },
+  "metrics": [
+    {
+      "metricId": "P_body_line",
+      "category": "posture",
+      "weight": 0.45,
+      "type": "target",
+      "computeKey": "plankBodyLineDeg",
+      "params": { "target": 180, "tol": 8, "margin": 15 },
+      "hint_bad": "身体不成一直线：收紧核心和臀部，避免塌腰或撅臀，保持肩-髋-踝在一条线上。"
+    },
+    {
+      "metricId": "P_shoulder_stack",
+      "category": "posture",
+      "weight": 0.30,
+      "type": "range",
+      "computeKey": "shoulderOverWristOffsetX",
+      "params": { "L": -0.08, "U": 0.08, "margin": 0.12 },
+      "hint_bad": "肩没有叠在手腕上：调整重心，把肩膀移动到手腕正上方。"
+    },
+    {
+      "metricId": "P_elbow_lockout",
+      "category": "posture",
+      "weight": 0.25,
+      "type": "target",
+      "computeKey": "avgElbowAngleDeg",
+      "params": { "target": 175, "tol": 10, "margin": 18 },
+      "hint_bad": "手肘弯曲：手臂尽量伸直支撑，但不要过度超伸。"
+    },
+    {
+      "metricId": "E_good_form_ratio",
+      "category": "execution",
+      "weight": 1.0,
+      "type": "target",
+      "computeKey": "goodFormFrameRatio",
+      "params": { "target": 0.90, "tol": 0.10, "margin": 0.20 },
+      "hint_bad": "有效维持比例低：不要为了撑时间而牺牲动作质量，塌腰时不计入有效时间。"
+    },
+    {
+      "metricId": "C_body_stability",
+      "category": "consistency",
+      "weight": 1.0,
+      "type": "target",
+      "computeKey": "stdPlankBodyLineDeg",
+      "params": { "target": 3.0, "tol": 2.0, "margin": 5.0 },
+      "hint_bad": "核心不稳：身体晃动过大，保持像木板一样静止。"
+    }
+  ]
+}

@@ -1,6 +1,8 @@
+// src/app/pose-2d/report/page.tsx
+
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react"; // [修改1] 引入 Suspense
+import React, { useState, useEffect, Suspense, useMemo } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation"; 
 import { Button } from "@/components/ui/button";
@@ -13,20 +15,24 @@ import { getAllTemplates, getTemplateById, ActionTemplate } from "@/config/templ
 import { calculateRealScore, ScoreResult, Grade, AngleData } from "@/lib/scoring";
 import { useAnalysisStore, FrameSample } from "@/store/analysisStore";
 import MetricTimelineCard from "@/components/Pose2D/MetricTimelineCard";
-import { ChevronLeft, Share2, Download, Activity, CheckCircle2, AlertCircle, Check, Link as LinkIcon } from "lucide-react";
+import { ChevronLeft, Share2, Download, Activity, CheckCircle2, AlertCircle, Check, Link as LinkIcon, AlertTriangle } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient"; 
 import Image from "next/image";
 
+// --- 1. 类型定义与扩展 ---
 
-type CSSVarStyle = React.CSSProperties & Record<`--${string}`, string | number>;
+/** 解决 CSS 变量类型报错 */
+interface ExtendedCSS extends React.CSSProperties {
+  "--cardBase"?: string;
+  "--sheen"?: string;
+  "--led"?: string;
+}
 
-function getLocalGrade(score: number): Grade {
-  if (score >= 90) return "S";
-  if (score >= 85) return "A";
-  if (score >= 75) return "B";
-  if (score >= 60) return "C";
-  if (score >= 50) return "D";
-  return "F";
+interface ScoreCardProps {
+  title: string;
+  score: number;
+  weight?: number;
+  icon: React.ElementType;
 }
 
 type Tone = {
@@ -37,7 +43,10 @@ type Tone = {
   badgeClass: string;
 };
 
-const gradeTone = (g: Grade): Tone => {
+// --- 2. 顶层工具函数 ---
+
+/** 修复 gradeTone 作用域 */
+const getGradeTone = (g: Grade): Tone => {
   if (g === "S") {
     return {
       accent: "#E8C547",
@@ -74,19 +83,20 @@ const gradeTone = (g: Grade): Tone => {
   };
 };
 
-const ScoreCard = ({
-  title,
-  score,
-  weight,
-  icon: Icon,
-}: {
-  title: string;
-  score: number;
-  weight?: number;
-  icon: React.ComponentType<{ className?: string }>;
-}) => {
+function getLocalGrade(score: number): Grade {
+  if (score >= 90) return "S";
+  if (score >= 85) return "A";
+  if (score >= 75) return "B";
+  if (score >= 60) return "C";
+  if (score >= 50) return "D";
+  return "F";
+}
+
+// --- 3. 内部组件 ---
+
+const ScoreCard: React.FC<ScoreCardProps> = ({ title, score, weight, icon: Icon }) => {
   const grade = getLocalGrade(score);
-  const tone = gradeTone(grade);
+  const tone = getGradeTone(grade);
   const num = Math.round(score);
 
   return (
@@ -101,7 +111,7 @@ const ScoreCard = ({
         {
           "--cardBase": tone.cardBg,
           "--sheen": tone.led,
-        } as CSSVarStyle
+        } as ExtendedCSS
       }
     >
       <CardContent className="relative z-[1] p-3 sm:p-4 flex flex-col justify-between h-full">
@@ -127,7 +137,7 @@ const ScoreCard = ({
             style={
               {
                 "--led": tone.led,
-              } as CSSVarStyle
+              } as ExtendedCSS
             }
           >
             {num}
@@ -158,7 +168,8 @@ const ScoreCard = ({
   );
 };
 
-// [修改2] 原来的 ReportPage 改名为 ReportContent，作为内部组件
+// --- 4. 报告页面主体 ---
+
 function ReportContent() {
   const { currentScore, currentAngles, currentVideoUrl, currentTemplate, currentTimeline } = useAnalysisStore();
 
@@ -166,7 +177,7 @@ function ReportContent() {
   const reportId = searchParams.get('id');
 
   const [ageGroup, setAgeGroup] = useState<string>("16-18");
-  const [selectedMode, setSelectedMode] = useState<"shooting" | "dribbling">("dribbling");
+  const [selectedMode, setSelectedMode] = useState<ActionTemplate['mode']>("dribbling");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   
   // Local Result
@@ -174,7 +185,9 @@ function ReportContent() {
 
   // Cloud Result
   const [dbResult, setDbResult] = useState<ScoreResult | null>(null);
-  const [dbTimeline, setDbTimeline] = useState<FrameSample[] | null>(null);
+  
+  // [Fix] 修复 any[] 报错，使用正确的 FrameSample[] 类型
+  const [dbTimeline, setDbTimeline] = useState<FrameSample[] | null>(null); 
   const [dbVideoUrl, setDbVideoUrl] = useState<string | null>(null);
   const [dbSavedMetrics, setDbSavedMetrics] = useState<AngleData[] | null>(null);
 
@@ -184,8 +197,7 @@ function ReportContent() {
 
   useEffect(() => setIsMounted(true), []);
 
-  // 1. 初始化 Template (仅限本地模式)
-  // [关键] 如果有 reportId，绝对不运行这个逻辑，防止覆盖云端数据
+  // 1. 初始化模板 (本地模式)
   useEffect(() => {
     if (currentTemplate && !reportId) {
       setSelectedMode(currentTemplate.mode);
@@ -193,52 +205,40 @@ function ReportContent() {
     }
   }, [currentTemplate, reportId]);
 
-  const templates: ActionTemplate[] = getAllTemplates(selectedMode);
+  const templates = useMemo(() => getAllTemplates(selectedMode), [selectedMode]);
 
-  // 2. 确保 selectedTemplateId 有效
+  // 2. 确保模板 ID 有效
   useEffect(() => {
-    // [关键修复] 如果是云端查看模式 (有 reportId)，禁用这个自动重置逻辑
-    if (reportId) return;
+    if (reportId) return; 
 
     if (templates && templates.length > 0) {
       const currentExists = templates.find((t) => t.templateId === selectedTemplateId);
       if (!selectedTemplateId || !currentExists) {
         if (templates[0]) setSelectedTemplateId(templates[0].templateId);
       }
-    } else {
-      setSelectedTemplateId("");
     }
-  }, [selectedMode, templates, selectedTemplateId, reportId]);
+  }, [templates, selectedTemplateId, reportId]);
 
-  // 3. 评分逻辑
+  // 3. 核心评分逻辑 (Scheme B: 直接复用全量 saved_metrics)
   useEffect(() => {
-    // A. 本地模式
+    // 本地即时计算
     if (!reportId && currentAngles && currentAngles.length > 0) {
-        if (selectedTemplateId) {
-           const template = getTemplateById(selectedTemplateId);
-           if (template) {
-             const r = calculateRealScore(template, currentAngles, { ageGroup, handedness: "right" });
-             setResult(r);
-           }
-        } else if (!result && currentScore) {
-           setResult(currentScore);
+        const template = getTemplateById(selectedTemplateId);
+        if (template) {
+          setResult(calculateRealScore(template, currentAngles, { ageGroup, handedness: "right" }));
         }
     }
     
-    // B. 云端模式 (切换模板重算)
-    // 只有当 dbSavedMetrics 下载成功后，才允许重算
+    // 云端重算 (切模板直接出分)
     if (reportId && dbSavedMetrics && selectedTemplateId) {
         const template = getTemplateById(selectedTemplateId);
         if (template) {
-          // console.log("🔄 Recalculating cloud score for:", selectedTemplateId);
-          const r = calculateRealScore(template, dbSavedMetrics, { ageGroup, handedness: "right" });
-          setDbResult(r);
+          setDbResult(calculateRealScore(template, dbSavedMetrics, { ageGroup, handedness: "right" }));
         }
     }
-  }, [selectedTemplateId, currentAngles, currentScore, ageGroup, reportId, dbSavedMetrics]);
+  }, [selectedTemplateId, currentAngles, ageGroup, reportId, dbSavedMetrics]);
 
-
-  // 4. 云端数据加载
+  // 4. 加载 Supabase 云端报告
   useEffect(() => {
     if (!reportId) return;
 
@@ -252,25 +252,20 @@ function ReportContent() {
           .single();
 
         if (error || !data) {
-          console.error("Failed to load report", error);
+          console.error("Report fetch failed");
         } else {
-          console.log("📥 Loaded report:", data);
           setDbResult(data.score_data);
-          setDbTimeline(data.timeline_data);
+          setDbTimeline(data.timeline_data as FrameSample[]);
           setDbVideoUrl(data.video_url);
 
-          if (data.score_data && data.score_data.saved_metrics) {
+          if (data.score_data?.saved_metrics) {
              setDbSavedMetrics(data.score_data.saved_metrics);
           }
 
-          // [关键修复] 恢复模板
           if (data.template_id) {
             const t = getTemplateById(data.template_id);
             if (t) {
-              console.log("🎯 Restoring Template:", t.displayName);
-              // 1. 先切换 Mode，让 templates 列表正确
               setSelectedMode(t.mode);
-              // 2. 强制设置 ID (覆盖任何默认值)
               setSelectedTemplateId(data.template_id);
             }
           }
@@ -292,35 +287,33 @@ function ReportContent() {
     });
   };
 
-  if (!isMounted) return null;
-
   const finalResult = reportId ? dbResult : result;
   const finalVideoUrl = reportId ? dbVideoUrl : currentVideoUrl;
   const finalTimeline = reportId ? dbTimeline : currentTimeline;
 
+  // 数据异常提示逻辑
+  const isDataMissing = useMemo(() => !finalResult || finalResult.overall <= 0, [finalResult]);
+
+  if (!isMounted) return null;
+
   if (loading) {
      return (
-        <div className="min-h-screen bg-[#F4F4F4] flex items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-             <div className="w-8 h-8 border-4 border-[#E35757] border-t-transparent rounded-full animate-spin"></div>
-             <p className="text-slate-500 font-medium">Loading Report...</p>
-          </div>
+        <div className="min-h-screen bg-[#F4F4F4] flex items-center justify-center font-bold text-slate-400 uppercase tracking-widest">
+          Loading Report...
         </div>
      );
   }
 
-  const overallGrade: Grade = finalResult ? finalResult.grade : "F";
-  const overallTone = gradeTone(overallGrade);
-  const overallNum = finalResult ? Math.round(finalResult.overall) : 0;
+  const overallGrade = finalResult?.grade || "F";
+  const overallNum = Math.round(finalResult?.overall || 0);
+  const tone = getGradeTone(overallGrade);
 
   return (
     <div className="min-h-screen bg-[#F4F4F4] text-slate-900 font-sans pb-20 relative overflow-x-hidden">
       <div className="pointer-events-none absolute inset-0 tech-grid opacity-[0.35]" />
 
-      {/* [Modified] Header: 添加了 relative 定位，并插入了居中的 Logo */}
       <header className="border-b border-[#E35757]/20 bg-[#CF1041] sticky top-0 z-50 relative">
         <div className="max-w-7xl mx-auto px-4 h-14 sm:h-16 flex items-center justify-between relative">
-          {/* 左侧内容：添加了 relative z-10 确保在 Logo 之上 */}
           <div className="flex items-center gap-2 sm:gap-4 relative z-10">
             <Button
               variant="ghost"
@@ -342,20 +335,17 @@ function ReportContent() {
             </div>
           </div>
 
-          {/* [New] 居中 Logo：绝对定位到 Header 中心 */}
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
             <Image
               src="/logoonreport.png"
               alt="App Logo"
-              // 设置高度为 h-8 (32px) 在小屏上，h-10 (40px) 在大屏上，宽度自适应
               className="h-10 w-auto sm:h-12 object-contain"
-              priority // 优先加载 Logo
-              width={1080}  // 填一个大概的数值即可，CSS 会覆盖它
-              height={540}  // 填一个大概的数值即可
+              priority
+              width={1080}
+              height={540}
             />
           </div>
 
-          {/* 右侧内容：添加了 relative z-10 确保在 Logo 之上 */}
           <div className="flex items-center gap-2 sm:gap-3 relative z-10">
             {reportId && (
               <Button
@@ -394,7 +384,6 @@ function ReportContent() {
                   className="w-full appearance-none bg-white border border-slate-200 text-slate-900 text-sm rounded-xl p-2.5 pr-9 focus:ring-2 focus:ring-[#E35757]/25 focus:border-[#E35757] outline-none cursor-pointer hover:border-slate-300 transition-all shadow-sm"
                   value={selectedTemplateId}
                   onChange={(e) => setSelectedTemplateId(e.target.value)}
-                  // 只有当有 saved_metrics 时才允许切换（否则切了分也不变）
                   disabled={!!reportId && !dbSavedMetrics} 
                 >
                   {templates.map((t) => (
@@ -433,23 +422,35 @@ function ReportContent() {
           </div>
         </section>
 
+        {isDataMissing && (
+          <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 text-amber-900 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+            <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
+            <div>
+              <h5 className="text-amber-800 font-semibold text-sm">Insufficient Data</h5>
+              <p className="text-amber-700/90 mt-1 text-xs sm:text-sm">
+                The analysis could not calculate key metrics for this template. 
+                <br/>
+                Possible causes: Video too short, not enough repetitions detected, or switching templates without raw data support.
+              </p>
+            </div>
+          </div>
+        )}
+
         {finalResult ? (
           <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500">
-            {/* Score Cards */}
             <section className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-              {/* Overall Card */}
               <Card
                 className={cn(
                   "col-span-2 md:col-span-1 relative overflow-hidden rounded-2xl border shadow-sm transition-all",
                   "card-energy text-white",
                   "hover:-translate-y-[1px] hover:shadow-lg",
-                  overallTone.borderClass
+                  tone.borderClass
                 )}
                 style={
                   {
-                    "--cardBase": overallTone.cardBg,
-                    "--sheen": overallTone.led,
-                  } as CSSVarStyle
+                    "--cardBase": tone.cardBg,
+                    "--sheen": tone.led,
+                  } as ExtendedCSS
                 }
               >
                 <CardContent className="relative z-[1] p-4 sm:p-5 flex flex-col justify-between h-full">
@@ -461,7 +462,7 @@ function ReportContent() {
                       <Badge
                         className={cn(
                           "text-[10px] sm:text-[11px] px-2 py-0.5 font-extrabold rounded-md border",
-                          overallTone.badgeClass
+                          tone.badgeClass
                         )}
                       >
                         {finalResult.grade}
@@ -473,8 +474,8 @@ function ReportContent() {
                         data-text={String(overallNum)}
                         style={
                           {
-                            "--led": overallTone.led,
-                          } as CSSVarStyle
+                            "--led": tone.led,
+                          } as ExtendedCSS
                         }
                       >
                         {overallNum}
@@ -489,7 +490,7 @@ function ReportContent() {
                         className="h-full rounded-full transition-all duration-1000 ease-out"
                         style={{
                           width: `${finalResult.overall}%`,
-                          background: overallTone.accent,
+                          background: tone.accent,
                         }}
                       />
                     </div>
@@ -517,7 +518,6 @@ function ReportContent() {
               />
             </section>
 
-            {/* Main Content: Video + Chart */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
               
               <div className="lg:col-span-2 space-y-4 sm:space-y-6">
@@ -532,7 +532,6 @@ function ReportContent() {
                     </CardTitle>
                   </CardHeader>
                   <div className="aspect-video bg-black relative flex items-center justify-center">
-                    {/* [Modified] 使用 finalVideoUrl */}
                     {finalVideoUrl ? (
                       <video
                         src={finalVideoUrl}
@@ -547,7 +546,6 @@ function ReportContent() {
                   </div>
                 </Card>
 
-                {/* [Modified] 使用 finalTimeline */}
                 {finalTimeline && finalTimeline.length > 0 && (
                   <div className="lightify-timeline rounded-2xl bg-white border border-slate-200 shadow-sm p-0 overflow-visible">
                     <MetricTimelineCard timeline={finalTimeline} templateId={selectedTemplateId} />
@@ -555,7 +553,6 @@ function ReportContent() {
                 )}
               </div>
 
-              {/* Right Column: Findings */}
               <div className="lg:col-span-1">
                 <Card className="rounded-2xl bg-white/90 border border-slate-200 h-full shadow-sm flex flex-col overflow-hidden min-h-[400px]">
                   <CardHeader className="pb-3 border-b border-slate-100 px-4 pt-4">
@@ -632,7 +629,6 @@ function ReportContent() {
       </main>
 
       <style jsx global>{`
-        /* 背景网格 */
         .tech-grid {
           background-image: linear-gradient(
               to right,
@@ -818,7 +814,6 @@ function ReportContent() {
   );
 }
 
-// [修改3] 导出默认的 Page 组件 (包含 Suspense 边界)
 export default function ReportPage() {
   return (
     <Suspense fallback={

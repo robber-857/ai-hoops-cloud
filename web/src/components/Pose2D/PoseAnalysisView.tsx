@@ -15,9 +15,11 @@ import { routes } from "@/lib/routes";
 import { DribbleFrame } from "@/lib/dribbleTemporal";
 import { aggregateDribbleSequence } from "@/lib/dribbleCalculator";
 import { supabase } from "@/lib/supabaseClient"; // [New] 引入 Supabase 客户端
+import { aggregateTrainingSequence } from "@/lib/trainingCalculator"; 
+import { TrainingFrame } from "@/lib/trainingTemporal";
 
 // --- 导出类型定义，以便 Pose2DCanvas 可以使用 ---
-export type AnalysisType = "shooting" | "dribbling";
+export type AnalysisType = "shooting" | "dribbling"| "training";
 export type AngleData = { name: string; value: number; unit?: string };
 
 type Props = {
@@ -129,6 +131,8 @@ export default function PoseAnalysisView({
   const allFramesRef = useRef<FrameSample[]>([]);
   // 专门存运球的原始帧（用于 Dribble Cycle 计算）
   const dribbleFramesRef = useRef<DribbleFrame[]>([]);
+  // 用于存储训练动作的时序数据
+  const trainingFramesRef = useRef<DribbleFrame[]>([]);
   // 用于存储“最新一帧”的角度数据（兜底：没播放也能生成 Posture）
   const latestAnglesRef = useRef<AngleData[]>([]);
 
@@ -171,24 +175,26 @@ export default function PoseAnalysisView({
   const handleFrameCaptured = useCallback(
     (frame: DribbleFrame) => {
       if (isPlaying) {
-        const currentData = dribbleFramesRef.current;
-
-        // 1) 检查是否发生了“时间倒流” (Loop 或 Seek)
-        if (currentData.length > 0) {
-          const lastT = currentData[currentData.length - 1].t;
-          // 阈值 0.5s：过滤轻微抖动，通常 Loop/Seek 是大幅回跳
-          if (frame.t < lastT - 0.5) {
-            console.log("🔄 Loop detected in Dribble Data. Resetting.");
-            dribbleFramesRef.current = []; // 清空运球数据
-            // allFramesRef.current = [];   // 如需同步清空波形，可在此开启
+        // 3. [Training Logic] 根据模式决定存入哪个 Ref
+        if (analysisType === "dribbling") {
+          const currentData = dribbleFramesRef.current;
+          //过滤轻微抖动，避免时间倒流
+          if (currentData.length > 0 && frame.t < currentData[currentData.length - 1].t - 0.5) {
+            dribbleFramesRef.current = []; 
           }
+          dribbleFramesRef.current.push(frame);
+        } 
+        else if (analysisType === "training") {
+          const currentData = trainingFramesRef.current;
+          // 同样的防回跳逻辑
+          if (currentData.length > 0 && frame.t < currentData[currentData.length - 1].t - 0.5) {
+             trainingFramesRef.current = [];
+          }
+          trainingFramesRef.current.push(frame);
         }
-
-        // 2) 存入新数据
-        dribbleFramesRef.current.push(frame);
       }
     },
-    [isPlaying]
+    [isPlaying, analysisType]
   );
 
   // [同步修改] 角度回传也要有同样的“时间倒流”处理，防止 timeline 乱掉
@@ -266,7 +272,39 @@ export default function PoseAnalysisView({
           console.warn("Not enough dribble frames. Fallback to static.");
           finalInputForScoring = aggregateFrames(allFramesRef.current);
         }
-      } else {
+      } else if (analysisType === "training") {
+        // [New Logic] 训练动作处理
+        const tFrames = trainingFramesRef.current;
+
+        // 判断是“动态周期动作”还是“静态保持动作”
+        // 我们可以通过 Template ID 或 Metrics 类型来判断
+        const isDynamic = activeTemplate.templateId.includes("squat") || activeTemplate.templateId.includes("knees");
+        
+        if (tFrames.length > 10) {
+          console.log("Analyzing Training Data:", tFrames.length, "frames");
+          const computedStats = aggregateTrainingSequence(tFrames, activeTemplate);
+          
+          // [Fix] 修复类型报错：显式断言 val as number
+          // [关键] 我们修改了 aggregateTrainingSequence 返回 Record<string, number | undefined>
+          // 所以这里需要先过滤 undefined，再转换
+          const dynamicMetrics: AngleData[] = Object.entries(computedStats)
+            .filter(([_, val]) => val !== undefined) // 这一步运行时过滤了 undefined
+            .map(([key, val]) => ({
+              name: key,
+              value: val as number, // [关键] 告诉 TS 这里肯定是 number
+              unit: "calc",
+            }));
+            
+            // Training 也可以混合一些静态平均值作为兜底
+            const staticMetrics = aggregateFrames(allFramesRef.current);
+            // 优先使用动态计算值覆盖静态值
+             finalInputForScoring = [...staticMetrics, ...dynamicMetrics];
+        } else {
+          finalInputForScoring = aggregateFrames(allFramesRef.current);
+        }
+        
+      }
+      else {
         // === 投篮逻辑（保持不变）===
         finalInputForScoring = aggregateFrames(allFramesRef.current);
       }
