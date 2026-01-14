@@ -32,7 +32,7 @@ interface ScoreCardProps {
   title: string;
   score: number;
   weight?: number;
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string }>;
 }
 
 type Tone = {
