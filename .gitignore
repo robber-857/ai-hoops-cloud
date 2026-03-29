@@ -1,0 +1,10 @@
+# ===== Python backend =====
+server/.venv/
+server/.env
+server/**/__pycache__/
+server/**/*.py[cod]
+
+# ===== General =====
+.vscode/
+.DS_Store
+Thumbs.db
