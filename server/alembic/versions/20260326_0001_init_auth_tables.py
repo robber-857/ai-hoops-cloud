@@ -23,6 +23,7 @@ user_status_enum = postgresql.ENUM(
     "disabled",
     "locked",
     name="user_status",
+    create_type=False,
 )
 
 user_role_enum = postgresql.ENUM(
@@ -30,12 +31,14 @@ user_role_enum = postgresql.ENUM(
     "admin",
     "coach",
     name="user_role",
+    create_type=False,
 )
 
 verification_target_type_enum = postgresql.ENUM(
     "phone",
     "email",
     name="verification_target_type",
+    create_type=False,
 )
 
 verification_scene_enum = postgresql.ENUM(
@@ -43,6 +46,7 @@ verification_scene_enum = postgresql.ENUM(
     "login",
     "reset_password",
     name="verification_scene",
+    create_type=False,
 )
 
 verification_code_status_enum = postgresql.ENUM(
@@ -51,6 +55,7 @@ verification_code_status_enum = postgresql.ENUM(
     "expired",
     "invalidated",
     name="verification_code_status",
+    create_type=False,
 )
 
 session_status_enum = postgresql.ENUM(
@@ -58,11 +63,13 @@ session_status_enum = postgresql.ENUM(
     "revoked",
     "expired",
     name="session_status",
+    create_type=False,
 )
 
 storage_provider_enum = postgresql.ENUM(
     "s3",
     name="storage_provider",
+    create_type=False,
 )
 
 video_upload_status_enum = postgresql.ENUM(
@@ -71,12 +78,14 @@ video_upload_status_enum = postgresql.ENUM(
     "failed",
     "deleted",
     name="video_upload_status",
+    create_type=False,
 )
 
 video_visibility_enum = postgresql.ENUM(
     "private",
     "public",
     name="video_visibility",
+    create_type=False,
 )
 
 analysis_type_enum = postgresql.ENUM(
@@ -84,6 +93,7 @@ analysis_type_enum = postgresql.ENUM(
     "dribbling",
     "training",
     name="analysis_type",
+    create_type=False,
 )
 
 upload_task_status_enum = postgresql.ENUM(
@@ -93,6 +103,7 @@ upload_task_status_enum = postgresql.ENUM(
     "failed",
     "expired",
     name="upload_task_status",
+    create_type=False,
 )
 
 report_status_enum = postgresql.ENUM(
@@ -100,6 +111,7 @@ report_status_enum = postgresql.ENUM(
     "completed",
     "failed",
     name="report_status",
+    create_type=False,
 )
 
 
