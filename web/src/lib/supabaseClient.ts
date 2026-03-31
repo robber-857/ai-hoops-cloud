@@ -1,8 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 
-// 读取环境变量
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+function readPublicEnv(
+  name: "NEXT_PUBLIC_SUPABASE_URL" | "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+): string {
+  const value = process.env[name];
 
-// 创建并导出客户端
+  if (value) {
+    return value;
+  }
+
+  throw new Error(`Missing ${name}. Add it to your local env file or deployment environment variables.`);
+}
+
+const supabaseUrl = readPublicEnv("NEXT_PUBLIC_SUPABASE_URL");
+const supabaseKey = readPublicEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+
 export const supabase = createClient(supabaseUrl, supabaseKey);

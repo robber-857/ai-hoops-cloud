@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     app_env: str = Field(default="development", alias="APP_ENV")
     debug: bool = Field(default=True, alias="DEBUG")
     api_v1_prefix: str = Field(default="/api/v1", alias="API_V1_PREFIX")
+    database_url_override: str | None = Field(default=None, alias="DATABASE_URL")
 
     postgres_host: str = Field(default="localhost", alias="POSTGRES_HOST")
     postgres_port: int = Field(default=5432, alias="POSTGRES_PORT")
@@ -28,7 +29,7 @@ class Settings(BaseSettings):
     cors_origins: list[str] = Field(default=["http://localhost:3000"], alias="CORS_ORIGINS")
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(".env.local", ".env"),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -36,6 +37,9 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
+        if self.database_url_override:
+            return self.database_url_override
+
         return (
             "postgresql+psycopg://"
             f"{self.postgres_user}:{self.postgres_password}"

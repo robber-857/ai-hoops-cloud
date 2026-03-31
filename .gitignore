@@ -1,8 +1,16 @@
 # ===== Python backend =====
 server/.venv/
 server/.env
+server/.env.local
+server/.env.production
+server/.env.*.local
 server/**/__pycache__/
 server/**/*.py[cod]
+
+# ===== Frontend local env =====
+web/.env.local
+web/.env.development.local
+web/.env.production.local
 
 # ===== General =====
 .vscode/
