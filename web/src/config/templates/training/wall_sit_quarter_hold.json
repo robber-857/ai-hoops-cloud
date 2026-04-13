@@ -48,7 +48,7 @@
       "weight": 1.0,
       "type": "target",
       "computeKey": "stdKneeAngleDeg",
-      "params": { "target": 3.0, "tol": 2.0, "margin": 5.0 },
+      "params": { "target": 3.5, "tol": 2.5, "margin": 5.0 },
       "hint_bad": "姿势晃动：保持静止不动。"
     }
   ]

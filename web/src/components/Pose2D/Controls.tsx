@@ -1,11 +1,9 @@
 "use client";
 
-import React from 'react';
-import { Button } from '@/components/ui/button';
+import React from "react";
 
-// --- 图标修复：将 SVG 内联为 React 组件 ---
+import { Button } from "@/components/ui/button";
 
-// Play Icon SVG 组件
 const PlayIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -23,7 +21,6 @@ const PlayIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-// Pause Icon SVG 组件
 const PauseIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -42,7 +39,6 @@ const PauseIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-// X Icon SVG 组件
 const XIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -61,25 +57,41 @@ const XIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-
 interface ControlsProps {
   isPlaying: boolean;
   onTogglePlay: () => void;
   onClear: () => void;
 }
 
-export default function Controls({ isPlaying, onTogglePlay, onClear }: ControlsProps) {
+export default function Controls({
+  isPlaying,
+  onTogglePlay,
+  onClear,
+}: ControlsProps) {
   return (
-    <div className="flex space-x-4 mt-6">
-      <Button onClick={onTogglePlay} size="lg" className="w-32">
-        {isPlaying ? <PauseIcon className="mr-2 h-5 w-5" /> : <PlayIcon className="mr-2 h-5 w-5" />}
-        {isPlaying ? 'pause' : 'play'}
+    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+      <Button
+        onClick={onTogglePlay}
+        size="lg"
+        className="min-h-12 rounded-full border border-sky-300/20 bg-sky-300 px-5 text-slate-950 shadow-[0_14px_30px_rgba(125,211,252,0.22)] hover:bg-sky-200"
+      >
+        {isPlaying ? (
+          <PauseIcon className="mr-1 h-4 w-4" />
+        ) : (
+          <PlayIcon className="mr-1 h-4 w-4" />
+        )}
+        {isPlaying ? "Pause" : "Play"}
       </Button>
-      <Button onClick={onClear} variant="destructive" size="lg">
-        <XIcon className="mr-2 h-5 w-5" />
-        CLEAN UP
+
+      <Button
+        onClick={onClear}
+        variant="destructive"
+        size="lg"
+        className="min-h-12 rounded-full border border-rose-300/15 bg-rose-400/90 px-5 text-white hover:bg-rose-400"
+      >
+        <XIcon className="mr-1 h-4 w-4" />
+        Clear clip
       </Button>
     </div>
   );
 }
-

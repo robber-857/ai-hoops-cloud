@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
   ArrowRight,
@@ -63,6 +63,7 @@ function InputShell({
 
 export function LoginClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const setSession = useAuthStore((state) => state.setSession);
 
   const [mode, setMode] = useState<LoginMode>("password");
@@ -104,7 +105,8 @@ export function LoginClient() {
 
         setSession(session);
         setSuccess("Signed in. Redirecting to the shooting studio.");
-        router.push(routes.pose2d.main);
+        const nextPath = searchParams.get("next");
+        router.push(nextPath || routes.pose2d.main);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unable to sign in.");
       }

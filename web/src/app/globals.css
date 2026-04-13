@@ -1,11 +1,10 @@
-/* globals.css */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap");
 @import "tailwindcss";
-/* 可选：先注释掉这行，定位问题时减少干扰
-@import "tw-animate-css";
-*/
 
-/* 明亮：挂到 :root（就是 <html>） */
 :root {
+  --font-sans: "Inter", "Segoe UI", sans-serif;
+  --font-display: "Space Grotesk", "Inter", sans-serif;
+
   --background: oklch(0.984 0.003 247.858);
   --foreground: oklch(0.129 0.042 264.695);
 
@@ -29,10 +28,9 @@
 
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0 0 0 / 0.12);
-  --input:  oklch(0 0 0 / 0.15);
-  --ring:   oklch(0.551 0.027 264.364);
+  --input: oklch(0 0 0 / 0.15);
+  --ring: oklch(0.551 0.027 264.364);
 
-  /* Tailwind v4 期望的变量名 —— 必须有 */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
@@ -52,7 +50,6 @@
   --color-ring: var(--ring);
 }
 
-/* 暗色：注意这里直接选 .dark（作用在 <html> 本身） */
 .dark {
   --background: oklch(0.129 0.042 264.695);
   --foreground: oklch(0.984 0.003 247.858);
@@ -76,11 +73,10 @@
   --accent-foreground: var(--foreground);
 
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 0.10);
-  --input:  oklch(1 0 0 / 0.15);
-  --ring:   oklch(0.551 0.027 264.364);
+  --border: oklch(1 0 0 / 0.1);
+  --input: oklch(1 0 0 / 0.15);
+  --ring: oklch(0.551 0.027 264.364);
 
-  /* 同步 --color-* */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
@@ -100,7 +96,77 @@
   --color-ring: var(--ring);
 }
 
-/* 全局基色落地 */
 @layer base {
-  html, body { background-color: var(--color-background); color: var(--color-foreground); }
+  html {
+    color-scheme: dark;
+    background-color: #07080b;
+  }
+
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at top, rgba(125, 211, 252, 0.08), transparent 28%),
+      linear-gradient(180deg, #08090d 0%, #07080b 100%);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+  }
+
+  * {
+    border-color: var(--color-border);
+  }
+}
+
+.analysis-surface {
+  background: linear-gradient(180deg, rgba(18, 20, 28, 0.92) 0%, rgba(9, 11, 16, 0.94) 100%);
+  box-shadow:
+    0 18px 50px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(24px);
+}
+
+.analysis-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-position: center center;
+  background-size: 42px 42px;
+}
+
+.analysis-range {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+}
+
+.analysis-range::-webkit-slider-runnable-track {
+  height: 0.4rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(125, 211, 252, 0.95), rgba(148, 163, 184, 0.28));
+}
+
+.analysis-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  margin-top: -0.3rem;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  background: #0f172a;
+  box-shadow: 0 0 0 6px rgba(125, 211, 252, 0.15);
+}
+
+.analysis-range::-moz-range-track {
+  height: 0.4rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(125, 211, 252, 0.95), rgba(148, 163, 184, 0.28));
+}
+
+.analysis-range::-moz-range-thumb {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  background: #0f172a;
+  box-shadow: 0 0 0 6px rgba(125, 211, 252, 0.15);
 }
