@@ -16,6 +16,13 @@ const API_BASE_URL = resolveApiBaseUrl();
 
 type JsonValue = Record<string, unknown> | null;
 
+type ValidationErrorItem = {
+  type?: string;
+  loc?: unknown;
+  msg?: string;
+  ctx?: Record<string, unknown>;
+};
+
 async function parseResponse(response: Response): Promise<JsonValue> {
   const text = await response.text();
   if (!text) {
@@ -40,17 +47,43 @@ function getErrorMessage(payload: JsonValue, fallback: string): string {
   }
 
   if (Array.isArray(detail)) {
-    return detail
+    const messages = detail
       .map((item) => {
         if (typeof item === "string") {
           return item;
         }
-        if (item && typeof item === "object" && "msg" in item) {
-          return String(item.msg);
+
+        if (item && typeof item === "object") {
+          const errorItem = item as ValidationErrorItem;
+          const location = Array.isArray(errorItem.loc)
+            ? errorItem.loc[errorItem.loc.length - 1]
+            : undefined;
+
+          if (errorItem.type === "string_too_short" && location === "username") {
+            return "Username must be at least 3 characters.";
+          }
+
+          if (
+            errorItem.type === "string_too_short" &&
+            (location === "password" || location === "confirm_password")
+          ) {
+            return "Password must be at least 8 characters.";
+          }
+
+          if (errorItem.msg === "confirm_password must match password") {
+            return "Passwords do not match.";
+          }
+
+          if ("msg" in errorItem && typeof errorItem.msg === "string") {
+            return errorItem.msg;
+          }
         }
+
         return JSON.stringify(item);
       })
-      .join(", ");
+      .filter((message, index, list) => Boolean(message) && list.indexOf(message) === index);
+
+    return messages.join(" ");
   }
 
   if (typeof payload.message === "string") {
