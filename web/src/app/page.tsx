@@ -94,7 +94,7 @@ export default function Home() {
         <nav className="landing-nav sticky top-0 z-50 border-b border-white/5 bg-[rgba(14,14,14,0.72)] backdrop-blur-xl">
           <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-5 px-5 py-4 sm:px-8">
             <Link href={routes.home} className="landing-brand text-2xl text-[#ff9f4a]">
-              AI Hoops
+              Apexsportai
             </Link>
 
             <div className="hidden items-center gap-8 text-[10px] font-bold uppercase tracking-[0.18em] text-white/45 md:flex">
@@ -105,12 +105,11 @@ export default function Home() {
             </div>
 
             <div className="flex items-center gap-4">
-              <span className="h-4 w-4 rounded-full border border-white/45" />
               <Link
                 href={routes.auth.login}
-                className="landing-button inline-flex rounded-md bg-gradient-to-br from-[#ff9f4a] to-[#fd8b00] px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.18em] text-[#442100] shadow-[0_0_15px_rgba(255,159,74,0.2)] transition hover:scale-[1.03]"
+                className="landing-button inline-flex rounded-md bg-gradient-to-br from-[#ff9f4a] to-[#fd8b00] px-6 py-2.5 text-[12px] font-black tracking-[0.18em] text-[#442100] shadow-[0_0_15px_rgba(255,159,74,0.2)] transition hover:scale-[1.03]"
               >
-                Start Session
+                Log in
               </Link>
             </div>
           </div>
@@ -200,7 +199,7 @@ export default function Home() {
                 <p className="mt-4 text-sm leading-7 text-white/62">
                   Measure release speed down to the millisecond. Faster release, higher scoring percentage.
                 </p>
-                <div className="mt-10 border-t border-white/10 pt-8 text-5xl font-black italic tracking-[-0.08em] text-white/12">
+                <div className="mt-10 border-t border-white/10 pt-8 text-5xl font-black italic tracking-[-0.08em] text-white">
                   0.42s
                 </div>
               </article>
@@ -307,7 +306,7 @@ export default function Home() {
               href={routes.auth.login}
               className="landing-button mt-10 inline-flex rounded-full bg-[#ff9f4a] px-10 py-5 text-sm font-black uppercase tracking-[0.2em] text-[#532a00] shadow-[0_0_30px_rgba(255,159,74,0.3)] transition hover:scale-[1.03]"
             >
-              Start Session
+              Join with the lab
             </Link>
           </div>
         </section>
