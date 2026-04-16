@@ -169,7 +169,7 @@ const modeConfig: Record<AnalysisMode, ModeConfig> = {
     guide: [
       'Keep both feet visible and avoid cutting off the ball path.',
       'Use enough clip length to capture several complete cycles.',
-      'Use Zoom In 360 to inspect the matching motion before upload.',
+      'Use 360° vision to inspect the matching motion before upload.',
     ],
     stats: [
       { label: 'Templates', value: '05' },
@@ -398,7 +398,7 @@ export default function PoseWorkspaceShell({
                     <Activity className="h-3.5 w-3.5" />
                     {selectedDribblingDemo
                       ? showZoomInDemo
-                        ? 'Zoom In 360'
+                        ? '360° vision'
                         : selectedDribblingDemo.motionLabel
                       : 'Placeholder demo'}
                   </div>
@@ -425,7 +425,7 @@ export default function PoseWorkspaceShell({
                       </div>
                       <h2 className="mt-3 font-[var(--font-display)] text-3xl font-semibold tracking-[-0.05em] text-white sm:text-4xl">
                         {showZoomInDemo
-                          ? `${selectedDribblingDemo.motionLabel} Zoom In 360`
+                          ? `${selectedDribblingDemo.motionLabel} 360° vision`
                           : `${selectedDribblingDemo.label} Demo`}
                       </h2>
                       <p className="mt-3 max-w-2xl text-sm leading-7 text-white/62 sm:text-base">
@@ -487,7 +487,7 @@ export default function PoseWorkspaceShell({
                           showZoomInDemo ? config.accentButton : config.accentButtonMuted
                         )}
                       >
-                        {showZoomInDemo ? 'Back to Template Demo' : 'Zoom In 360'}
+                        {showZoomInDemo ? 'Back to Template Demo' : '360° vision'}
                         <MoveRight className="h-4 w-4" />
                       </button>
                     ) : (

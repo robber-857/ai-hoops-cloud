@@ -589,7 +589,7 @@ function ReportContent() {
                   <CardContent className="p-0 flex-1 overflow-y-auto max-h-[500px] lg:max-h-[600px] custom-scrollbar">
                     <div className="space-y-3 p-3">
                       {finalResult?.findings.map((finding, idx) => {
-                        const isBad = finding.score < 70;
+                        const isBad = finding.score < 60;
                         const isPositive = finding.isPositive;
                         return (
                           <div
