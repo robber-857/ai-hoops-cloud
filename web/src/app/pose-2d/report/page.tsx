@@ -298,8 +298,16 @@ function ReportContent() {
 
   if (loading) {
      return (
-        <div className="min-h-screen bg-[#F4F4F4] flex items-center justify-center font-bold text-slate-400 uppercase tracking-widest">
-          Loading Report...
+        <div className="report-shell relative min-h-screen overflow-x-hidden flex items-center justify-center">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_18%,rgba(225,29,72,0.24),transparent_24%),radial-gradient(circle_at_84%_12%,rgba(59,130,246,0.18),transparent_22%),radial-gradient(circle_at_52%_58%,rgba(255,255,255,0.05),transparent_34%),linear-gradient(180deg,#05070c_0%,#0a1018_38%,#070b12_100%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:54px_54px] opacity-40" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_82%_52%_at_8%_14%,transparent_0_70%,rgba(255,255,255,0.08)_70.5%_71%,transparent_71.5%),radial-gradient(ellipse_68%_42%_at_92%_18%,transparent_0_72%,rgba(225,29,72,0.10)_72.5%_73%,transparent_73.5%),radial-gradient(ellipse_88%_56%_at_54%_88%,transparent_0_78%,rgba(59,130,246,0.08)_78.5%_79%,transparent_79.5%)] opacity-80" />
+          <div className="pointer-events-none absolute left-[-8rem] top-[5rem] h-[22rem] w-[22rem] rounded-full bg-[#CF1041]/[0.16] blur-3xl sm:h-[28rem] sm:w-[28rem]" />
+          <div className="pointer-events-none absolute right-[-6rem] top-[8rem] h-[20rem] w-[20rem] rounded-full bg-sky-400/20 blur-3xl sm:h-[24rem] sm:w-[24rem]" />
+          <div className="relative z-10 flex flex-col items-center gap-3 rounded-[28px] border border-white/10 bg-white/[0.06] px-8 py-7 shadow-[0_28px_80px_rgba(0,0,0,0.36)] backdrop-blur-xl">
+            <div className="h-8 w-8 rounded-full border-4 border-[#E35757] border-t-transparent animate-spin" />
+            <p className="font-bold text-white/75 uppercase tracking-[0.34em]">Loading Report...</p>
+          </div>
         </div>
      );
   }
@@ -309,11 +317,21 @@ function ReportContent() {
   const tone = getGradeTone(overallGrade);
 
   return (
-    <div className="min-h-screen bg-[#F4F4F4] text-slate-900 font-sans pb-20 relative overflow-x-hidden">
-      <div className="pointer-events-none absolute inset-0 tech-grid opacity-[0.35]" />
+    <div className="report-shell min-h-screen text-slate-900 font-sans pb-20 relative overflow-x-hidden">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_14%,rgba(225,29,72,0.24),transparent_24%),radial-gradient(circle_at_84%_12%,rgba(59,130,246,0.18),transparent_22%),radial-gradient(circle_at_54%_38%,rgba(255,255,255,0.06),transparent_28%),radial-gradient(circle_at_18%_72%,rgba(168,85,247,0.08),transparent_26%),linear-gradient(180deg,#05070c_0%,#0a1018_38%,#070b12_100%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[38rem] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_58%)]" />
+      <div className="pointer-events-none absolute inset-0 tech-grid opacity-[0.34]" />
+      <div className="pointer-events-none absolute inset-0 tech-orbits opacity-85" />
+      <div className="pointer-events-none absolute inset-0 report-noise opacity-50" />
+      <div className="pointer-events-none absolute left-[-10rem] top-[4rem] h-[24rem] w-[24rem] rounded-full bg-[#CF1041]/[0.18] blur-3xl sm:left-[-6rem] sm:h-[30rem] sm:w-[30rem]" />
+      <div className="pointer-events-none absolute right-[-7rem] top-[7rem] h-[20rem] w-[20rem] rounded-full bg-sky-400/20 blur-3xl sm:h-[28rem] sm:w-[28rem]" />
+      <div className="pointer-events-none absolute right-[12%] top-[24rem] h-[18rem] w-[18rem] rounded-full bg-fuchsia-500/10 blur-3xl sm:h-[22rem] sm:w-[22rem]" />
+      <div className="pointer-events-none absolute inset-x-2 top-[4.5rem] bottom-6 rounded-[30px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] shadow-[0_40px_120px_rgba(0,0,0,0.34)] backdrop-blur-[4px] sm:inset-x-4 sm:top-[5.25rem] lg:inset-x-6" />
 
-      <header className="border-b border-[#E35757]/20 bg-[#CF1041] sticky top-0 z-50 relative">
-        <div className="max-w-7xl mx-auto px-4 h-14 sm:h-16 flex items-center justify-between relative">
+      <header className="sticky top-0 z-50 relative overflow-hidden border-b border-white/10 bg-[linear-gradient(135deg,rgba(6,8,14,0.90)_0%,rgba(13,18,28,0.84)_46%,rgba(30,41,59,0.70)_100%)] shadow-[0_18px_60px_rgba(0,0,0,0.42)] backdrop-blur-xl supports-[backdrop-filter]:bg-[linear-gradient(135deg,rgba(6,8,14,0.72)_0%,rgba(13,18,28,0.66)_46%,rgba(30,41,59,0.56)_100%)]">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_-28%,rgba(225,29,72,0.20),transparent_32%),radial-gradient(circle_at_84%_0%,rgba(59,130,246,0.16),transparent_28%),linear-gradient(90deg,rgba(255,255,255,0.06),transparent_32%,transparent_70%,rgba(255,255,255,0.04))]" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+        <div className="max-w-7xl mx-auto px-4 h-14 sm:h-16 flex items-center justify-between relative z-10">
           <div className="flex items-center gap-2 sm:gap-4 relative z-10">
             <Button
               variant="ghost"
@@ -371,17 +389,17 @@ function ReportContent() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto p-3 sm:p-6 space-y-4 sm:space-y-6 relative">
+      <main className="max-w-7xl mx-auto p-3 sm:p-6 space-y-4 sm:space-y-6 relative z-10">
         
-        <section className="rounded-2xl bg-white/90 border border-slate-200 shadow-sm p-3 sm:p-4">
+        <section className="report-module rounded-2xl p-3 sm:p-4">
           <div className="flex flex-col md:flex-row md:items-end gap-3 sm:gap-4">
             <div className="w-full md:max-w-sm relative">
-              <label className="text-xs text-slate-500 mb-1.5 block ml-1 font-semibold">
+              <label className="text-xs text-slate-300/80 mb-1.5 block ml-1 font-semibold tracking-[0.02em]">
                 Select Action Template
               </label>
               <div className="relative">
                 <select
-                  className="w-full appearance-none bg-white border border-slate-200 text-slate-900 text-sm rounded-xl p-2.5 pr-9 focus:ring-2 focus:ring-[#E35757]/25 focus:border-[#E35757] outline-none cursor-pointer hover:border-slate-300 transition-all shadow-sm"
+                  className="report-select w-full appearance-none text-sm rounded-xl p-2.5 pr-9 outline-none cursor-pointer transition-all"
                   value={selectedTemplateId}
                   onChange={(e) => setSelectedTemplateId(e.target.value)}
                   disabled={!!reportId && !dbSavedMetrics} 
@@ -392,19 +410,19 @@ function ReportContent() {
                     </option>
                   ))}
                 </select>
-                <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/45">
                   <ChevronLeft className="w-4 h-4 -rotate-90" />
                 </div>
               </div>
             </div>
 
             <div className="w-full md:w-44">
-              <label className="text-xs text-slate-500 mb-1.5 block ml-1 font-semibold">
+              <label className="text-xs text-slate-300/80 mb-1.5 block ml-1 font-semibold tracking-[0.02em]">
                 Age Group
               </label>
               <div className="relative">
                 <select
-                  className="w-full appearance-none bg-white border border-slate-200 text-slate-900 text-sm rounded-xl p-2.5 pr-9 focus:ring-2 focus:ring-[#E35757]/25 focus:border-[#E35757] outline-none cursor-pointer hover:border-slate-300 transition-all shadow-sm"
+                  className="report-select w-full appearance-none text-sm rounded-xl p-2.5 pr-9 outline-none cursor-pointer transition-all"
                   value={ageGroup}
                   onChange={(e) => setAgeGroup(e.target.value)}
                 >
@@ -414,7 +432,7 @@ function ReportContent() {
                     </option>
                   ))}
                 </select>
-                <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/45">
                   <ChevronLeft className="w-4 h-4 -rotate-90" />
                 </div>
               </div>
@@ -521,12 +539,12 @@ function ReportContent() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
               
               <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-                <Card className="rounded-2xl bg-white/90 border border-slate-200 overflow-hidden shadow-sm">
-                  <CardHeader className="pb-3 border-b border-slate-100 px-4 pt-4">
-                    <CardTitle className="text-sm font-semibold text-slate-900 tracking-wide flex items-center gap-2">
+                <Card className="report-module rounded-2xl overflow-hidden">
+                  <CardHeader className="report-module-header pb-3 px-4 pt-4">
+                    <CardTitle className="text-sm font-semibold text-white tracking-wide flex items-center gap-2">
                       <Activity className="w-4 h-4 text-[#E35757]" />
                       Analysis Replay{" "}
-                      <span className="text-[10px] sm:text-xs font-medium text-slate-500 hidden sm:inline">
+                      <span className="text-[10px] sm:text-xs font-medium text-slate-300/70 hidden sm:inline">
                         (recommended: play ~10s)
                       </span>
                     </CardTitle>
@@ -541,27 +559,27 @@ function ReportContent() {
                         loop
                       />
                     ) : (
-                      <p className="text-slate-400 text-sm">Video Not Found</p>
+                      <p className="text-white/45 text-sm">Video Not Found</p>
                     )}
                   </div>
                 </Card>
 
                 {finalTimeline && finalTimeline.length > 0 && (
-                  <div className="lightify-timeline rounded-2xl bg-white border border-slate-200 shadow-sm p-0 overflow-visible">
+                  <div className="lightify-timeline report-module rounded-2xl p-0 overflow-visible">
                     <MetricTimelineCard timeline={finalTimeline} templateId={selectedTemplateId} />
                   </div>
                 )}
               </div>
 
               <div className="lg:col-span-1">
-                <Card className="rounded-2xl bg-white/90 border border-slate-200 h-full shadow-sm flex flex-col overflow-hidden min-h-[400px]">
-                  <CardHeader className="pb-3 border-b border-slate-100 px-4 pt-4">
-                    <CardTitle className="text-base font-semibold text-slate-900 flex items-center justify-between">
+                <Card className="report-module rounded-2xl h-full flex flex-col overflow-hidden min-h-[400px]">
+                  <CardHeader className="report-module-header pb-3 px-4 pt-4">
+                    <CardTitle className="text-base font-semibold text-white flex items-center justify-between">
                       <span>Top Findings</span>
                       {finalResult && (
                         <Badge
                           variant="secondary"
-                          className="text-[10px] bg-white text-slate-500 border border-slate-200"
+                          className="text-[10px] bg-white/[0.08] text-slate-200 border border-white/10"
                         >
                           {finalResult.findings.length} Issues
                         </Badge>
@@ -569,39 +587,86 @@ function ReportContent() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-0 flex-1 overflow-y-auto max-h-[500px] lg:max-h-[600px] custom-scrollbar">
-                    <div className="space-y-0 divide-y divide-slate-100">
+                    <div className="space-y-3 p-3">
                       {finalResult?.findings.map((finding, idx) => {
                         const isBad = finding.score < 70;
+                        const isPositive = finding.isPositive;
                         return (
-                          <div key={idx} className="p-3 sm:p-4 hover:bg-slate-50 transition-colors">
-                            <div className="flex justify-between items-start mb-2 gap-3">
-                              <h4 className="font-semibold text-slate-900 text-sm leading-tight pr-3">
-                                {finding.title}
-                              </h4>
-                              {finding.isPositive ? (
-                                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                              ) : (
-                                <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2 mb-2.5">
-                              <Badge
-                                variant="outline"
-                                className="text-[9px] sm:text-[10px] px-1.5 py-0 h-4 border-slate-200 text-slate-500 uppercase"
+                          <div
+                            key={idx}
+                            className={cn(
+                              "report-findings-item rounded-2xl border p-3 sm:p-4 transition-all",
+                              isPositive
+                                ? "border-emerald-400/18 bg-[linear-gradient(180deg,rgba(16,185,129,0.08),rgba(16,185,129,0.02))]"
+                                : isBad
+                                  ? "border-red-400/18 bg-[linear-gradient(180deg,rgba(248,113,113,0.08),rgba(248,113,113,0.02))]"
+                                  : "border-amber-400/18 bg-[linear-gradient(180deg,rgba(251,191,36,0.08),rgba(251,191,36,0.02))]"
+                            )}
+                          >
+                            <div className="flex justify-between items-start mb-3 gap-3">
+                              <div className="min-w-0">
+                                <h4 className="font-semibold text-white/95 text-sm leading-tight pr-3">
+                                  {finding.title}
+                                </h4>
+                                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[9px] sm:text-[10px] px-1.5 py-0 h-4 border-white/10 bg-white/[0.04] text-slate-300/75 uppercase"
+                                  >
+                                    {finding.category}
+                                  </Badge>
+                                  <span
+                                    className={cn(
+                                      "inline-flex h-5 items-center rounded-full px-2 text-[10px] font-bold uppercase tracking-[0.12em]",
+                                      isPositive
+                                        ? "bg-emerald-400/12 text-emerald-300"
+                                        : isBad
+                                          ? "bg-red-400/12 text-red-300"
+                                          : "bg-amber-400/12 text-amber-300"
+                                    )}
+                                  >
+                                    {isPositive ? "Stable" : isBad ? "Needs Work" : "Watch"}
+                                  </span>
+                                </div>
+                              </div>
+                              <div
+                                className={cn(
+                                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border",
+                                  isPositive
+                                    ? "border-emerald-400/25 bg-emerald-400/10"
+                                    : isBad
+                                      ? "border-red-400/25 bg-red-400/10"
+                                      : "border-amber-400/25 bg-amber-400/10"
+                                )}
                               >
-                                {finding.category}
-                              </Badge>
-                              <div className="h-3 w-px bg-slate-200" />
+                                {isPositive ? (
+                                  <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                                ) : (
+                                  <AlertCircle
+                                    className={cn(
+                                      "w-4 h-4 shrink-0",
+                                      isBad ? "text-red-300" : "text-amber-300"
+                                    )}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 mb-3">
+                              <div className="h-3 w-px bg-white/10" />
                               <span
                                 className={cn(
                                   "text-xs font-extrabold",
-                                  isBad ? "text-red-600" : "text-amber-600"
+                                  isPositive
+                                    ? "text-emerald-300"
+                                    : isBad
+                                      ? "text-red-300"
+                                      : "text-amber-300"
                                 )}
                               >
                                 {finding.score} pts
                               </span>
                             </div>
-                            <p className="text-xs text-slate-700 leading-relaxed bg-white p-2 rounded-xl border border-slate-100">
+                            <p className="report-findings-note text-xs text-slate-200 leading-relaxed p-2.5 rounded-xl">
                               {finding.hint}
                             </p>
                           </div>
@@ -609,7 +674,7 @@ function ReportContent() {
                       })}
 
                       {(!finalResult || finalResult.findings.length === 0) && (
-                        <div className="flex flex-col items-center justify-center py-12 text-slate-400 gap-2">
+                        <div className="flex flex-col items-center justify-center py-12 text-white/45 gap-2">
                           <CheckCircle2 className="w-8 h-8 opacity-40" />
                           <p className="text-sm font-semibold">No critical findings found.</p>
                         </div>
@@ -621,23 +686,133 @@ function ReportContent() {
             </div>
           </div>
         ) : (
-          <div className="h-64 flex flex-col items-center justify-center text-slate-500 bg-white/70 rounded-2xl border border-dashed border-slate-300 gap-4">
+          <div className="report-module h-64 flex flex-col items-center justify-center text-white/50 rounded-2xl border-dashed gap-4">
             <Activity className="w-6 h-6 opacity-40" />
-            <p className="text-sm font-semibold text-slate-700">Ready for Analysis</p>
+            <p className="text-sm font-semibold text-white/72">Ready for Analysis</p>
           </div>
         )}
       </main>
 
       <style jsx global>{`
+        .report-shell {
+          background-color: #05070c;
+        }
+
+        .report-module {
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background:
+            radial-gradient(circle at top left, rgba(225, 29, 72, 0.08), transparent 24%),
+            radial-gradient(circle at top right, rgba(59, 130, 246, 0.08), transparent 22%),
+            linear-gradient(180deg, rgba(15, 23, 42, 0.90), rgba(10, 15, 24, 0.86));
+          box-shadow:
+            0 24px 70px rgba(0, 0, 0, 0.26),
+            inset 0 1px 0 rgba(255, 255, 255, 0.05);
+          backdrop-filter: blur(16px);
+        }
+
+        .report-module-header {
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+          background: linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.03),
+            rgba(255, 255, 255, 0)
+          );
+        }
+
+        .report-select {
+          border: 1px solid rgba(255, 255, 255, 0.10);
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04)),
+            rgba(8, 12, 20, 0.92);
+          color: rgba(255, 255, 255, 0.92);
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.04),
+            0 10px 30px rgba(0, 0, 0, 0.18);
+        }
+
+        .report-select:hover {
+          border-color: rgba(255, 255, 255, 0.16);
+        }
+
+        .report-select:focus {
+          border-color: rgba(225, 29, 72, 0.65);
+          box-shadow:
+            0 0 0 4px rgba(225, 29, 72, 0.16),
+            inset 0 1px 0 rgba(255, 255, 255, 0.05),
+            0 10px 30px rgba(0, 0, 0, 0.24);
+        }
+
+        .report-findings-item:hover {
+          background:
+            linear-gradient(90deg, rgba(255, 255, 255, 0.03), transparent 72%),
+            rgba(255, 255, 255, 0.015);
+          transform: translateY(-1px);
+          box-shadow:
+            0 18px 40px rgba(0, 0, 0, 0.16),
+            inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+
+        .report-findings-note {
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04)),
+            rgba(8, 12, 20, 0.92);
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.03),
+            0 10px 24px rgba(0, 0, 0, 0.16);
+        }
+
         .tech-grid {
-          background-image: linear-gradient(
-              to right,
-              rgba(169, 169, 169, 0.16) 1px,
-              transparent 1px
+          background-image:
+            linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+            linear-gradient(to right, rgba(225, 29, 72, 0.05) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(59, 130, 246, 0.04) 1px, transparent 1px);
+          background-size: 58px 58px, 58px 58px, 14px 14px, 14px 14px;
+          background-position: center center;
+          mask-image: linear-gradient(
+            180deg,
+            rgba(0, 0, 0, 0.68) 0%,
+            rgba(0, 0, 0, 0.42) 45%,
+            rgba(0, 0, 0, 0.18) 100%
+          );
+        }
+
+        .tech-orbits {
+          background-image:
+            radial-gradient(
+              ellipse 62% 42% at 8% 18%,
+              transparent 0 67%,
+              rgba(255, 255, 255, 0.10) 67.5% 68%,
+              transparent 68.5%
             ),
-            linear-gradient(to bottom, rgba(169, 169, 169, 0.16) 1px, transparent 1px);
-          background-size: 48px 48px;
-          mask-image: radial-gradient(circle at 35% 20%, rgba(0, 0, 0, 0.9), transparent 70%);
+            radial-gradient(
+              ellipse 58% 36% at 88% 12%,
+              transparent 0 69%,
+              rgba(225, 29, 72, 0.14) 69.5% 70%,
+              transparent 70.5%
+            ),
+            radial-gradient(
+              ellipse 54% 34% at 82% 68%,
+              transparent 0 71%,
+              rgba(59, 130, 246, 0.12) 71.5% 72%,
+              transparent 72.5%
+            ),
+            radial-gradient(
+              ellipse 72% 48% at 30% 88%,
+              transparent 0 75%,
+              rgba(148, 163, 184, 0.10) 75.5% 76%,
+              transparent 76.5%
+            );
+          mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.9), transparent 92%);
+        }
+
+        .report-noise {
+          background-image:
+            linear-gradient(120deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 36%),
+            linear-gradient(300deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 42%),
+            radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.04), transparent 62%);
+          mix-blend-mode: screen;
         }
 
         .card-energy {
@@ -788,7 +963,7 @@ function ReportContent() {
             [class*="bg-neutral-"],
             [class*="bg-gray-"]
           ) {
-          background-color: white !important;
+          background-color: rgba(9, 13, 22, 0.92) !important;
         }
         .lightify-timeline
           :is(
@@ -798,7 +973,7 @@ function ReportContent() {
             [class*="text-neutral-"],
             [class*="text-gray-"]
           ) {
-          color: #111827 !important;
+          color: #e5edf8 !important;
         }
         .lightify-timeline
           :is(
@@ -807,7 +982,50 @@ function ReportContent() {
             [class*="border-neutral-"],
             [class*="border-gray-"]
           ) {
-          border-color: #e5e7eb !important;
+          border-color: rgba(255, 255, 255, 0.09) !important;
+        }
+        .lightify-timeline :is([class*="text-black"]) {
+          color: #f8fafc !important;
+        }
+        .lightify-timeline :is([class*="text-slate-500"], [class*="text-gray-500"]) {
+          color: rgba(203, 213, 225, 0.72) !important;
+        }
+        .lightify-timeline :is([class*="text-slate-400"], [class*="text-gray-400"]) {
+          color: rgba(203, 213, 225, 0.58) !important;
+        }
+        .lightify-timeline :is([class*="bg-white"]) {
+          background-color: rgba(255, 255, 255, 0.05) !important;
+        }
+        .lightify-timeline :is([class*="hover:bg-slate-"], [class*="hover:bg-gray-"]) {
+          --tw-bg-opacity: 1 !important;
+        }
+
+        @media (max-width: 640px) {
+          .tech-grid {
+            background-size: 42px 42px, 42px 42px, 12px 12px, 12px 12px;
+          }
+
+          .tech-orbits {
+            background-image:
+              radial-gradient(
+                ellipse 82% 48% at 18% 14%,
+                transparent 0 69%,
+                rgba(255, 255, 255, 0.08) 69.5% 70%,
+                transparent 70.5%
+              ),
+              radial-gradient(
+                ellipse 70% 42% at 92% 16%,
+                transparent 0 70%,
+                rgba(225, 29, 72, 0.10) 70.5% 71%,
+                transparent 71.5%
+              ),
+              radial-gradient(
+                ellipse 86% 54% at 48% 88%,
+                transparent 0 76%,
+                rgba(59, 130, 246, 0.08) 76.5% 77%,
+                transparent 77.5%
+              );
+          }
         }
       `}</style>
     </div>
@@ -817,10 +1035,15 @@ function ReportContent() {
 export default function ReportPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#F4F4F4] flex items-center justify-center">
+      <div className="report-shell relative min-h-screen overflow-x-hidden flex items-center justify-center">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_18%,rgba(225,29,72,0.24),transparent_24%),radial-gradient(circle_at_84%_12%,rgba(59,130,246,0.18),transparent_22%),radial-gradient(circle_at_52%_58%,rgba(255,255,255,0.05),transparent_34%),linear-gradient(180deg,#05070c_0%,#0a1018_38%,#070b12_100%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:54px_54px] opacity-40" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_82%_52%_at_8%_14%,transparent_0_70%,rgba(255,255,255,0.08)_70.5%_71%,transparent_71.5%),radial-gradient(ellipse_68%_42%_at_92%_18%,transparent_0_72%,rgba(225,29,72,0.10)_72.5%_73%,transparent_73.5%),radial-gradient(ellipse_88%_56%_at_54%_88%,transparent_0_78%,rgba(59,130,246,0.08)_78.5%_79%,transparent_79.5%)] opacity-80" />
+        <div className="pointer-events-none absolute left-[-8rem] top-[5rem] h-[22rem] w-[22rem] rounded-full bg-[#CF1041]/[0.16] blur-3xl sm:h-[28rem] sm:w-[28rem]" />
+        <div className="pointer-events-none absolute right-[-6rem] top-[8rem] h-[20rem] w-[20rem] rounded-full bg-sky-400/20 blur-3xl sm:h-[24rem] sm:w-[24rem]" />
         <div className="flex flex-col items-center gap-3">
            <div className="w-8 h-8 border-4 border-[#E35757] border-t-transparent rounded-full animate-spin"></div>
-           <p className="text-slate-500 font-medium">Loading...</p>
+           <p className="text-white/75 font-medium">Loading...</p>
         </div>
       </div>
     }>
