@@ -1,12 +1,42 @@
+function normalizeLoopbackHostname(baseUrl: string): string {
+  if (typeof window === "undefined") {
+    return baseUrl;
+  }
+
+  const currentHost = window.location.hostname;
+  const currentProtocol = window.location.protocol;
+  const isLoopbackHost = currentHost === "localhost" || currentHost === "127.0.0.1";
+
+  if (!isLoopbackHost) {
+    return baseUrl;
+  }
+
+  try {
+    const parsed = new URL(baseUrl);
+    const isLoopbackApiHost =
+      parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
+
+    if (!isLoopbackApiHost) {
+      return baseUrl;
+    }
+
+    parsed.hostname = currentHost;
+    parsed.protocol = currentProtocol;
+    return parsed.toString().replace(/\/$/, "");
+  } catch {
+    return baseUrl;
+  }
+}
+
 function resolveApiBaseUrl(): string {
   const configuredBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "");
 
   if (configuredBaseUrl) {
-    return configuredBaseUrl;
+    return normalizeLoopbackHostname(configuredBaseUrl);
   }
 
   if (process.env.NODE_ENV !== "production") {
-    return "http://127.0.0.1:8000/api/v1";
+    return normalizeLoopbackHostname("http://localhost:8000/api/v1");
   }
 
   throw new Error("Missing NEXT_PUBLIC_API_BASE_URL for the production deployment.");
@@ -99,6 +129,7 @@ export async function apiRequest<TResponse>(
 ): Promise<TResponse> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(init.headers ?? {}),

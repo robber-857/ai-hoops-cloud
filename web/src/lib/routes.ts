@@ -10,6 +10,9 @@ export const routes = {
     login: "/auth/login",
     register: "/auth/register",
   },
+  user: {
+    me: "/me",
+  },
   pose: "/pose",
   pose2d: {
     main: "/pose-2d/shooting", // 保留旧路径

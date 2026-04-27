@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Activity, Bolt, Eye, EyeOff, Trophy, UserPlus } from "lucide-react";
+import { Activity, Bolt, Eye, EyeOff, Mail, Smartphone, Trophy, UserPlus } from "lucide-react";
 
 import { routes } from "@/lib/routes";
 import { authService } from "@/services/auth";
@@ -56,11 +56,13 @@ export function RegisterClient() {
     phone_number: "",
     phone_code: "",
     email: "",
+    email_code: "",
   });
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, startSubmitting] = useTransition();
   const [isSendingPhoneCode, startSendingPhoneCode] = useTransition();
+  const [isSendingEmailCode, startSendingEmailCode] = useTransition();
 
   const handleSendPhoneCode = () => {
     setError(null);
@@ -68,19 +70,36 @@ export function RegisterClient() {
 
     startSendingPhoneCode(async () => {
       try {
-        const response = await authService.sendRegisterCode({
+        const response = await authService.sendRegisterPhoneCode({
           phone_number: form.phone_number,
-          email: form.email || undefined,
         });
-        setForm((current) => ({
-          ...current,
-          phone_code: "1234",
-        }));
         setStatusMessage(
-          `Verification request accepted for ${response.data.target}. Temporary local test phone code 1234 has been filled in for you.`,
+          response.data.debug_code
+            ? `Phone code sent. Development debug code: ${response.data.debug_code}`
+            : `Phone verification code request accepted for ${response.data.target}.`,
         );
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unable to send verification code.");
+      }
+    });
+  };
+
+  const handleSendEmailCode = () => {
+    setError(null);
+    setStatusMessage(null);
+
+    startSendingEmailCode(async () => {
+      try {
+        const response = await authService.sendRegisterEmailCode({
+          email: form.email,
+        });
+        setStatusMessage(
+          response.data.debug_code
+            ? `Email code sent. Development debug code: ${response.data.debug_code}`
+            : `Email verification code request accepted for ${response.data.target}.`,
+        );
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Unable to send email verification code.");
       }
     });
   };
@@ -103,6 +122,7 @@ export function RegisterClient() {
           phone_number: form.phone_number,
           phone_code: form.phone_code,
           email: form.email || undefined,
+          email_code: form.email_code || undefined,
         });
         setStatusMessage("Registration complete. Redirecting to sign in.");
         router.push(routes.auth.login);
@@ -225,7 +245,7 @@ export function RegisterClient() {
                       id="password"
                       type={showPassword ? "text" : "password"}
                       className="w-full rounded-xl border border-white/10 bg-[#000000] px-4 py-3 pr-12 text-white placeholder:text-neutral-600 transition focus:border-[#ff9f4a] focus:outline-none focus:ring-1 focus:ring-[#ff9f4a]"
-                      placeholder="••••••••"
+                      placeholder="Enter a secure password"
                       value={form.password}
                       onChange={(event) =>
                         setForm((current) => ({ ...current, password: event.target.value }))
@@ -249,7 +269,7 @@ export function RegisterClient() {
                       id="confirm_password"
                       type={showConfirmPassword ? "text" : "password"}
                       className="w-full rounded-xl border border-white/10 bg-[#000000] px-4 py-3 pr-12 text-white placeholder:text-neutral-600 transition focus:border-[#ff9f4a] focus:outline-none focus:ring-1 focus:ring-[#ff9f4a]"
-                      placeholder="••••••••"
+                      placeholder="Repeat your password"
                       value={form.confirm_password}
                       onChange={(event) =>
                         setForm((current) => ({
@@ -285,15 +305,44 @@ export function RegisterClient() {
                       {isSendingPhoneCode ? "Sending" : "Send code"}
                     </button>
                   </div>
-                  <input
-                    id="phone_code"
-                    className="w-full rounded-xl border border-white/10 bg-[#000000] px-4 py-3 text-white placeholder:text-neutral-600 transition focus:border-[#ff9f4a] focus:outline-none focus:ring-1 focus:ring-[#ff9f4a]"
-                    placeholder="Use 1234 for local testing"
-                    value={form.phone_code}
-                    onChange={(event) =>
-                      setForm((current) => ({ ...current, phone_code: event.target.value }))
-                    }
-                  />
+                  <div className="relative">
+                    <Smartphone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+                    <input
+                      id="phone_code"
+                      className="w-full rounded-xl border border-white/10 bg-[#000000] px-11 py-3 text-white placeholder:text-neutral-600 transition focus:border-[#ff9f4a] focus:outline-none focus:ring-1 focus:ring-[#ff9f4a]"
+                      placeholder="Enter the phone verification code"
+                      value={form.phone_code}
+                      onChange={(event) =>
+                        setForm((current) => ({ ...current, phone_code: event.target.value }))
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <FormLabel htmlFor="email_code">Email Verification Code</FormLabel>
+                    <button
+                      type="button"
+                      onClick={handleSendEmailCode}
+                      disabled={isSendingEmailCode}
+                      className="rounded-full border border-[#ff9f4a]/30 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#ff9f4a] transition hover:border-[#ff9f4a] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isSendingEmailCode ? "Sending" : "Send email"}
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+                    <input
+                      id="email_code"
+                      className="w-full rounded-xl border border-white/10 bg-[#000000] px-11 py-3 text-white placeholder:text-neutral-600 transition focus:border-[#ff9f4a] focus:outline-none focus:ring-1 focus:ring-[#ff9f4a]"
+                      placeholder="Enter the email verification code"
+                      value={form.email_code}
+                      onChange={(event) =>
+                        setForm((current) => ({ ...current, email_code: event.target.value }))
+                      }
+                    />
+                  </div>
                 </div>
 
                 <div className="flex items-start gap-3 py-1">
@@ -379,7 +428,7 @@ export function RegisterClient() {
             <span className="transition-colors hover:text-[#ff9f4a]">Support</span>
           </div>
           <div className="text-center text-xs uppercase tracking-[0.14em] text-neutral-500 md:text-right">
-            © 2024 AI HOOPS PERFORMANCE LAB
+            2024 AI HOOPS PERFORMANCE LAB
           </div>
         </div>
       </footer>

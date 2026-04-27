@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-from app.models.verification_code import VerificationTargetType
+from app.models.enums import VerificationTargetType
 from app.schemas.user import UserRead
 
 
@@ -27,10 +27,12 @@ class RegisterRequest(BaseModel):
         return value
 
 
-class LoginPasswordCodeRequest(BaseModel):
+class LoginPasswordRequest(BaseModel):
     username: str = Field(min_length=3, max_length=50)
     password: str = Field(min_length=8, max_length=128)
-    verify_code: str = Field(min_length=4, max_length=10)
+
+
+LoginPasswordCodeRequest = LoginPasswordRequest
 
 
 class PhoneSendCodeRequest(BaseModel):

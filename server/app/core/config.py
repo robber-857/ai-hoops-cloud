@@ -28,6 +28,32 @@ class Settings(BaseSettings):
 
     cors_origins: list[str] = Field(default=["http://localhost:3000"], alias="CORS_ORIGINS")
 
+    session_cookie_name: str = Field(default="ai-hoops-session", alias="SESSION_COOKIE_NAME")
+    session_cookie_secure: bool = Field(default=False, alias="SESSION_COOKIE_SECURE")
+    session_cookie_samesite: str = Field(default="lax", alias="SESSION_COOKIE_SAMESITE")
+    session_cookie_domain: str | None = Field(default=None, alias="SESSION_COOKIE_DOMAIN")
+
+    verification_code_expire_seconds: int = Field(
+        default=300,
+        alias="VERIFICATION_CODE_EXPIRE_SECONDS",
+    )
+    verification_code_resend_cooldown_seconds: int = Field(
+        default=60,
+        alias="VERIFICATION_CODE_RESEND_COOLDOWN_SECONDS",
+    )
+    verification_code_max_attempts: int = Field(
+        default=5,
+        alias="VERIFICATION_CODE_MAX_ATTEMPTS",
+    )
+
+    smtp_host: str = Field(default="smtp.gmail.com", alias="SMTP_HOST")
+    smtp_port: int = Field(default=587, alias="SMTP_PORT")
+    smtp_username: str = Field(default="eltonw482@gmail.com", alias="SMTP_USERNAME")
+    smtp_password: str | None = Field(default=None, alias="SMTP_PASSWORD")
+    smtp_from_email: str = Field(default="eltonw482@gmail.com", alias="SMTP_FROM_EMAIL")
+    smtp_from_name: str = Field(default="AI Hoops Cloud", alias="SMTP_FROM_NAME")
+    smtp_starttls: bool = Field(default=True, alias="SMTP_STARTTLS")
+
     model_config = SettingsConfigDict(
         env_file=(".env.local", ".env"),
         env_file_encoding="utf-8",
@@ -45,6 +71,14 @@ class Settings(BaseSettings):
             f"{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
+
+    @property
+    def session_cookie_max_age(self) -> int:
+        return self.refresh_token_expire_days * 24 * 60 * 60
+
+    @property
+    def is_production(self) -> bool:
+        return self.app_env.lower() == "production"
 
 
 @lru_cache

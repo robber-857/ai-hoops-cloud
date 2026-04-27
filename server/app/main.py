@@ -19,7 +19,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
+    
     @app.get("/health", tags=["system"])
     def health_check() -> dict[str, str]:
         return {"status": "ok"}

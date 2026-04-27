@@ -1,19 +1,28 @@
 import { apiRequest } from "@/services/client";
 import type {
   EmailCodeLoginPayload,
+  AuthUser,
   LoginResponse,
-  PasswordCodeLoginPayload,
+  PasswordLoginPayload,
   PhoneCodeLoginPayload,
   RegisterPayload,
-  RegisterSendCodePayload,
+  RegisterEmailSendCodePayload,
+  RegisterPhoneSendCodePayload,
   SendCodeResponse,
   SendEmailCodePayload,
   SendPhoneCodePayload,
 } from "@/types/auth";
 
 export const authService = {
-  sendRegisterCode(payload: RegisterSendCodePayload) {
+  sendRegisterPhoneCode(payload: RegisterPhoneSendCodePayload) {
     return apiRequest<SendCodeResponse>("/auth/register/send-code", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  sendRegisterEmailCode(payload: RegisterEmailSendCodePayload) {
+    return apiRequest<SendCodeResponse>("/auth/register/email/send-code", {
       method: "POST",
       body: JSON.stringify(payload),
     });
@@ -26,8 +35,8 @@ export const authService = {
     });
   },
 
-  loginWithPasswordCode(payload: PasswordCodeLoginPayload) {
-    return apiRequest<LoginResponse>("/auth/login/password-code", {
+  loginWithPassword(payload: PasswordLoginPayload) {
+    return apiRequest<LoginResponse>("/auth/login/password", {
       method: "POST",
       body: JSON.stringify(payload),
     });
@@ -58,6 +67,18 @@ export const authService = {
     return apiRequest<LoginResponse>("/auth/login/email", {
       method: "POST",
       body: JSON.stringify(payload),
+    });
+  },
+
+  getCurrentUser() {
+    return apiRequest<AuthUser>("/auth/me", {
+      method: "GET",
+    });
+  },
+
+  logout() {
+    return apiRequest<void>("/auth/logout", {
+      method: "POST",
     });
   },
 };

@@ -27,9 +27,12 @@ export interface RegisterPayload {
   email_code?: string;
 }
 
-export interface RegisterSendCodePayload {
+export interface RegisterPhoneSendCodePayload {
   phone_number: string;
-  email?: string;
+}
+
+export interface RegisterEmailSendCodePayload {
+  email: string;
 }
 
 export interface SendPhoneCodePayload {
@@ -40,10 +43,9 @@ export interface SendEmailCodePayload {
   email: string;
 }
 
-export interface PasswordCodeLoginPayload {
+export interface PasswordLoginPayload {
   username: string;
   password: string;
-  verify_code: string;
 }
 
 export interface PhoneCodeLoginPayload {
@@ -61,5 +63,6 @@ export interface SendCodeResponse {
   data: {
     expire_seconds: number;
     target: string;
+    debug_code?: string;
   };
 }

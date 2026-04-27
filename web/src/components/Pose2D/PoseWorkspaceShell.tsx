@@ -10,6 +10,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 
+import { AccountEntryButton } from '@/components/account/AccountEntryButton';
 import { routes } from '@/lib/routes';
 import { cn } from '@/lib/utils';
 
@@ -299,6 +300,7 @@ export default function PoseWorkspaceShell({
                   >
                     Report
                   </Link>
+                  <AccountEntryButton />
                 </div>
               </div>
 

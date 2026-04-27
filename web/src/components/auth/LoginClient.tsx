@@ -30,7 +30,15 @@ const loginTabs: Array<{ value: LoginMode; label: string }> = [
 const heroImage =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuACQ5vruTNWYcUakJXGSrvRP6pqhZeTpwWP8aBveh5wi3g9srP-Vt6b5wJqiksIhwKTaveGJYz5mobDZc05uF5PhIROT3_VHK5oFjC-fp_XzWVg6Q_Vvwm1yWdA_llgVW5Jt3oMJ2B_ILNJrttdf4FXWfvGcnHPeKv7kJFWgFUTQFgLu4MPFgZADV1_0hIVFHF-O8O2za9zPKEhzDgTy6jiQKXaV71iMEkMguQEqFwIF12oHZx8ekkQrI8nk8yGnBJcdx7kp6zCRvmo";
 
-function FieldLabel({ htmlFor, children, action }: { htmlFor: string; children: string; action?: React.ReactNode }) {
+function FieldLabel({
+  htmlFor,
+  children,
+  action,
+}: {
+  htmlFor: string;
+  children: string;
+  action?: React.ReactNode;
+}) {
   return (
     <div className="mb-2 flex items-center justify-between gap-4 pl-1">
       <label
@@ -72,7 +80,6 @@ export function LoginClient() {
   const [passwordForm, setPasswordForm] = useState({
     username: "",
     password: "",
-    verify_code: "",
   });
   const [phoneForm, setPhoneForm] = useState({
     phone_number: "",
@@ -98,7 +105,7 @@ export function LoginClient() {
       try {
         const session =
           mode === "password"
-            ? await authService.loginWithPasswordCode(passwordForm)
+            ? await authService.loginWithPassword(passwordForm)
             : mode === "phone"
               ? await authService.loginWithPhoneCode(phoneForm)
               : await authService.loginWithEmailCode(emailForm);
@@ -122,10 +129,11 @@ export function LoginClient() {
         const response = await authService.sendPhoneLoginCode({
           phone_number: phoneForm.phone_number,
         });
-        setPhoneForm((current) => ({ ...current, code: "123456" }));
         setPhoneSendLabel(`${response.data.expire_seconds}s`);
         setSuccess(
-          `Phone code request accepted for ${response.data.target}. Temporary local test code 123456 has been filled in for you.`,
+          response.data.debug_code
+            ? `Phone code sent. Development debug code: ${response.data.debug_code}`
+            : `Phone code request accepted for ${response.data.target}.`,
         );
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unable to send phone code.");
@@ -142,10 +150,11 @@ export function LoginClient() {
         const response = await authService.sendEmailLoginCode({
           email: emailForm.email,
         });
-        setEmailForm((current) => ({ ...current, code: "123456" }));
         setEmailSendLabel(`${response.data.expire_seconds}s`);
         setSuccess(
-          `Email code request accepted for ${response.data.target}. Temporary local test code 123456 has been filled in for you.`,
+          response.data.debug_code
+            ? `Email code sent. Development debug code: ${response.data.debug_code}`
+            : `Email code request accepted for ${response.data.target}.`,
         );
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unable to send email code.");
@@ -233,7 +242,7 @@ export function LoginClient() {
                       htmlFor="password"
                       action={
                         <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#ff9f4a]">
-                          Recovery soon
+                          Password login
                         </span>
                       }
                     >
@@ -244,7 +253,7 @@ export function LoginClient() {
                         id="password"
                         type={showPassword ? "text" : "password"}
                         className="w-full bg-transparent text-sm text-white outline-none shadow-none placeholder:text-white/26"
-                        placeholder="••••••••••••"
+                        placeholder="Enter your password"
                         value={passwordForm.password}
                         onChange={(event) =>
                           setPasswordForm((current) => ({
@@ -263,24 +272,6 @@ export function LoginClient() {
                       </button>
                     </InputShell>
                   </div>
-
-                  <div>
-                    <FieldLabel htmlFor="verify_code">Verification Code</FieldLabel>
-                    <InputShell icon={<ShieldCheck className="h-5 w-5" />}>
-                      <input
-                        id="verify_code"
-                        className="w-full bg-transparent text-sm text-white outline-none shadow-none placeholder:text-white/26"
-                        placeholder="Use your local test code"
-                        value={passwordForm.verify_code}
-                        onChange={(event) =>
-                          setPasswordForm((current) => ({
-                            ...current,
-                            verify_code: event.target.value,
-                          }))
-                        }
-                      />
-                    </InputShell>
-                  </div>
                 </>
               ) : null}
 
@@ -292,7 +283,7 @@ export function LoginClient() {
                       <input
                         id="phone_number"
                         className="w-full bg-transparent text-sm text-white outline-none shadow-none placeholder:text-white/26"
-                        placeholder="0413 756 205"
+                        placeholder="0413756205"
                         value={phoneForm.phone_number}
                         onChange={(event) =>
                           setPhoneForm((current) => ({
@@ -310,7 +301,7 @@ export function LoginClient() {
                       <input
                         id="phone_code"
                         className="w-full bg-transparent text-sm text-white outline-none shadow-none placeholder:text-white/26"
-                        placeholder="123456"
+                        placeholder="Enter the verification code"
                         value={phoneForm.code}
                         onChange={(event) =>
                           setPhoneForm((current) => ({
@@ -359,7 +350,7 @@ export function LoginClient() {
                       <input
                         id="email_code"
                         className="w-full bg-transparent text-sm text-white outline-none shadow-none placeholder:text-white/26"
-                        placeholder="123456"
+                        placeholder="Enter the verification code"
                         value={emailForm.code}
                         onChange={(event) =>
                           setEmailForm((current) => ({
@@ -437,7 +428,7 @@ export function LoginClient() {
             </div>
 
             <footer className="mt-8 text-center text-sm text-white/56">
-              Apply for Membership:  
+              Apply for Membership:
               <Link
                 href={routes.auth.register}
                 className="ml-1 font-bold text-[#ff9f4a] underline-offset-4 transition hover:underline"
@@ -451,7 +442,7 @@ export function LoginClient() {
         <div className="mt-10 flex flex-wrap items-center justify-center gap-6 px-2 text-center sm:gap-8">
           <div className="flex flex-col items-center">
             <span className="text-xl font-bold text-white">
-              98.2<span className="text-[#ff7162] text-xs">%</span>
+              98.2<span className="text-xs text-[#ff7162]">%</span>
             </span>
             <span className="text-[10px] uppercase tracking-[0.24em] text-white/48">
               Accuracy Rate
@@ -460,7 +451,7 @@ export function LoginClient() {
           <div className="hidden h-8 w-px bg-white/10 sm:block" />
           <div className="flex flex-col items-center">
             <span className="text-xl font-bold text-white">
-              2.4<span className="text-[#ff9f4a] text-xs">M</span>
+              2.4<span className="text-xs text-[#ff9f4a]">M</span>
             </span>
             <span className="text-[10px] uppercase tracking-[0.24em] text-white/48">
               Shots Analyzed
@@ -469,7 +460,7 @@ export function LoginClient() {
           <div className="hidden h-8 w-px bg-white/10 sm:block" />
           <div className="flex flex-col items-center">
             <span className="text-xl font-bold text-white">
-              500<span className="text-[#ffe393] text-xs">+</span>
+              500<span className="text-xs text-[#ffe393]">+</span>
             </span>
             <span className="text-[10px] uppercase tracking-[0.24em] text-white/48">
               Pro Athletes

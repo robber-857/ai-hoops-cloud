@@ -5,6 +5,7 @@
 import React, { useState, useEffect, Suspense, useMemo } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation"; 
+import { AccountEntryButton } from "@/components/account/AccountEntryButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -365,6 +366,10 @@ function ReportContent() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 relative z-10">
+            <AccountEntryButton
+              compact
+              className="min-h-0 h-8 px-2.5 sm:h-9 sm:px-3 border-white/20 bg-white/[0.06] text-white/80 hover:bg-white/[0.1] lg:pr-4"
+            />
             {reportId && (
               <Button
                 variant="default"

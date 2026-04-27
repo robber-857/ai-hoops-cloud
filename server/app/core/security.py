@@ -1,3 +1,5 @@
+import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
 
 from jose import jwt
@@ -32,3 +34,12 @@ def create_refresh_token(subject: str) -> str:
         settings.jwt_refresh_secret_key,
         algorithm=settings.jwt_algorithm,
     )
+
+
+def hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def generate_numeric_code(length: int = 6) -> str:
+    digits = "0123456789"
+    return "".join(secrets.choice(digits) for _ in range(length))
