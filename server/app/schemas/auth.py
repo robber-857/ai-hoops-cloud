@@ -4,19 +4,13 @@ from app.models.enums import VerificationTargetType
 from app.schemas.user import UserRead
 
 
-class SendCodeRequest(BaseModel):
-    phone_number: str = Field(min_length=6, max_length=32)
-    email: EmailStr | None = None
-
-
 class RegisterRequest(BaseModel):
     username: str = Field(min_length=3, max_length=50)
     password: str = Field(min_length=8, max_length=128)
     confirm_password: str = Field(min_length=8, max_length=128)
     phone_number: str = Field(min_length=6, max_length=32)
-    phone_code: str = Field(min_length=4, max_length=10)
-    email: EmailStr | None = None
-    email_code: str | None = Field(default=None, min_length=4, max_length=10)
+    email: EmailStr
+    email_code: str = Field(min_length=4, max_length=10)
 
     @field_validator("confirm_password")
     @classmethod
@@ -35,17 +29,13 @@ class LoginPasswordRequest(BaseModel):
 LoginPasswordCodeRequest = LoginPasswordRequest
 
 
-class PhoneSendCodeRequest(BaseModel):
+class PhonePasswordLoginRequest(BaseModel):
     phone_number: str = Field(min_length=6, max_length=32)
+    password: str = Field(min_length=8, max_length=128)
 
 
 class EmailSendCodeRequest(BaseModel):
     email: EmailStr
-
-
-class PhoneCodeLoginRequest(BaseModel):
-    phone_number: str = Field(min_length=6, max_length=32)
-    code: str = Field(min_length=4, max_length=10)
 
 
 class EmailCodeLoginRequest(BaseModel):

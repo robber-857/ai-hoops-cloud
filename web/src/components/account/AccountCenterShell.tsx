@@ -83,9 +83,7 @@ export function AccountCenterShell({
             </span>
             <div className="hidden min-w-0 sm:block">
               <div className="truncate text-sm font-medium text-white">{username}</div>
-              <div className="text-[0.68rem] uppercase tracking-[0.24em] text-white/42">
-                Account hub
-              </div>
+              
             </div>
           </div>
         </div>

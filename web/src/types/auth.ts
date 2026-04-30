@@ -22,21 +22,12 @@ export interface RegisterPayload {
   password: string;
   confirm_password: string;
   phone_number: string;
-  phone_code: string;
-  email?: string;
-  email_code?: string;
-}
-
-export interface RegisterPhoneSendCodePayload {
-  phone_number: string;
+  email: string;
+  email_code: string;
 }
 
 export interface RegisterEmailSendCodePayload {
   email: string;
-}
-
-export interface SendPhoneCodePayload {
-  phone_number: string;
 }
 
 export interface SendEmailCodePayload {
@@ -48,9 +39,9 @@ export interface PasswordLoginPayload {
   password: string;
 }
 
-export interface PhoneCodeLoginPayload {
+export interface PhonePasswordLoginPayload {
   phone_number: string;
-  code: string;
+  password: string;
 }
 
 export interface EmailCodeLoginPayload {

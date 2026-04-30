@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Activity, Bolt, Eye, EyeOff, Mail, Smartphone, Trophy, UserPlus } from "lucide-react";
+import { Activity, Bolt, Eye, EyeOff, Mail, Trophy, UserPlus } from "lucide-react";
 
 import { routes } from "@/lib/routes";
 import { authService } from "@/services/auth";
@@ -54,35 +54,13 @@ export function RegisterClient() {
     password: "",
     confirm_password: "",
     phone_number: "",
-    phone_code: "",
     email: "",
     email_code: "",
   });
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, startSubmitting] = useTransition();
-  const [isSendingPhoneCode, startSendingPhoneCode] = useTransition();
   const [isSendingEmailCode, startSendingEmailCode] = useTransition();
-
-  const handleSendPhoneCode = () => {
-    setError(null);
-    setStatusMessage(null);
-
-    startSendingPhoneCode(async () => {
-      try {
-        const response = await authService.sendRegisterPhoneCode({
-          phone_number: form.phone_number,
-        });
-        setStatusMessage(
-          response.data.debug_code
-            ? `Phone code sent. Development debug code: ${response.data.debug_code}`
-            : `Phone verification code request accepted for ${response.data.target}.`,
-        );
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unable to send verification code.");
-      }
-    });
-  };
 
   const handleSendEmailCode = () => {
     setError(null);
@@ -120,9 +98,8 @@ export function RegisterClient() {
           password: form.password,
           confirm_password: form.confirm_password,
           phone_number: form.phone_number,
-          phone_code: form.phone_code,
-          email: form.email || undefined,
-          email_code: form.email_code || undefined,
+          email: form.email,
+          email_code: form.email_code,
         });
         setStatusMessage("Registration complete. Redirecting to sign in.");
         router.push(routes.auth.login);
@@ -229,6 +206,7 @@ export function RegisterClient() {
                   <input
                     id="email"
                     type="email"
+                    required
                     className="w-full rounded-xl border border-white/10 bg-[#000000] px-4 py-3 text-white placeholder:text-neutral-600 transition focus:border-[#ff9f4a] focus:outline-none focus:ring-1 focus:ring-[#ff9f4a]"
                     placeholder="athlete@performance.lab"
                     value={form.email}
@@ -292,33 +270,6 @@ export function RegisterClient() {
                     </button>
                   </div>
                 </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <FormLabel htmlFor="phone_code">Phone Verification Code</FormLabel>
-                    <button
-                      type="button"
-                      onClick={handleSendPhoneCode}
-                      disabled={isSendingPhoneCode}
-                      className="rounded-full border border-[#ff9f4a]/30 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#ff9f4a] transition hover:border-[#ff9f4a] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {isSendingPhoneCode ? "Sending" : "Send code"}
-                    </button>
-                  </div>
-                  <div className="relative">
-                    <Smartphone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
-                    <input
-                      id="phone_code"
-                      className="w-full rounded-xl border border-white/10 bg-[#000000] px-11 py-3 text-white placeholder:text-neutral-600 transition focus:border-[#ff9f4a] focus:outline-none focus:ring-1 focus:ring-[#ff9f4a]"
-                      placeholder="Enter the phone verification code"
-                      value={form.phone_code}
-                      onChange={(event) =>
-                        setForm((current) => ({ ...current, phone_code: event.target.value }))
-                      }
-                    />
-                  </div>
-                </div>
-
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-3">
                     <FormLabel htmlFor="email_code">Email Verification Code</FormLabel>
@@ -335,6 +286,7 @@ export function RegisterClient() {
                     <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
                     <input
                       id="email_code"
+                      required
                       className="w-full rounded-xl border border-white/10 bg-[#000000] px-11 py-3 text-white placeholder:text-neutral-600 transition focus:border-[#ff9f4a] focus:outline-none focus:ring-1 focus:ring-[#ff9f4a]"
                       placeholder="Enter the email verification code"
                       value={form.email_code}

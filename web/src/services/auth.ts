@@ -4,23 +4,14 @@ import type {
   AuthUser,
   LoginResponse,
   PasswordLoginPayload,
-  PhoneCodeLoginPayload,
+  PhonePasswordLoginPayload,
   RegisterPayload,
   RegisterEmailSendCodePayload,
-  RegisterPhoneSendCodePayload,
   SendCodeResponse,
   SendEmailCodePayload,
-  SendPhoneCodePayload,
 } from "@/types/auth";
 
 export const authService = {
-  sendRegisterPhoneCode(payload: RegisterPhoneSendCodePayload) {
-    return apiRequest<SendCodeResponse>("/auth/register/send-code", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-  },
-
   sendRegisterEmailCode(payload: RegisterEmailSendCodePayload) {
     return apiRequest<SendCodeResponse>("/auth/register/email/send-code", {
       method: "POST",
@@ -42,14 +33,7 @@ export const authService = {
     });
   },
 
-  sendPhoneLoginCode(payload: SendPhoneCodePayload) {
-    return apiRequest<SendCodeResponse>("/auth/login/phone/send-code", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-  },
-
-  loginWithPhoneCode(payload: PhoneCodeLoginPayload) {
+  loginWithPhonePassword(payload: PhonePasswordLoginPayload) {
     return apiRequest<LoginResponse>("/auth/login/phone", {
       method: "POST",
       body: JSON.stringify(payload),

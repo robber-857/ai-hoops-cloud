@@ -77,24 +77,23 @@ export function LoginClient() {
   const [mode, setMode] = useState<LoginMode>("password");
   const [remember, setRemember] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [showPhonePassword, setShowPhonePassword] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
     username: "",
     password: "",
   });
   const [phoneForm, setPhoneForm] = useState({
     phone_number: "",
-    code: "",
+    password: "",
   });
   const [emailForm, setEmailForm] = useState({
     email: "",
     code: "",
   });
-  const [phoneSendLabel, setPhoneSendLabel] = useState("Send");
   const [emailSendLabel, setEmailSendLabel] = useState("Send");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [isSendingPhone, startSendingPhone] = useTransition();
   const [isSendingEmail, startSendingEmail] = useTransition();
 
   const handleLogin = () => {
@@ -107,7 +106,7 @@ export function LoginClient() {
           mode === "password"
             ? await authService.loginWithPassword(passwordForm)
             : mode === "phone"
-              ? await authService.loginWithPhoneCode(phoneForm)
+              ? await authService.loginWithPhonePassword(phoneForm)
               : await authService.loginWithEmailCode(emailForm);
 
         setSession(session);
@@ -116,27 +115,6 @@ export function LoginClient() {
         router.push(nextPath || routes.pose2d.main);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unable to sign in.");
-      }
-    });
-  };
-
-  const handleSendPhoneCode = () => {
-    setError(null);
-    setSuccess(null);
-
-    startSendingPhone(async () => {
-      try {
-        const response = await authService.sendPhoneLoginCode({
-          phone_number: phoneForm.phone_number,
-        });
-        setPhoneSendLabel(`${response.data.expire_seconds}s`);
-        setSuccess(
-          response.data.debug_code
-            ? `Phone code sent. Development debug code: ${response.data.debug_code}`
-            : `Phone code request accepted for ${response.data.target}.`,
-        );
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unable to send phone code.");
       }
     });
   };
@@ -296,27 +274,41 @@ export function LoginClient() {
                   </div>
 
                   <div>
-                    <FieldLabel htmlFor="phone_code">Phone Verification</FieldLabel>
-                    <InputShell icon={<ShieldCheck className="h-5 w-5" />}>
+                    <FieldLabel
+                      htmlFor="phone_password"
+                      action={
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#ff9f4a]">
+                          Password login
+                        </span>
+                      }
+                    >
+                      Phone Password
+                    </FieldLabel>
+                    <InputShell icon={<Lock className="h-5 w-5" />}>
                       <input
-                        id="phone_code"
+                        id="phone_password"
+                        type={showPhonePassword ? "text" : "password"}
                         className="w-full bg-transparent text-sm text-white outline-none shadow-none placeholder:text-white/26"
-                        placeholder="Enter the verification code"
-                        value={phoneForm.code}
+                        placeholder="Enter your password"
+                        value={phoneForm.password}
                         onChange={(event) =>
                           setPhoneForm((current) => ({
                             ...current,
-                            code: event.target.value,
+                            password: event.target.value,
                           }))
                         }
                       />
                       <button
                         type="button"
-                        onClick={handleSendPhoneCode}
-                        disabled={isSendingPhone}
-                        className="rounded-full border border-[#ff9f4a]/30 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-[#ff9f4a] transition hover:border-[#ff9f4a] hover:text-white disabled:cursor-not-allowed disabled:opacity-45"
+                        onClick={() => setShowPhonePassword((current) => !current)}
+                        className="text-white/48 transition hover:text-white"
+                        aria-label={showPhonePassword ? "Hide password" : "Show password"}
                       >
-                        {isSendingPhone ? "Sending" : phoneSendLabel}
+                        {showPhonePassword ? (
+                          <EyeOff className="h-5 w-5" />
+                        ) : (
+                          <Eye className="h-5 w-5" />
+                        )}
                       </button>
                     </InputShell>
                   </div>
@@ -398,7 +390,15 @@ export function LoginClient() {
                 disabled={isPending}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#ff9f4a] to-[#ff7162] py-4 text-sm font-black uppercase tracking-[0.22em] text-[#532a00] transition duration-300 hover:scale-[1.01] hover:shadow-[0_0_20px_rgba(255,159,74,0.35)] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <span>{isPending ? "Securing..." : mode === "password" ? "Secure Login" : `Secure ${mode}`}</span>
+                <span>
+                  {isPending
+                    ? "Securing..."
+                    : mode === "password"
+                      ? "Secure Login"
+                      : mode === "phone"
+                        ? "Phone Login"
+                        : "Email Login"}
+                </span>
                 <Sparkles className="h-4 w-4" />
               </button>
             </form>

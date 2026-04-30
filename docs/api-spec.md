@@ -4,11 +4,13 @@ Base path: `/api/v1`
 
 ## Auth
 
-- `POST /auth/register/send-code`
+- `POST /auth/register/email/send-code`
 - `POST /auth/register`
+- `POST /auth/login/password`
 - `POST /auth/login/password-code`
-- `POST /auth/login/phone/send-code`
+- `POST /auth/login/phone`
 - `POST /auth/login/email/send-code`
+- `POST /auth/login/email`
 - `POST /auth/password/send-reset-code`
 - `POST /auth/password/reset`
 - `POST /auth/refresh`

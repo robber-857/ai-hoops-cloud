@@ -26,7 +26,7 @@ from app.schemas.auth import (
     LoginPasswordRequest,
     LoginResponse,
     PasswordResetRequest,
-    PhoneCodeLoginRequest,
+    PhonePasswordLoginRequest,
     RefreshTokenRequest,
     RegisterRequest,
     TokenRefreshResponse,
@@ -46,27 +46,6 @@ class AuthService:
         self.db = db
         self.delivery_service = DeliveryService()
 
-    def send_register_phone_code(self, phone_number: str, request: Request) -> dict:
-        normalized_phone = self._normalize_phone_number(phone_number)
-        if self.db.scalar(select(User).where(User.phone_number == normalized_phone)):
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Phone number already exists.",
-            )
-
-        code = self._issue_verification_code(
-            target=normalized_phone,
-            target_type=VerificationTargetType.phone,
-            scene=VerificationScene.register,
-            request=request,
-        )
-        return self._build_send_code_response(
-            message="Register phone verification code accepted for processing.",
-            target=normalized_phone,
-            target_type=VerificationTargetType.phone,
-            code=code,
-        )
-
     def send_register_email_code(self, email: str, request: Request) -> dict:
         normalized_email = self._normalize_email(email)
         if self.db.scalar(select(User).where(User.email == normalized_email)):
@@ -85,27 +64,6 @@ class AuthService:
             message="Register email verification code accepted for processing.",
             target=normalized_email,
             target_type=VerificationTargetType.email,
-            code=code,
-        )
-
-    def send_login_phone_code(self, phone_number: str, request: Request) -> dict:
-        normalized_phone = self._normalize_phone_number(phone_number)
-        user = self.db.scalar(select(User).where(User.phone_number == normalized_phone))
-        code: str | None = None
-
-        if user:
-            code = self._issue_verification_code(
-                target=normalized_phone,
-                target_type=VerificationTargetType.phone,
-                scene=VerificationScene.login,
-                request=request,
-                user_id=user.id,
-            )
-
-        return self._build_send_code_response(
-            message="Phone login verification code accepted for processing.",
-            target=normalized_phone,
-            target_type=VerificationTargetType.phone,
             code=code,
         )
 
@@ -163,39 +121,23 @@ class AuthService:
 
     def register_user(self, payload: RegisterRequest) -> UserRead:
         normalized_phone = self._normalize_phone_number(payload.phone_number)
-        normalized_email = self._normalize_optional_email(payload.email)
+        normalized_email = self._normalize_email(payload.email)
 
         self._ensure_user_uniqueness(payload.username, normalized_phone, normalized_email)
         self._verify_code_or_raise(
-            target=normalized_phone,
-            target_type=VerificationTargetType.phone,
+            target=normalized_email,
+            target_type=VerificationTargetType.email,
             scene=VerificationScene.register,
-            code=payload.phone_code,
+            code=payload.email_code,
         )
-
-        email_verified = False
-        if normalized_email:
-            if not payload.email_code:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Email verification code is required when email is provided.",
-                )
-
-            self._verify_code_or_raise(
-                target=normalized_email,
-                target_type=VerificationTargetType.email,
-                scene=VerificationScene.register,
-                code=payload.email_code,
-            )
-            email_verified = True
 
         user = User(
             username=payload.username,
             password_hash=hash_password(payload.password),
             phone_number=normalized_phone,
             email=normalized_email,
-            is_phone_verified=True,
-            is_email_verified=email_verified,
+            is_phone_verified=False,
+            is_email_verified=True,
         )
         self.db.add(user)
         self.db.commit()
@@ -217,24 +159,17 @@ class AuthService:
         self._ensure_user_can_authenticate(user)
         return self._build_login_session(user=user, request=request)
 
-    def login_with_phone_code(
+    def login_with_phone_password(
         self,
-        payload: PhoneCodeLoginRequest,
+        payload: PhonePasswordLoginRequest,
         request: Request,
     ) -> LoginSessionResult:
         normalized_phone = self._normalize_phone_number(payload.phone_number)
-        self._verify_code_or_raise(
-            target=normalized_phone,
-            target_type=VerificationTargetType.phone,
-            scene=VerificationScene.login,
-            code=payload.code,
-        )
-
         user = self.db.scalar(select(User).where(User.phone_number == normalized_phone))
-        if not user:
+        if not user or not verify_password(payload.password, user.password_hash):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid phone number or verification code.",
+                detail="Invalid phone number or password.",
             )
 
         self._ensure_user_can_authenticate(user)
@@ -681,11 +616,6 @@ class AuthService:
 
     def _normalize_email(self, email: str) -> str:
         return email.strip().lower()
-
-    def _normalize_optional_email(self, email: str | None) -> str | None:
-        if not email:
-            return None
-        return self._normalize_email(email)
 
     def _mask_target(
         self,

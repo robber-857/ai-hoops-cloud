@@ -10,11 +10,9 @@ from app.schemas.auth import (
     LoginPasswordRequest,
     LoginResponse,
     PasswordResetRequest,
-    PhoneCodeLoginRequest,
-    PhoneSendCodeRequest,
+    PhonePasswordLoginRequest,
     RefreshTokenRequest,
     RegisterRequest,
-    SendCodeRequest,
     SendResetCodeRequest,
     TokenRefreshResponse,
 )
@@ -45,16 +43,6 @@ def _clear_session_cookie(response: Response) -> None:
         secure=settings.session_cookie_secure,
         samesite=settings.session_cookie_samesite,
     )
-
-
-@router.post("/register/send-code", status_code=status.HTTP_200_OK)
-def send_register_code(
-    payload: SendCodeRequest,
-    request: Request,
-    db: Session = Depends(get_db),
-) -> dict:
-    service = AuthService(db)
-    return service.send_register_phone_code(payload.phone_number, request)
 
 
 @router.post("/register/email/send-code", status_code=status.HTTP_200_OK)
@@ -102,16 +90,6 @@ def login_with_password_code_alias(
     return result.response
 
 
-@router.post("/login/phone/send-code", status_code=status.HTTP_200_OK)
-def send_phone_login_code(
-    payload: PhoneSendCodeRequest,
-    request: Request,
-    db: Session = Depends(get_db),
-) -> dict:
-    service = AuthService(db)
-    return service.send_login_phone_code(payload.phone_number, request)
-
-
 @router.post("/login/email/send-code", status_code=status.HTTP_200_OK)
 def send_email_login_code(
     payload: EmailSendCodeRequest,
@@ -123,14 +101,14 @@ def send_email_login_code(
 
 
 @router.post("/login/phone", response_model=LoginResponse, status_code=status.HTTP_200_OK)
-def login_with_phone_code(
-    payload: PhoneCodeLoginRequest,
+def login_with_phone_password(
+    payload: PhonePasswordLoginRequest,
     request: Request,
     response: Response,
     db: Session = Depends(get_db),
 ) -> LoginResponse:
     service = AuthService(db)
-    result = service.login_with_phone_code(payload, request)
+    result = service.login_with_phone_password(payload, request)
     _set_session_cookie(response, result.session_token)
     return result.response
 
