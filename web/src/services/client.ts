@@ -42,8 +42,6 @@ function resolveApiBaseUrl(): string {
   throw new Error("Missing NEXT_PUBLIC_API_BASE_URL for the production deployment.");
 }
 
-const API_BASE_URL = resolveApiBaseUrl();
-
 type JsonValue = Record<string, unknown> | null;
 
 type ValidationErrorItem = {
@@ -127,7 +125,8 @@ export async function apiRequest<TResponse>(
   path: string,
   init: RequestInit = {},
 ): Promise<TResponse> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const apiBaseUrl = resolveApiBaseUrl();
+  const response = await fetch(`${apiBaseUrl}${path}`, {
     ...init,
     credentials: "include",
     headers: {
@@ -146,4 +145,4 @@ export async function apiRequest<TResponse>(
   return payload as TResponse;
 }
 
-export { API_BASE_URL };
+export { resolveApiBaseUrl };

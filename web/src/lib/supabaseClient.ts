@@ -1,4 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+
+type BrowserSupabaseClient = SupabaseClient;
 
 function requirePublicEnv(
   value: string | undefined,
@@ -11,13 +13,34 @@ function requirePublicEnv(
   throw new Error(`Missing ${name}. Add it to your local env file or deployment environment variables.`);
 }
 
-const supabaseUrl = requirePublicEnv(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  "NEXT_PUBLIC_SUPABASE_URL",
-);
-const supabaseKey = requirePublicEnv(
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-);
+let supabaseClient: BrowserSupabaseClient | null = null;
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export function getSupabaseClient(): BrowserSupabaseClient {
+  if (!supabaseClient) {
+    const supabaseUrl = requirePublicEnv(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      "NEXT_PUBLIC_SUPABASE_URL",
+    );
+    const supabaseKey = requirePublicEnv(
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    );
+
+    supabaseClient = createClient(supabaseUrl, supabaseKey);
+  }
+
+  return supabaseClient;
+}
+
+export const supabase = new Proxy({} as BrowserSupabaseClient, {
+  get(_target, property) {
+    const client = getSupabaseClient();
+    const value = Reflect.get(client, property);
+
+    if (typeof value === "function") {
+      return value.bind(client);
+    }
+
+    return value;
+  },
+});
