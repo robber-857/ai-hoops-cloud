@@ -50,7 +50,7 @@ class User(PublicIdMixin, TimestampMixin, Base):
     )
     role: Mapped[UserRole] = mapped_column(
         SqlEnum(UserRole, name="user_role"),
-        default=UserRole.user,
+        default=UserRole.student,
         nullable=False,
     )
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -62,6 +62,16 @@ class User(PublicIdMixin, TimestampMixin, Base):
     upload_tasks = relationship("UploadTask", back_populates="user")
     analysis_reports = relationship("AnalysisReport", back_populates="user")
     operation_logs = relationship("OperationLog", back_populates="user")
+    class_members = relationship("ClassMember", back_populates="user")
+    training_sessions = relationship("TrainingSession", back_populates="student")
+    created_training_tasks = relationship("TrainingTask", back_populates="created_by")
+    training_task_assignments = relationship("TrainingTaskAssignment", back_populates="student")
+    announcements = relationship("Announcement", back_populates="publisher")
+    announcement_reads = relationship("AnnouncementRead", back_populates="user")
+    notifications = relationship("Notification", back_populates="user")
+    student_growth_snapshots = relationship("StudentGrowthSnapshot", back_populates="student")
+    student_achievements = relationship("StudentAchievement", back_populates="student")
+    student_goals = relationship("StudentGoal", back_populates="student")
 
     @property
     def is_active(self) -> bool:

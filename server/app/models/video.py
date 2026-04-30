@@ -54,3 +54,4 @@ class Video(PublicIdMixin, TimestampMixin, Base):
     user = relationship("User", back_populates="videos")
     upload_tasks = relationship("UploadTask", back_populates="video")
     analysis_reports = relationship("AnalysisReport", back_populates="video")
+    training_sessions = relationship("TrainingSession", back_populates="video")

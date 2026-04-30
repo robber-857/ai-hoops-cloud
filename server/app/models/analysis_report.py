@@ -16,20 +16,24 @@ class AnalysisReport(PublicIdMixin, TimestampMixin, Base):
     __table_args__ = (
         CheckConstraint("overall_score >= 0 AND overall_score <= 100", name="ck_analysis_reports_overall_score"),
         Index("ix_analysis_reports_user_id_created_at", "user_id", "created_at"),
+        Index("ix_analysis_reports_session_id", "session_id"),
         Index("ix_analysis_reports_video_id", "video_id"),
         Index("ix_analysis_reports_analysis_type_created_at", "analysis_type", "created_at"),
         Index("ix_analysis_reports_template_id", "template_id"),
+        Index("ix_analysis_reports_training_template_id", "training_template_id"),
         Index("ix_analysis_reports_overall_score", "overall_score"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    session_id: Mapped[int] = mapped_column(ForeignKey("training_sessions.id"), nullable=False)
     video_id: Mapped[int] = mapped_column(ForeignKey("videos.id"), nullable=False)
     analysis_type: Mapped[AnalysisType] = mapped_column(
         SqlEnum(AnalysisType, name="analysis_type", create_type=False),
         nullable=False,
     )
     template_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    training_template_id: Mapped[int | None] = mapped_column(ForeignKey("training_templates.id"), nullable=True)
     template_version: Mapped[str | None] = mapped_column(String(50), nullable=True)
     status: Mapped[ReportStatus] = mapped_column(
         SqlEnum(ReportStatus, name="report_status"),
@@ -46,5 +50,7 @@ class AnalysisReport(PublicIdMixin, TimestampMixin, Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     user = relationship("User", back_populates="analysis_reports")
+    session = relationship("TrainingSession", back_populates="analysis_reports")
     video = relationship("Video", back_populates="analysis_reports")
+    training_template = relationship("TrainingTemplate", back_populates="analysis_reports")
     snapshots = relationship("ReportSnapshot", back_populates="report")

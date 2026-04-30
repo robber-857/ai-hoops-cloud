@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import SessionLocal
+from app.models.enums import UserRole
 from app.models.user import User
 from app.services.auth_service import AuthService
 
@@ -52,3 +53,15 @@ def get_current_user(
         )
 
     return user
+
+
+def require_roles(*roles: UserRole):
+    def dependency(current_user: User = Depends(get_current_user)) -> User:
+        if current_user.role not in roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to access this resource.",
+            )
+        return current_user
+
+    return dependency

@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     smtp_from_name: str = Field(default="AI Hoops Cloud", alias="SMTP_FROM_NAME")
     smtp_starttls: bool = Field(default=True, alias="SMTP_STARTTLS")
 
+    upload_video_bucket: str = Field(default="user-videos", alias="UPLOAD_VIDEO_BUCKET")
+    template_video_bucket: str = Field(default="template-videos", alias="TEMPLATE_VIDEO_BUCKET")
+
     model_config = SettingsConfigDict(
         env_file=(".env.local", ".env"),
         env_file_encoding="utf-8",

@@ -9,6 +9,7 @@ class UserStatus(str, Enum):
 
 class UserRole(str, Enum):
     user = "user"
+    student = "student"
     admin = "admin"
     coach = "coach"
 
@@ -39,6 +40,7 @@ class SessionStatus(str, Enum):
 
 class StorageProvider(str, Enum):
     s3 = "s3"
+    supabase = "supabase"
 
 
 class VideoUploadStatus(str, Enum):
@@ -57,6 +59,7 @@ class AnalysisType(str, Enum):
     shooting = "shooting"
     dribbling = "dribbling"
     training = "training"
+    comprehensive = "comprehensive"
 
 
 class UploadTaskStatus(str, Enum):
