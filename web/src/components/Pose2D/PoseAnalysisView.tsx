@@ -15,8 +15,9 @@ import { calculateRealScore } from "@/lib/scoring";
 import { routes } from "@/lib/routes";
 import { DribbleFrame } from "@/lib/dribbleTemporal";
 import { aggregateDribbleSequence } from "@/lib/dribbleCalculator";
-import { supabase } from "@/lib/supabaseClient";
 import { aggregateTrainingSequence } from "@/lib/trainingCalculator";
+import { reportService } from "@/services/reports";
+import type { CompletedUploadSession } from "@/services/uploads";
 
 export type AnalysisType = "shooting" | "dribbling" | "training";
 export type AngleData = { name: string; value: number; unit?: string };
@@ -24,6 +25,7 @@ export type AngleData = { name: string; value: number; unit?: string };
 type Props = {
   file?: File | null;
   videoUrl?: string | null;
+  uploadSession?: CompletedUploadSession | null;
   onClear: () => void;
   analysisType?: AnalysisType;
 };
@@ -112,6 +114,7 @@ function AngleDisplayCard({ title, angles }: { title: string; angles: AngleData[
 export default function PoseAnalysisView({
   file,
   videoUrl: propVideoUrl,
+  uploadSession,
   onClear,
   analysisType = "shooting",
 }: Props) {
@@ -219,6 +222,18 @@ export default function PoseAnalysisView({
       const templates = getAllTemplates(analysisType);
       const activeTemplate = templates[0];
 
+      if (!activeTemplate) {
+        alert("No analysis template is available for this mode.");
+        setIsGeneratingReport(false);
+        return;
+      }
+
+      if (!uploadSession?.sessionPublicId) {
+        alert("Upload session is missing. Please upload the video again.");
+        setIsGeneratingReport(false);
+        return;
+      }
+
       let finalInputForScoring: AngleData[] = [];
       let detectedHandness = "right";
 
@@ -283,53 +298,29 @@ export default function PoseAnalysisView({
         return;
       }
 
-      if (videoUrl.includes("supabase.co") && videoUrl.includes("/user-videos/")) {
-        try {
-          const pathPart = videoUrl.split("/user-videos/")[1];
-          if (pathPart) {
-            const filePath = decodeURIComponent(pathPart.split("?")[0]);
-            console.log("Generating long-term URL for:", filePath);
-
-            const { data: signedData, error: signError } = await supabase.storage
-              .from("user-videos")
-              .createSignedUrl(filePath, 315360000);
-
-            if (signError) throw signError;
-            if (signedData?.signedUrl) {
-              longTermVideoUrl = signedData.signedUrl;
-              console.log("Long-term URL generated");
-            }
-          }
-        } catch (urlError) {
-          console.error(
-            "Failed to generate long-term URL, using session URL:",
-            urlError
-          );
-        }
-      }
-
       const scoreDataToSave = {
         ...realScoreResult,
         saved_metrics: finalInputForScoring,
       };
 
-      const reportData = {
-        video_url: longTermVideoUrl,
+      const savedReport = await reportService.saveReport({
+        session_public_id: uploadSession.sessionPublicId,
+        template_code: activeTemplate.templateId,
+        template_version: "v1",
+        overall_score: realScoreResult.overall,
+        grade: realScoreResult.grade,
         score_data: scoreDataToSave,
         timeline_data: allFramesRef.current,
-        template_id: activeTemplate.templateId,
-      };
+        summary_data: {
+          analysis_type: analysisType,
+          handedness: detectedHandness,
+          metrics_count: finalInputForScoring.length,
+          template_name: activeTemplate.displayName,
+        },
+      });
 
-      const { data, error } = await supabase
-        .from("analysis_reports")
-        .insert(reportData)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      const newReportId = data.id;
-      console.log("Report saved to DB, ID:", newReportId);
+      longTermVideoUrl = savedReport.video_url ?? uploadSession.videoUrl ?? longTermVideoUrl;
+      console.log("Report saved through backend, public ID:", savedReport.public_id);
 
       setAnalysisResult({
         videoUrl: longTermVideoUrl,
@@ -339,7 +330,7 @@ export default function PoseAnalysisView({
         template: activeTemplate,
       });
 
-      router.push(`${routes.pose2d.report}?id=${newReportId}`);
+      router.push(`${routes.pose2d.report}?id=${savedReport.public_id}`);
     } catch (error) {
       console.error("Analysis/Save failed:", error);
       alert("Failed to save report to cloud. Please check console.");

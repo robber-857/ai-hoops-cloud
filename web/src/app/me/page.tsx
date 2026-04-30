@@ -20,22 +20,14 @@ import type {
   WeeklyTask,
 } from "@/components/account/types";
 import { routes } from "@/lib/routes";
-import { supabase } from "@/lib/supabaseClient";
+import {
+  meService,
+  type DashboardStatsRead,
+  type TaskSummaryRead,
+  type TrendPointRead,
+} from "@/services/me";
+import type { ReportListItem } from "@/services/reports";
 import { useAuthStore } from "@/store/authStore";
-
-type SupabaseReportRow = {
-  id: number | string;
-  user_id?: number | null;
-  analysis_type?: string | null;
-  template_id?: string | null;
-  overall_score?: number | null;
-  grade?: string | null;
-  score_data?: {
-    overall?: number | null;
-    grade?: string | null;
-  } | null;
-  created_at?: string | null;
-};
 
 const PREVIEW_REPORTS: AccountReport[] = [
   {
@@ -137,10 +129,10 @@ function normalizeAnalysisType(
   return template?.mode ?? "shooting";
 }
 
-function normalizeReport(row: SupabaseReportRow): AccountReport | null {
-  const analysisType = normalizeAnalysisType(row.analysis_type, row.template_id);
-  const template = row.template_id ? getTemplateById(row.template_id) : null;
-  const score = Number(row.overall_score ?? row.score_data?.overall ?? 0);
+function normalizeReport(row: ReportListItem): AccountReport | null {
+  const analysisType = normalizeAnalysisType(row.analysis_type, row.template_code);
+  const template = row.template_code ? getTemplateById(row.template_code) : null;
+  const score = Number(row.overall_score ?? 0);
   const createdAt = row.created_at ?? new Date().toISOString();
 
   if (Number.isNaN(score)) {
@@ -148,11 +140,11 @@ function normalizeReport(row: SupabaseReportRow): AccountReport | null {
   }
 
   return {
-    id: String(row.id),
+    id: row.public_id,
     analysisType,
-    templateName: template?.displayName ?? row.template_id ?? "Motion review",
+    templateName: template?.displayName ?? row.template_code ?? "Motion review",
     score,
-    grade: row.grade ?? row.score_data?.grade ?? getGrade(score),
+    grade: row.grade ?? getGrade(score),
     createdAt,
     linkable: true,
   };
@@ -276,6 +268,47 @@ function buildWeeklyTasks(reports: AccountReport[]): WeeklyTask[] {
   ];
 }
 
+function normalizeTask(task: TaskSummaryRead): WeeklyTask {
+  const progress = Math.max(0, Math.min(1, (task.progress_percent ?? 0) / 100));
+  const status: WeeklyTask["status"] =
+    task.status === "completed"
+      ? "done"
+      : task.status === "in_progress" || task.status === "overdue"
+        ? "in_progress"
+        : "pending";
+  const dueLabel = task.due_at
+    ? new Intl.DateTimeFormat("en-AU", {
+        month: "short",
+        day: "numeric",
+      }).format(new Date(task.due_at))
+    : "Assigned task";
+
+  return {
+    title: task.title,
+    description: "Assigned by your coach through the training camp workflow.",
+    progress,
+    status,
+    valueLabel:
+      task.best_score !== null
+        ? `${Math.round(task.best_score)} pts`
+        : `${task.completed_sessions} sessions`,
+    dueLabel,
+  };
+}
+
+function normalizeTrendPoints(points: TrendPointRead[]): TrendPoint[] {
+  return points
+    .slice(-6)
+    .map((point) => ({
+      label: new Intl.DateTimeFormat("en-AU", {
+        month: "short",
+        day: "numeric",
+      }).format(new Date(point.date)),
+      score: Math.round(point.best_score ?? point.average_score ?? 0),
+    }))
+    .filter((point) => point.score > 0);
+}
+
 export default function MePage() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
@@ -286,6 +319,9 @@ export default function MePage() {
   const [reports, setReports] = useState<AccountReport[]>(PREVIEW_REPORTS);
   const [reportSource, setReportSource] = useState<ReportSource>("preview");
   const [isReportsLoading, setIsReportsLoading] = useState(false);
+  const [backendStats, setBackendStats] = useState<DashboardStatsRead | null>(null);
+  const [backendTasks, setBackendTasks] = useState<WeeklyTask[] | null>(null);
+  const [backendTrendPoints, setBackendTrendPoints] = useState<TrendPoint[] | null>(null);
 
   useEffect(() => {
     if (!hasInitialized || isAuthenticated) {
@@ -302,43 +338,52 @@ export default function MePage() {
 
     let isActive = true;
 
-    const fetchReports = async () => {
+    const fetchAccountData = async () => {
       setIsReportsLoading(true);
 
       try {
-        const { data, error } = await supabase
-          .from("analysis_reports")
-          .select("id,user_id,analysis_type,template_id,overall_score,grade,score_data,created_at")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(6);
+        const [dashboardData, reportsData, tasksData, trendsData] = await Promise.all([
+          meService.getDashboard(),
+          meService.getReports(6),
+          meService.getTasks(5),
+          meService.getTrends({ range: "30d" }),
+        ]);
 
-        if (error) {
-          throw error;
-        }
-
-        const normalized = (data ?? [])
-          .map((row) => normalizeReport(row as SupabaseReportRow))
+        const normalizedReports = reportsData.items
+          .map(normalizeReport)
           .filter((row): row is AccountReport => Boolean(row));
+        const dashboardReports = dashboardData.recent_reports
+          .map(normalizeReport)
+          .filter((row): row is AccountReport => Boolean(row));
+        const nextReports = normalizedReports.length > 0 ? normalizedReports : dashboardReports;
+        const nextTasks = tasksData.items.map(normalizeTask);
+        const nextTrendPoints = normalizeTrendPoints(trendsData.points);
 
         if (!isActive) {
           return;
         }
 
-        if (normalized.length > 0) {
-          setReports(normalized);
+        setBackendStats(dashboardData.stats);
+        setBackendTasks(nextTasks.length > 0 ? nextTasks : null);
+        setBackendTrendPoints(nextTrendPoints.length > 0 ? nextTrendPoints : null);
+
+        if (nextReports.length > 0) {
+          setReports(nextReports);
           setReportSource("live");
         } else {
           setReports(PREVIEW_REPORTS);
           setReportSource("preview");
         }
       } catch (error) {
-        console.error("Falling back to preview report data.", error);
+        console.error("Falling back to preview account data.", error);
 
         if (!isActive) {
           return;
         }
 
+        setBackendStats(null);
+        setBackendTasks(null);
+        setBackendTrendPoints(null);
         setReports(PREVIEW_REPORTS);
         setReportSource("preview");
       } finally {
@@ -348,7 +393,7 @@ export default function MePage() {
       }
     };
 
-    void fetchReports();
+    void fetchAccountData();
 
     return () => {
       isActive = false;
@@ -363,32 +408,61 @@ export default function MePage() {
     const weeklyReports = sortedReports.filter((report) => isWithinLastDays(report.createdAt, 7));
     const scores = sortedReports.map((report) => report.score);
     const bestScore = Math.max(...scores, 0);
-    const trendPoints = buildTrendPoints(sortedReports);
+    const trendPoints = backendTrendPoints ?? buildTrendPoints(sortedReports);
     const streak = computeStreakDays(sortedReports);
+    const liveStats = reportSource === "live" ? backendStats : null;
 
-    const stats: StatOverviewItem[] = [
-      {
-        label: "Total reports",
-        value: String(sortedReports.length),
-        helper: reportSource === "live" ? "Pulled from your history" : "Preview dataset loaded",
-        accent: true,
-      },
-      {
-        label: "Weekly analysis",
-        value: String(weeklyReports.length),
-        helper: "Sessions in the last 7 days",
-      },
-      {
-        label: "Best score",
-        value: bestScore > 0 ? String(Math.round(bestScore)) : "--",
-        helper: "Top result across visible reports",
-      },
-      {
-        label: "Last analysis",
-        value: latestReport ? formatRelativeTime(latestReport.createdAt) : "--",
-        helper: latestReport ? latestReport.templateName : "No uploads yet",
-      },
-    ];
+    const stats: StatOverviewItem[] = liveStats
+      ? [
+          {
+            label: "Total reports",
+            value: String(liveStats.total_reports),
+            helper: "From backend dashboard",
+            accent: true,
+          },
+          {
+            label: "Weekly sessions",
+            value: String(liveStats.weekly_sessions),
+            helper: "Sessions in the last 7 days",
+          },
+          {
+            label: "Best score",
+            value:
+              liveStats.best_score !== null ? String(Math.round(liveStats.best_score)) : "--",
+            helper: "Top result across all reports",
+          },
+          {
+            label: "Active tasks",
+            value: String(liveStats.active_tasks),
+            helper:
+              liveStats.unread_notifications > 0
+                ? `${liveStats.unread_notifications} unread notices`
+                : "No unread notices",
+          },
+        ]
+      : [
+          {
+            label: "Total reports",
+            value: String(sortedReports.length),
+            helper: reportSource === "live" ? "Pulled from your history" : "Preview dataset loaded",
+            accent: true,
+          },
+          {
+            label: "Weekly analysis",
+            value: String(weeklyReports.length),
+            helper: "Sessions in the last 7 days",
+          },
+          {
+            label: "Best score",
+            value: bestScore > 0 ? String(Math.round(bestScore)) : "--",
+            helper: "Top result across visible reports",
+          },
+          {
+            label: "Last analysis",
+            value: latestReport ? formatRelativeTime(latestReport.createdAt) : "--",
+            helper: latestReport ? latestReport.templateName : "No uploads yet",
+          },
+        ];
 
     const highlights: GrowthSummary[] = [
       {
@@ -401,25 +475,28 @@ export default function MePage() {
       },
       {
         label: "30-day average",
-        value: `${Math.round(average(sortedReports.slice(0, 6).map((report) => report.score))) || 0}`,
-        helper: "Latest report window",
+        value:
+          liveStats && liveStats.average_score !== null
+            ? `${Math.round(liveStats.average_score)}`
+            : `${Math.round(average(sortedReports.slice(0, 6).map((report) => report.score))) || 0}`,
+        helper: liveStats ? "Backend aggregate" : "Latest report window",
       },
       {
-        label: "Streak days",
-        value: String(streak),
-        helper: "Consecutive active days",
+        label: liveStats ? "Completed sessions" : "Streak days",
+        value: liveStats ? String(liveStats.completed_sessions) : String(streak),
+        helper: liveStats ? "All-time completed" : "Consecutive active days",
       },
     ];
 
     return {
       latestReport,
       stats,
-      tasks: buildWeeklyTasks(sortedReports),
+      tasks: backendTasks ?? buildWeeklyTasks(sortedReports),
       trendPoints,
       highlights,
       recentReports: sortedReports,
     };
-  }, [reportSource, reports]);
+  }, [backendStats, backendTasks, backendTrendPoints, reportSource, reports]);
 
   if (!hasInitialized || isInitializing || !user || !isAuthenticated) {
     return (

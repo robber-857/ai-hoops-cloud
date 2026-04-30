@@ -9,13 +9,32 @@ import {
   UploadCloud,
 } from 'lucide-react';
 
+import { getAllTemplates } from '@/config/templates';
 import { supabase } from '@/lib/supabaseClient';
+import {
+  uploadService,
+  type CompletedUploadSession,
+} from '@/services/uploads';
+
+import type { AnalysisType } from './PoseAnalysisView';
 
 interface UploadDropzoneProps {
-  onFileSelect: (file: File | null, videoUrl?: string) => void;
+  analysisType?: AnalysisType;
+  onFileSelect: (
+    file: File | null,
+    videoUrl?: string,
+    uploadSession?: CompletedUploadSession,
+  ) => void;
 }
 
-export default function UploadDropzone({ onFileSelect }: UploadDropzoneProps) {
+function getContentType(file: File): string {
+  return file.type || 'application/octet-stream';
+}
+
+export default function UploadDropzone({
+  analysisType = 'shooting',
+  onFileSelect,
+}: UploadDropzoneProps) {
   const [uploading, setUploading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -28,24 +47,49 @@ export default function UploadDropzone({ onFileSelect }: UploadDropzoneProps) {
       setErrorMsg('');
 
       try {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
-        const filePath = `${fileName}`;
+        const activeTemplate = getAllTemplates(analysisType)[0];
+        const uploadInit = await uploadService.init({
+          analysis_type: analysisType,
+          file_name: file.name,
+          content_type: getContentType(file),
+          file_size: file.size,
+          template_code: activeTemplate?.templateId,
+          template_version: 'v1',
+          source_type: 'free_practice',
+        });
 
         const { error: uploadError } = await supabase.storage
-          .from('user-videos')
-          .upload(filePath, file);
+          .from(uploadInit.bucket_name)
+          .upload(uploadInit.object_key, file, {
+            contentType: getContentType(file),
+          });
 
         if (uploadError) throw uploadError;
 
         const { data: urlData, error: urlError } = await supabase.storage
-          .from('user-videos')
-          .createSignedUrl(filePath, 3600);
+          .from(uploadInit.bucket_name)
+          .createSignedUrl(uploadInit.object_key, 315360000);
 
         if (urlError || !urlData) throw urlError;
 
-        console.log('Upload success, Signed URL:', urlData.signedUrl);
-        onFileSelect(file, urlData.signedUrl);
+        const completedUpload = await uploadService.complete({
+          upload_task_public_id: uploadInit.upload_task_public_id,
+          original_file_name: file.name,
+          url: urlData.signedUrl,
+        });
+
+        const videoUrl = completedUpload.video.cdn_url ?? completedUpload.video.url ?? urlData.signedUrl;
+        const uploadSession: CompletedUploadSession = {
+          sessionPublicId: completedUpload.session_public_id,
+          uploadTaskPublicId: completedUpload.upload_task_public_id,
+          bucketName: completedUpload.video.bucket_name,
+          objectKey: completedUpload.video.object_key,
+          videoUrl,
+          videoPublicId: completedUpload.video.public_id,
+        };
+
+        console.log('Upload completed through backend session:', uploadSession);
+        onFileSelect(file, videoUrl, uploadSession);
       } catch (error: unknown) {
         console.error('Upload failed:', error);
         const message = error instanceof Error ? error.message : String(error);
@@ -54,7 +98,7 @@ export default function UploadDropzone({ onFileSelect }: UploadDropzoneProps) {
         setUploading(false);
       }
     },
-    [onFileSelect]
+    [analysisType, onFileSelect]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -166,7 +210,7 @@ export default function UploadDropzone({ onFileSelect }: UploadDropzoneProps) {
                   Behavior
                 </div>
                 <div className="mt-2 text-sm text-white/72">
-                  Same upload and storage logic
+                  Backend session
                 </div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 backdrop-blur-md">

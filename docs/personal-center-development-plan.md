@@ -1,5 +1,23 @@
 # 个人中心开发文档
 
+## 0. 当前状态更新
+
+截至 2026-04-30，个人中心第一版已经完成并接入后端聚合接口。
+
+当前已完成：
+
+- `/me` 页面
+- 当前用户信息展示
+- `Log out` 入口
+- 最近报告列表
+- 本周任务模块
+- 成长趋势模块
+- 核心统计卡片
+- 历史报告跳转到 `/pose-2d/report?id={report_public_id}`
+- 数据源已从前端直查 Supabase 报告表切换为 `/api/v1/me/*`
+
+因此，本文档后续章节中“建议新增”“需要补齐”的描述应理解为早期规划记录，而不是当前未完成状态。当前剩余重点请以 [training-camp-backend-next-iteration-task-breakdown.md](<D:\githubproject\ai-hoops-cloud\docs\training-camp-backend-next-iteration-task-breakdown.md>) 为准。
+
 ## 1. 目标
 
 当前项目已经有登录、注册和动作分析页面，但缺少一个统一的“个人中心”承接登录后的用户状态与长期使用场景。
@@ -198,7 +216,7 @@
 
 ## 8. 当前项目中需要补齐的后端能力
 
-虽然现在先写文档、不改代码，但个人中心开发时需要明确几个后端缺口。
+本节是早期规划记录。当前个人中心已经接入后端聚合接口，但仍保留以下背景说明，方便理解演进过程。
 
 ### 8.1 logout 接口接入前端
 
@@ -213,50 +231,26 @@
 
 ### 8.2 历史报告接口
 
-当前存在两个现实问题：
+当前状态：
 
-- 后端 PostgreSQL 里已经有 `analysis_reports` 模型
-- 但前端当前的报告保存逻辑仍然直接写 Supabase
-
-这意味着个人中心的“历史报告”在实现前必须先明确数据源。
-
-建议路线：
-
-- 第一阶段：如果当前线上/本地报告仍走 Supabase，可先从 Supabase 读取历史报告
-- 第二阶段：统一收口到后端 API，再由前端只调用后端
-
-建议后续接口：
-
-- `GET /users/me/reports`
-- `GET /users/me/reports/{report_id}`
+- 前端报告保存已经走 `POST /api/v1/reports`
+- 个人中心历史报告已经走 `GET /api/v1/me/reports`
+- 报告详情已经走 `GET /api/v1/reports/{report_public_id}`
 
 ### 8.3 本周任务接口
 
-当前项目没有现成任务模型，因此本周任务需要新增后端能力。
+当前状态：
 
-建议新增：
-
-- 用户任务表
-- 任务完成状态
-- 任务周期字段
-- 任务来源字段（系统生成 / 教练布置 / AI 推荐）
-
-建议后续接口：
-
-- `GET /users/me/tasks/week`
-- `POST /users/me/tasks/{task_id}/complete`
+- 后端已有 `training_tasks` 和 `training_task_assignments`
+- 个人中心任务列表已经走 `GET /api/v1/me/tasks`
+- 教练端发布真实任务的接口尚未补齐
 
 ### 8.4 成长趋势接口
 
-成长趋势可以有两种实现方式：
+当前状态：
 
-- 第一阶段：基于历史报告数据前端聚合
-- 第二阶段：由后端直接返回聚合好的趋势数据
-
-建议后续接口：
-
-- `GET /users/me/trends?range=7d`
-- `GET /users/me/trends?range=30d`
+- 成长趋势已经走 `GET /api/v1/me/trends`
+- 后端会优先读取 `student_growth_snapshots`，没有快照时回退到报告数据聚合
 
 ## 9. 前端组件拆分建议
 

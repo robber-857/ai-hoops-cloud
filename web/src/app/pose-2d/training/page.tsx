@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 
 import PoseWorkspaceShell from '@/components/Pose2D/PoseWorkspaceShell';
+import type { CompletedUploadSession } from '@/services/uploads';
 
 const UploadDropzone = dynamic(
   () => import('../../../components/Pose2D/UploadDropZone'),
@@ -18,13 +19,19 @@ const PoseAnalysisView = dynamic(
 export default function TrainingPage() {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [cloudVideoUrl, setCloudVideoUrl] = useState<string | null>(null);
+  const [uploadSession, setUploadSession] = useState<CompletedUploadSession | null>(null);
 
   const handleClear = () => {
     setVideoFile(null);
     setCloudVideoUrl(null);
+    setUploadSession(null);
   };
 
-  const handleFileSelect = (file: File | null, url?: string) => {
+  const handleFileSelect = (
+    file: File | null,
+    url?: string,
+    session?: CompletedUploadSession,
+  ) => {
     console.log('File Selected:', file?.name);
     console.log('Cloud URL Received:', url);
 
@@ -32,6 +39,7 @@ export default function TrainingPage() {
     if (url) {
       setCloudVideoUrl(url);
     }
+    setUploadSession(session ?? null);
   };
 
   return (
@@ -40,12 +48,13 @@ export default function TrainingPage() {
         <PoseAnalysisView
           file={videoFile}
           videoUrl={cloudVideoUrl}
+          uploadSession={uploadSession}
           onClear={handleClear}
           analysisType="training"
         />
       ) : (
         <div className="py-2">
-          <UploadDropzone onFileSelect={handleFileSelect} />
+          <UploadDropzone analysisType="training" onFileSelect={handleFileSelect} />
         </div>
       )}
     </PoseWorkspaceShell>

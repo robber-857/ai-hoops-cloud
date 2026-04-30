@@ -104,6 +104,7 @@ class ReportService:
             .where(AnalysisReport.session_id == session.id)
             .order_by(AnalysisReport.created_at.desc())
         )
+        is_new_report = existing_report is None
 
         now = datetime.now(timezone.utc)
         report = existing_report or AnalysisReport(
@@ -151,22 +152,23 @@ class ReportService:
         self.db.add(session)
 
         if session.task_assignment:
-            self._update_task_assignment(session.task_assignment, report)
+            self._update_task_assignment(session.task_assignment)
 
         self._upsert_daily_growth_snapshot(current_user.id, report)
         unlocked = self._unlock_achievements_if_needed(current_user.id, report)
 
-        self.db.add(
-            Notification(
-                user_id=current_user.id,
-                type="report_ready",
-                title="Your training report is ready",
-                content=f"{payload.template_code} report has been saved.",
-                business_type="analysis_report",
-                business_id=report.id,
-                is_read=False,
+        if is_new_report:
+            self.db.add(
+                Notification(
+                    user_id=current_user.id,
+                    type="report_ready",
+                    title="Your training report is ready",
+                    content=f"{payload.template_code} report has been saved.",
+                    business_type="analysis_report",
+                    business_id=report.id,
+                    is_read=False,
+                )
             )
-        )
         for achievement in unlocked:
             self.db.add(
                 Notification(
@@ -235,32 +237,55 @@ class ReportService:
         )
         return membership is not None
 
-    def _update_task_assignment(self, assignment: TrainingTaskAssignment, report: AnalysisReport) -> None:
-        assignment.completed_sessions = int(assignment.completed_sessions) + 1
-        assignment.last_submission_at = report.analysis_finished_at
-        assignment.latest_report_id = report.id
+    def _update_task_assignment(self, assignment: TrainingTaskAssignment) -> None:
+        reports = self.db.scalars(
+            select(AnalysisReport)
+            .join(TrainingSession, AnalysisReport.session_id == TrainingSession.id)
+            .where(
+                TrainingSession.task_assignment_id == assignment.id,
+                AnalysisReport.status == ReportStatus.completed,
+            )
+        ).all()
 
-        report_score = _numeric_to_float(report.overall_score) or 0
-        if assignment.best_score is None or report_score > float(assignment.best_score):
-            assignment.best_score = report_score
+        assignment.completed_sessions = len({report.session_id for report in reports})
+
+        latest_report = max(
+            reports,
+            key=lambda item: item.analysis_finished_at or item.created_at or datetime.min.replace(tzinfo=timezone.utc),
+            default=None,
+        )
+        assignment.last_submission_at = (
+            latest_report.analysis_finished_at or latest_report.created_at if latest_report else None
+        )
+        assignment.latest_report_id = latest_report.id if latest_report else None
+
+        scores = [
+            score
+            for score in (_numeric_to_float(report.overall_score) for report in reports)
+            if score is not None
+        ]
+        assignment.best_score = max(scores) if scores else None
 
         target_config = assignment.task.target_config or {}
         target_sessions = int(target_config.get("target_sessions", 1))
         target_score = float(target_config.get("target_score", 0))
 
         session_progress = min(assignment.completed_sessions / max(target_sessions, 1), 1)
-        score_progress = 1.0 if target_score <= 0 else min(report_score / target_score, 1)
+        best_score = _numeric_to_float(assignment.best_score) or 0
+        score_progress = 1.0 if target_score <= 0 else min(best_score / target_score, 1)
         assignment.progress_percent = round(max(session_progress, score_progress) * 100, 2)
 
         meets_sessions = assignment.completed_sessions >= target_sessions
-        meets_score = target_score <= 0 or report_score >= target_score
+        meets_score = target_score <= 0 or best_score >= target_score
         if meets_sessions and meets_score:
             assignment.status = "completed"
-            assignment.completed_at = report.analysis_finished_at
+            assignment.completed_at = assignment.last_submission_at
         elif assignment.completed_sessions > 0:
             assignment.status = "in_progress"
+            assignment.completed_at = None
         else:
             assignment.status = "pending"
+            assignment.completed_at = None
 
         self.db.add(assignment)
 

@@ -1,233 +1,136 @@
-# AI 篮球训练营后端下一轮开发任务拆解清单
+# AI 篮球训练营下一轮开发任务拆解清单
 
 ## 1. 文档目的
 
-本文档用于承接以下两份文档：
+本文档承接当前实施状态文档：
 
-- 目标设计文档：
-  [training-camp-backend-data-design.md](<D:\githubproject\ai-hoops-cloud\docs\training-camp-backend-data-design.md>)
-- 当前实施状态文档：
-  [training-camp-backend-implementation-status.md](<D:\githubproject\ai-hoops-cloud\docs\training-camp-backend-implementation-status.md>)
+- [training-camp-backend-implementation-status.md](<D:\githubproject\ai-hoops-cloud\docs\training-camp-backend-implementation-status.md>)
 
-本文档重点回答：
+截至 2026-04-30，以下任务已经完成并进入已验证状态：
 
-- 下一轮具体先做什么
-- 每一项开发任务的目标是什么
-- 建议按什么顺序推进
-- 哪些任务会影响前后端联调
+- 数据库迁移已在本地执行
+- 前端上传链路已接 `POST /api/v1/uploads/init` 和 `POST /api/v1/uploads/complete`
+- 报告保存已接 `POST /api/v1/reports`
+- 报告详情页已接 `GET /api/v1/reports/{report_public_id}`
+- 个人中心已接 `/me/*` 后端聚合接口
+- 本地端到端上传、分析、保存、报告读取链路已验证正常
+- 报告页模板选择后的评分会回写同一份报告，个人中心 Recent reports 会展示最后确认的模板评分
+- 教练端第一批后端接口已完成：班级、学生、报告、发布任务、发布公告
+- 已补一个报告重复保存幂等性的单元测试
+
+因此本文档不再把“前端主链路迁移”作为下一轮目标，而是记录剩余未完成内容的建议推进顺序。
 
 ## 2. 下一轮总目标
 
-下一轮建议把重点放在“让前端真正切到新的后端主记录源”。
+下一轮建议目标是：把当前“学生端主链路已跑通”的能力，扩展为更完整的训练营运营闭环。
 
-也就是说，下一轮的主目标不是继续铺很多新表，而是把已经写好的后端能力真正接起来，让训练上传、报告保存、个人中心、模板读取都从 PostgreSQL 主链路跑通。
+重点不再是主链路是否能保存报告，而是：
+
+- 上传策略进一步后端化
+- 教练端前端页面开始可用
+- 管理员端开始可维护基础数据
+- 自动化测试补齐
+- 为后端异步 AI 分析做设计准备
 
 ## 3. 建议优先级
 
 建议按下面顺序推进：
 
-1. 执行数据库迁移并验证库结构
-2. 前端上传链路接入后端 API
-3. 前端报告保存与报告读取接入后端 API
-4. 前端个人中心接入 `/me/*`
-5. 补服务端 Supabase 上传接入
-6. 补教练端接口
-7. 补管理员端接口
-8. 最后再推进后端异步 AI 分析
+1. 服务端 Supabase 上传签名或上传凭证方案
+2. 教练端第一版前端页面
+3. 管理员端第一批接口
+4. 自动化集成测试补齐
+5. 后端异步 AI 分析链路设计与第一版实现
 
 ## 4. 任务拆解
 
-## 4.1 任务 A：执行数据库迁移
+## 4.1 任务 A：服务端 Supabase 上传签名或上传凭证
 
 ### 目标
 
-把当前新增的数据模型真正同步到 PostgreSQL。
+把对象存储上传策略进一步收口到后端，减少前端对 Supabase Storage 细节的直接控制。
 
-### 任务内容
+### 当前状态
 
-- 确认 `server/.env` 或 Render 环境变量中的数据库配置正确
-- 在 `server/` 目录执行 Alembic 迁移
-- 确认以下表已成功创建：
-  - `training_camps`
-  - `camp_classes`
-  - `class_members`
-  - `training_templates`
-  - `training_template_versions`
-  - `template_example_videos`
-  - `training_sessions`
-  - `training_tasks`
-  - `training_task_assignments`
-  - `announcements`
-  - `announcement_reads`
-  - `notifications`
-  - `student_growth_snapshots`
-  - `achievements`
-  - `student_achievements`
-  - `student_goals`
+当前已经完成：
 
-### 完成标准
+- 后端创建 `training_session`
+- 后端创建 `upload_task`
+- 后端生成 `bucket_name` 和 `object_key`
+- 前端按后端返回的路径上传 Supabase Storage
+- 前端调用 `uploads/complete` 后，后端写入 `videos`、`upload_tasks`、`training_sessions`
 
-- `alembic upgrade head` 成功
-- 数据库中能看到新增表和新增字段
-- 不出现 migration 中断或枚举冲突
+当前尚未完成：
 
-## 4.2 任务 B：前端上传链路切到后端
+- 后端没有真正签发 Supabase 上传 URL
+- 前端仍直接持有 Supabase Storage 客户端上传能力
 
-### 目标
+### 建议任务内容
 
-让前端不再自己定义上传会话主记录，而是通过后端创建 `training_session` 和 `upload_task`。
-
-### 任务内容
-
-- 改造上传页或上传组件，先调用 `POST /api/v1/uploads/init`
-- 使用后端返回的：
-  - `session_public_id`
-  - `upload_task_public_id`
-  - `bucket_name`
-  - `object_key`
-- 完成 Supabase 上传后，再调用 `POST /api/v1/uploads/complete`
-
-### 主要影响文件
-
-- [UploadDropZone.tsx](<D:\githubproject\ai-hoops-cloud\web\src\components\Pose2D\UploadDropZone.tsx>)
-- 可能新增 `web/src/services/uploads.ts`
-- 可能扩展 `web/src/services/client.ts`
+- 评估 Supabase 服务端 SDK 是否适合当前 FastAPI 服务
+- 设计 `uploads/init` 的返回结构扩展：
+  - 上传策略类型
+  - 上传 URL 或 token
+  - 过期时间
+  - 允许的 content-type、size 限制
+- 保持当前 `client_direct_supabase` 兼容
+- 如引入签名上传，补充失败、过期、重试语义
 
 ### 完成标准
 
-- 上传一个视频后，数据库能看到：
-  - `training_sessions`
-  - `upload_tasks`
-  - `videos`
-- 前端上传逻辑不再只依赖 Supabase 客户端本地流程
-
-## 4.3 任务 C：报告保存改走后端
-
-### 目标
-
-前端分析结果不再直接写 Supabase `analysis_reports`，改为提交后端保存。
-
-### 任务内容
-
-- 前端生成评分结果后，调用 `POST /api/v1/reports`
-- 请求里传入：
-  - `session_public_id`
-  - `template_code`
-  - `template_version`
-  - `overall_score`
-  - `grade`
-  - `score_data`
-  - `timeline_data`
-  - `summary_data`
-
-### 主要影响文件
-
-- [PoseAnalysisView.tsx](<D:\githubproject\ai-hoops-cloud\web\src\components\Pose2D\PoseAnalysisView.tsx>)
-- 可能新增 `web/src/services/reports.ts`
-
-### 完成标准
-
-- 前端点击生成报告后，后端成功写入：
-  - `analysis_reports`
-  - `report_snapshots`
-  - 相关 `notifications`
-- 页面跳转时使用后端返回的 `report_public_id`
-
-## 4.4 任务 D：报告页读取改走后端
-
-### 目标
-
-报告详情页不再直接查 Supabase。
-
-### 任务内容
-
-- 报告页改为调用 `GET /api/v1/reports/{report_public_id}`
-- 路由参数逐步从旧的 `id` 数字模式切到 `public_id`
-- 页面内部映射后端返回的：
-  - `score_data`
-  - `timeline_data`
-  - `summary_data`
-  - `video_url`
-
-### 主要影响文件
-
-- [page.tsx](<D:\githubproject\ai-hoops-cloud\web\src\app\pose-2d\report\page.tsx>)
-
-### 完成标准
-
-- 报告页完全不依赖 Supabase 报告表
-- 学员打开历史报告时，数据来自后端 API
-
-## 4.5 任务 E：个人中心改走 `/me/*`
-
-### 目标
-
-把个人中心从“前端直接查 Supabase”切到“后端聚合接口”。
-
-### 任务内容
-
-- 概览数据改读 `GET /api/v1/me/dashboard`
-- 历史报告列表改读 `GET /api/v1/me/reports`
-- 历史训练记录改读 `GET /api/v1/me/training-sessions`
-- 本周任务改读 `GET /api/v1/me/tasks`
-- 成就改读 `GET /api/v1/me/achievements`
-- 趋势改读 `GET /api/v1/me/trends`
-
-### 主要影响文件
-
-- [page.tsx](<D:\githubproject\ai-hoops-cloud\web\src\app\me\page.tsx>)
-- [GrowthTrendsSection.tsx](<D:\githubproject\ai-hoops-cloud\web\src\components\account\GrowthTrendsSection.tsx>)
-- [AccountCenterShell.tsx](<D:\githubproject\ai-hoops-cloud\web\src\components\account\AccountCenterShell.tsx>)
-
-### 完成标准
-
-- `/me` 页面不再直接查 Supabase 报告数据
-- 个人中心所有主要数据来自后端聚合接口
-
-## 4.6 任务 F：服务端 Supabase 上传接入
-
-### 目标
-
-把上传路径和上传策略进一步收口到后端。
-
-### 任务内容
-
-- 评估是否接入服务端 Supabase SDK
-- 后端统一控制 bucket、object_key、上传时效
-- 如需要，扩展 `POST /uploads/init` 返回真实上传凭证
-
-### 完成标准
-
-- 前端不再自己拼完整对象路径规则
+- 前端不再需要自己决定对象路径
 - 上传策略由后端统一下发
+- 上传失败、过期、重复完成回调有清晰处理
 
-## 4.7 任务 G：补教练端第一批接口
+## 4.2 任务 B：教练端第一版前端页面
 
 ### 目标
 
-让教练能开始使用班级与学生数据。
+基于已完成的教练端第一批后端接口，开发教练可以实际使用的前端页面，让教练围绕自己负责的班级开始做最小运营闭环。
 
-### 建议先补的接口
+### 已完成后端接口
 
 - `GET /api/v1/coach/classes`
-- `GET /api/v1/coach/classes/{classPublicId}/students`
-- `GET /api/v1/coach/classes/{classPublicId}/reports`
-- `POST /api/v1/coach/classes/{classPublicId}/tasks`
-- `POST /api/v1/coach/classes/{classPublicId}/announcements`
+- `GET /api/v1/coach/classes/{class_public_id}/students`
+- `GET /api/v1/coach/classes/{class_public_id}/reports`
+- `POST /api/v1/coach/classes/{class_public_id}/tasks`
+- `POST /api/v1/coach/classes/{class_public_id}/announcements`
+
+### 关键权限规则
+
+- `coach` 只能访问自己作为 active coach member 的班级
+- `admin` 可作为全局管理角色访问
+- 学生报告详情继续复用当前按班级归属访问的判断逻辑
+
+### 建议前端页面范围
+
+- `/coach`：教练首页，展示班级列表和最近运营概览
+- `/coach/classes/{classPublicId}`：班级详情，包含学生列表、近期报告、任务发布、公告发布
+- 班级学生列表支持点击进入学生训练档案的预留入口
+- 班级报告列表支持跳转现有报告详情页 `/pose-2d/report?id={report_public_id}`
+- 发布任务表单支持选择动作类型、模板、目标次数、目标分数、截止时间
+- 发布公告表单支持标题、内容、置顶、发布时间、过期时间
+
+更详细的前端准备文档见：
+
+- [coach-portal-function-api.md](<D:\githubproject\ai-hoops-cloud\docs\coach-portal-function-api.md>)
 
 ### 完成标准
 
+- 教练登录后能进入 `/coach`
 - 教练能看到自己负责的班级
-- 教练能查看班级学生训练报告
-- 教练能发布任务和公告
+- 教练能进入班级详情页查看学生和报告
+- 教练能发布训练任务，并看到发布成功后的反馈
+- 教练能发布公告，并看到发布成功后的反馈
+- 非教练用户访问教练端页面时有清晰的无权限处理
 
-## 4.8 任务 H：补管理员端第一批接口
+## 4.3 任务 C：管理员端第一批接口
 
 ### 目标
 
-让管理员开始能维护训练营组织和模板体系。
+让管理员可以维护训练营组织结构和模板体系。
 
-### 建议先补的接口
+### 建议先补接口
 
 - `GET /api/v1/admin/camps`
 - `POST /api/v1/admin/camps`
@@ -241,49 +144,85 @@
 ### 完成标准
 
 - 管理员能维护训练营
-- 管理员能维护班级和成员关系
+- 管理员能维护班级
+- 管理员能维护班级成员关系
 - 管理员能维护模板和模板版本
 
-## 4.9 任务 I：后端异步 AI 分析链路
+## 4.4 任务 D：自动化测试补齐
 
 ### 目标
 
-把“前端分析再回传保存”的过渡方案，逐步演进成“后端异步分析”。
+把当前依赖手动验证的关键链路沉淀为可回归测试。
 
-### 任务内容
+当前已有：
 
-- 设计分析任务队列
-- 上传完成后自动进入分析状态
-- 后端运行 MediaPipe
-- 后端生成报告
+- `server/tests/test_report_service_idempotency.py` 覆盖重复保存同一 session 报告时，任务完成次数按唯一训练 session 计算
+
+### 建议优先测试范围
+
+- `POST /uploads/init`
+- `POST /uploads/complete`
+- `POST /reports`
+- `GET /reports/{report_public_id}`
+- `GET /me/dashboard`
+- `GET /me/reports`
+- 学员访问他人报告的 403
+- 教练按班级归属访问学生报告
+- 重复调用 `uploads/complete` 的幂等行为
+- 重复保存同一 session 报告的覆盖或更新行为
+- 教练访问自己班级的学生、报告、任务发布、公告发布
+- 教练访问非自己班级时的 404/403 边界
+
+### 完成标准
+
+- 后端有覆盖主链路的 pytest 集成测试
+- 权限边界有明确测试
+- 本地开发可以一条命令跑完关键后端测试
+
+## 4.5 任务 E：后端异步 AI 分析链路
+
+### 目标
+
+把当前“前端分析后提交报告”的过渡方案，逐步演进为“上传后后端异步分析并生成报告”。
+
+### 建议任务内容
+
+- 设计分析任务表或任务队列
+- `uploads/complete` 后自动创建分析任务
+- 增加分析状态：
+  - queued
+  - processing
+  - completed
+  - failed
+- 后端运行 MediaPipe 或独立分析 worker
+- 后端生成 `analysis_reports`
 - 后端更新通知、任务、成长、成就
 
 ### 完成标准
 
-- 学员上传完成后，无需前端本地负责完整报告计算
-- 报告完全由后端生成并保存
+- 学员上传完成后，可以不依赖前端本地分析生成报告
+- 报告生成状态可查询
+- 分析失败可重试或可见
 
-## 5. 建议的下一轮交付边界
+## 5. 下一轮建议交付边界
 
 如果下一轮只做一个清晰可交付版本，建议边界定为：
 
-- 已执行数据库迁移
-- 上传页已接 `uploads/init` 和 `uploads/complete`
-- 报告保存已接 `POST /reports`
-- 报告页已接 `GET /reports/{report_public_id}`
-- 个人中心已接 `/me/*`
+- 服务端上传策略方案定稿并实现第一版
+- 教练端前端第一版完成班级、学生、报告、任务发布、公告发布
+- 后端主链路测试覆盖上传、报告、个人中心和教练端权限
 
-如果做到这里，就能形成一个很重要的阶段成果：
+如果时间允许，再继续补：
 
-- 前端主使用链路已经完成从 Supabase 直连到后端 API 的迁移
-- PostgreSQL 真正成为训练营业务主记录源
+- 管理员训练营、班级、成员维护
+- 后端异步 AI 分析设计文档和任务模型草案
 
 ## 6. 下一轮完成后的预期状态
 
-当上述任务完成后，系统会进入下面这个状态：
+完成上述任务后，系统会进入下面这个状态：
 
-- 视频对象仍在 Supabase
-- 但训练业务数据全部由后端掌控
-- 训练会话、视频元数据、分析报告、任务、成长、成就都有统一主记录源
-- 前端不再直接依赖 Supabase 报告表
-- 教练端和管理员端可以在下一轮继续自然扩展
+- 学生端主链路稳定可回归
+- 教练可以通过前端页面围绕班级查看学生训练情况并发布运营内容
+- 管理员可以开始维护训练营基础数据
+- 上传策略进一步从前端收口到后端
+- 后端异步 AI 分析有清晰落地方向

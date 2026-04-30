@@ -1,10 +1,12 @@
 export interface AuthUser {
   id: number;
+  public_id: string;
   username: string;
   phone_number: string;
   email: string | null;
   nickname: string | null;
   avatar_url: string | null;
+  role: "user" | "student" | "coach" | "admin";
   is_active: boolean;
   created_at: string;
   updated_at: string;

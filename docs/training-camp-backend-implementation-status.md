@@ -1,4 +1,4 @@
-# AI 篮球训练营后端开发实施状态说明
+# AI 篮球训练营主链路实施状态说明
 
 ## 0. 文档链路
 
@@ -15,31 +15,33 @@
 - 状态文档：回答“这轮已经做了什么，还缺什么”
 - 任务拆解文档：回答“下一轮按什么顺序继续做”
 
-## 1. 文档目的
+## 1. 当前阶段结论
 
-本文档用于记录本轮基于 [training-camp-backend-data-design.md](<D:\githubproject\ai-hoops-cloud\docs\training-camp-backend-data-design.md>) 已完成的后端开发内容、当前未完成内容，以及后续建议推进顺序。
+截至 2026-04-30，训练营业务主链路已经从“后端能力准备好”推进到“前后端主使用链路已接通并完成端到端上传验证”。
 
-适用范围：
+当前已经具备：
 
-- `server/` 后端服务
-- PostgreSQL 数据模型与 Alembic 迁移
-- 训练视频上传主链路
-- 报告保存与读取主链路
-- 个人中心聚合查询主链路
+- PostgreSQL 作为训练营业务主记录源
+- Supabase Storage 作为当前阶段的视频对象存储
+- 上传初始化、对象上传、上传完成回调的完整链路
+- 前端本地分析后提交后端保存报告的完整链路
+- 报告详情通过后端 API 读取
+- 个人中心通过 `/me/*` 后端聚合接口读取主要数据
+- 教练端第一批后端接口已经接入，可围绕班级查看学生、报告并发布任务和公告
 
-## 2. 本轮开发目标
+当前仍处在过渡阶段：
 
-本轮开发遵循文档第 11 节“数据一致性与迁移建议”的方向，核心目标是：
+- 视频对象仍由前端使用 Supabase 客户端直传
+- AI 分析计算仍在前端本地完成
+- 教练端前端页面尚未开发
+- 管理员端业务接口尚未补齐
+- 还缺少系统化自动化集成测试
 
-- 让 PostgreSQL 成为训练营业务主记录源
-- 让 Supabase 当前阶段仅承担视频对象存储
-- 为后续前端从 Supabase 直连迁移到后端 API 做准备
+## 2. 已完成内容
 
-## 3. 已完成内容
+## 2.1 核心数据模型已补齐
 
-## 3.1 核心数据模型已补齐
-
-本轮已在 `server/app/models/` 下新增或扩展训练营业务核心模型。
+已在 `server/app/models/` 下新增或扩展训练营业务核心模型。
 
 ### 已新增模型
 
@@ -68,17 +70,17 @@
 - [analysis_report.py](<D:\githubproject\ai-hoops-cloud\server\app\models\analysis_report.py>)
 - [__init__.py](<D:\githubproject\ai-hoops-cloud\server\app\models\__init__.py>)
 
-### 本轮模型设计重点
+模型设计重点：
 
-- 新增 `training_sessions` 作为一次训练行为的业务主表
-- 新增 `class_members` 作为学生与教练的班级归属关系表
-- 新增训练模板主表、模板版本表、模板示例视频表
-- 新增任务、公告、通知、成长、成就相关表
-- 让 `upload_tasks` 和 `analysis_reports` 能挂到 `training_sessions`
+- `training_sessions` 作为一次训练行为的业务主表
+- `upload_tasks`、`videos`、`analysis_reports` 统一挂到训练会话
+- `class_members` 支持学生、教练与班级的归属关系
+- 训练模板、模板版本、模板示例视频已有基础结构
+- 任务、公告、通知、成长、成就相关表已具备后续扩展基础
 
-## 3.2 枚举与基础语义已扩展
+## 2.2 枚举与基础语义已扩展
 
-本轮已扩展 [enums.py](<D:\githubproject\ai-hoops-cloud\server\app\models\enums.py>)：
+已扩展 [enums.py](<D:\githubproject\ai-hoops-cloud\server\app\models\enums.py>)：
 
 - `UserRole` 新增 `student`
 - `StorageProvider` 新增 `supabase`
@@ -90,15 +92,15 @@
 - 继续兼容旧的 `training`
 - 继续兼容旧的 `s3`
 
-这意味着当前数据库和代码不会立刻被旧语义卡死，但后续业务上推荐逐步统一到：
+后续业务上推荐逐步统一到：
 
 - `student`
 - `comprehensive`
 - `supabase`
 
-## 3.3 Alembic 迁移脚本已新增
+## 2.3 Alembic 迁移脚本已新增并已在本地执行
 
-本轮已新增迁移脚本：
+已新增迁移脚本：
 
 - [20260427_0002_training_camp_core.py](<D:\githubproject\ai-hoops-cloud\server\alembic\versions\20260427_0002_training_camp_core.py>)
 
@@ -106,7 +108,7 @@
 
 - [alembic/env.py](<D:\githubproject\ai-hoops-cloud\server\alembic\env.py>)
 
-本次迁移脚本完成的事情包括：
+迁移脚本包含：
 
 - 新增训练营核心业务表
 - 扩展已有枚举值
@@ -114,69 +116,35 @@
 - 给 `analysis_reports` 增加 `session_id`、`training_template_id`
 - 对旧 `upload_tasks` 和旧 `analysis_reports` 做最小回填，避免历史内测数据导致迁移失败
 
-## 3.4 新的后端 Schema 已新增
+当前状态：
 
-本轮已新增这些 schema 文件：
+- 用户已完成本地数据库迁移
+- 本轮开发基于“数据库迁移已完成”的前提继续推进
+
+## 2.4 后端 Schema、Service 与 API 已补齐
+
+已新增 schema：
 
 - [training.py](<D:\githubproject\ai-hoops-cloud\server\app\schemas\training.py>)
 - [report.py](<D:\githubproject\ai-hoops-cloud\server\app\schemas\report.py>)
 - [me.py](<D:\githubproject\ai-hoops-cloud\server\app\schemas\me.py>)
 - [template.py](<D:\githubproject\ai-hoops-cloud\server\app\schemas\template.py>)
 
-并扩展了：
-
-- [user.py](<D:\githubproject\ai-hoops-cloud\server\app\schemas\user.py>)
-
-这些 schema 主要用于：
-
-- 上传初始化
-- 上传完成回调
-- 报告保存
-- 报告列表与详情
-- 个人中心聚合响应
-- 模板查询
-
-## 3.5 新的 Service 层已新增
-
-本轮已新增：
+已新增 service：
 
 - [training_service.py](<D:\githubproject\ai-hoops-cloud\server\app\services\training_service.py>)
 - [report_service.py](<D:\githubproject\ai-hoops-cloud\server\app\services\report_service.py>)
 - [me_service.py](<D:\githubproject\ai-hoops-cloud\server\app\services\me_service.py>)
 - [template_service.py](<D:\githubproject\ai-hoops-cloud\server\app\services\template_service.py>)
 
-并扩展了：
-
-- [auth_service.py](<D:\githubproject\ai-hoops-cloud\server\app\services\auth_service.py>)
-
-本轮 Service 层已经实现的能力：
-
-- 训练视频上传初始化
-- 上传完成后的 `videos`、`upload_tasks`、`training_sessions` 落库
-- 学员报告保存
-- 报告快照写入
-- 任务完成度联动更新
-- 成长快照的日级聚合写入
-- 成就判定与解锁写入
-- 报告通知与成就通知写入
-- 个人中心数据聚合查询
-- 模板与模板示例视频查询
-
-## 3.6 新的 API 路由已新增
-
-本轮已新增：
+已新增 API 路由：
 
 - [uploads.py](<D:\githubproject\ai-hoops-cloud\server\app\api\v1\uploads.py>)
 - [reports.py](<D:\githubproject\ai-hoops-cloud\server\app\api\v1\reports.py>)
 - [me.py](<D:\githubproject\ai-hoops-cloud\server\app\api\v1\me.py>)
 - [training_templates.py](<D:\githubproject\ai-hoops-cloud\server\app\api\v1\training_templates.py>)
 
-并更新了：
-
-- [router.py](<D:\githubproject\ai-hoops-cloud\server\app\api\router.py>)
-- [deps.py](<D:\githubproject\ai-hoops-cloud\server\app\api\deps.py>)
-
-本轮已补的接口如下：
+当前已具备的接口：
 
 - `POST /api/v1/uploads/init`
 - `POST /api/v1/uploads/complete`
@@ -191,61 +159,141 @@
 - `GET /api/v1/me/trends`
 - `GET /api/v1/training-templates`
 - `GET /api/v1/training-templates/{template_code}`
+- `GET /api/v1/coach/classes`
+- `GET /api/v1/coach/classes/{class_public_id}/students`
+- `GET /api/v1/coach/classes/{class_public_id}/reports`
+- `POST /api/v1/coach/classes/{class_public_id}/tasks`
+- `POST /api/v1/coach/classes/{class_public_id}/announcements`
 
-## 3.7 阶段性权限策略已接入
+## 2.5 前端主链路已切到后端 API
 
-当前没有上完整 RBAC，但本轮已经保留并扩展了“角色 + 归属关系”的阶段性访问控制方案。
+本轮已完成前端服务层和调用点迁移。
+
+新增前端服务文件：
+
+- [uploads.ts](<D:\githubproject\ai-hoops-cloud\web\src\services\uploads.ts>)
+- [reports.ts](<D:\githubproject\ai-hoops-cloud\web\src\services\reports.ts>)
+- [me.ts](<D:\githubproject\ai-hoops-cloud\web\src\services\me.ts>)
+
+已改造上传入口：
+
+- [UploadDropZone.tsx](<D:\githubproject\ai-hoops-cloud\web\src\components\Pose2D\UploadDropZone.tsx>)
+- [shooting/page.tsx](<D:\githubproject\ai-hoops-cloud\web\src\app\pose-2d\shooting\page.tsx>)
+- [dribbling/page.tsx](<D:\githubproject\ai-hoops-cloud\web\src\app\pose-2d\dribbling\page.tsx>)
+- [training/page.tsx](<D:\githubproject\ai-hoops-cloud\web\src\app\pose-2d\training\page.tsx>)
+
+上传链路现在是：
+
+1. 前端调用 `POST /api/v1/uploads/init`
+2. 后端创建 `training_session` 和 `upload_task`
+3. 后端返回 `bucket_name`、`object_key`、`session_public_id`、`upload_task_public_id`
+4. 前端按后端下发路径上传到 Supabase Storage
+5. 前端调用 `POST /api/v1/uploads/complete`
+6. 后端写入或更新 `videos`、`upload_tasks`、`training_sessions`
+
+已改造报告保存和读取：
+
+- [PoseAnalysisView.tsx](<D:\githubproject\ai-hoops-cloud\web\src\components\Pose2D\PoseAnalysisView.tsx>)
+- [report/page.tsx](<D:\githubproject\ai-hoops-cloud\web\src\app\pose-2d\report\page.tsx>)
+
+报告链路现在是：
+
+1. 前端本地完成动作分析和评分
+2. 前端调用 `POST /api/v1/reports`
+3. 后端写入 `analysis_reports`、`report_snapshots`、相关通知与成长数据
+4. 前端使用后端返回的 `report_public_id` 跳转报告页
+5. 报告页调用 `GET /api/v1/reports/{report_public_id}` 读取详情
+6. 报告页按用户选择的模板重新计算评分，并通过 `POST /api/v1/reports` 更新同一份报告
+
+本轮修正了一个关键体验问题：
+
+- 上传分析页仍会以当前动作类型的第一个模板生成默认报告
+- 用户进入报告页后，如果选择其他模板或年龄段，报告页会把当前展示的模板和分数回写后端
+- 个人中心 `Recent reports` 因此会展示用户最后在报告页确认过的模板评分，而不是固定保存上传分析页的第一个模板评分
+- 后端保存同一 `training_session` 的报告时改为幂等更新，避免重复保存导致训练任务完成次数被重复累计
+
+已改造个人中心：
+
+- [me/page.tsx](<D:\githubproject\ai-hoops-cloud\web\src\app\me\page.tsx>)
+
+个人中心现在读取：
+
+- `GET /api/v1/me/dashboard`
+- `GET /api/v1/me/reports`
+- `GET /api/v1/me/tasks`
+- `GET /api/v1/me/trends`
+
+## 2.6 阶段性权限策略已接入
+
+当前没有上完整 RBAC，但已具备“角色 + 归属关系”的阶段性访问控制方案。
 
 当前状态：
 
 - 学员接口按资源 owner 限制
 - 报告详情支持教练按班级归属访问
-- 管理员可后续直接扩展为全局访问
+- 教练端接口按 active coach member 班级归属访问
+- 管理员可后续扩展为全局访问
 
 这部分主要体现在：
 
 - [deps.py](<D:\githubproject\ai-hoops-cloud\server\app\api\deps.py>)
 - [report_service.py](<D:\githubproject\ai-hoops-cloud\server\app\services\report_service.py>)
 - [training_service.py](<D:\githubproject\ai-hoops-cloud\server\app\services\training_service.py>)
+- [coach_service.py](<D:\githubproject\ai-hoops-cloud\server\app\services\coach_service.py>)
 
-## 3.8 配置项已补充
+## 2.7 教练端第一批后端接口已完成
 
-本轮已在 [config.py](<D:\githubproject\ai-hoops-cloud\server\app\core\config.py>) 中新增：
+本轮新增了教练端最小运营闭环接口：
 
-- `UPLOAD_VIDEO_BUCKET`
-- `TEMPLATE_VIDEO_BUCKET`
+- `GET /api/v1/coach/classes`
+- `GET /api/v1/coach/classes/{class_public_id}/students`
+- `GET /api/v1/coach/classes/{class_public_id}/reports`
+- `POST /api/v1/coach/classes/{class_public_id}/tasks`
+- `POST /api/v1/coach/classes/{class_public_id}/announcements`
 
-用于支持当前阶段的对象存储元数据管理。
+实现文件：
 
-## 3.9 基础校验已完成
+- [coach.py](<D:\githubproject\ai-hoops-cloud\server\app\api\v1\coach.py>)
+- [coach.py](<D:\githubproject\ai-hoops-cloud\server\app\schemas\coach.py>)
+- [coach_service.py](<D:\githubproject\ai-hoops-cloud\server\app\services\coach_service.py>)
 
-本轮做过以下校验：
+当前能力：
 
-- 使用项目虚拟环境进行了 Python 模块导入检查
-- 进行了 `compileall` 语法编译检查
-- 进行了 SQLAlchemy `configure_mappers()` 映射检查
+- `coach` 只能访问自己作为 active coach member 的班级
+- `admin` 可访问全部班级
+- 教练可以查看自己负责的班级列表
+- 教练可以查看班级内 active student member 列表
+- 教练可以查看班级下学生报告
+- 教练发布训练任务时，会为班级内 active student member 创建 `training_task_assignment`
+- 教练可以发布班级公告
 
-校验结论：
+前端页面尚未开发，后续可参考：
 
-- 新增模型、schema、service、router 在导入层面通过
-- 新增后端代码在语法层面通过
-- 新增 ORM 关系在 mapper 配置层面通过
+- [coach-portal-function-api.md](<D:\githubproject\ai-hoops-cloud\docs\coach-portal-function-api.md>)
 
-## 4. 本轮没有完成的内容
+## 2.8 当前校验结果
 
-## 4.1 前端尚未切换到新的后端 API
+后端基础校验已完成：
 
-目前新的后端接口已经具备，但前端还没有完成切换。
+- Python 模块导入检查
+- `compileall` 语法编译检查
+- SQLAlchemy `configure_mappers()` 映射检查
+- FastAPI app 路由加载检查
+- `python -m unittest server.tests.test_report_service_idempotency` 通过
 
-也就是说，以下页面或组件还没有正式迁移：
+前端校验已完成：
 
-- 上传页
-- 报告页
-- 个人中心
+- `npm.cmd run lint` 通过
+- `npm.cmd run build` 通过
 
-当前仍然存在前端直连 Supabase 的逻辑，需要后续改造。
+端到端功能验证：
 
-## 4.2 还没有实现服务端真正签发 Supabase 上传 URL
+- 用户已在本地验证上传、分析、保存报告、报告页读取链路正常
+- 浏览器网络面板可看到 `uploads/init`、Supabase 对象上传、`uploads/complete`、`reports`、报告详情读取请求均正常返回
+
+## 3. 当前没有完成的内容
+
+## 3.1 服务端 Supabase 上传签名尚未接入
 
 当前 `POST /uploads/init` 已经能够：
 
@@ -253,64 +301,45 @@
 - 创建 `upload_task`
 - 生成对象路径和上传元数据
 
-但还没有接入 Supabase 服务端 SDK 去真正生成上传签名或服务端上传凭证。
+但还没有接入 Supabase 服务端 SDK 去真正生成上传签名或短期上传凭证。
 
-当前阶段返回的是：
+当前阶段仍是：
 
-- `upload_strategy = client_direct_supabase`
+- 后端统一生成 bucket 和 object_key
+- 前端使用 Supabase 客户端直传对象
+- 后端通过 `uploads/complete` 接收完成回调并落业务数据
 
-所以这轮完成的是“后端元数据主链路”，不是“服务端托管上传签名”的完整版本。
+后续如果要进一步收口上传能力，需要让后端下发真实上传凭证，或者改为服务端代理上传。
 
-## 4.3 还没有实现 MediaPipe 后端异步分析任务
+## 3.2 MediaPipe 后端异步分析任务尚未实现
 
-本轮的 `POST /reports` 更适合作为：
+当前 `POST /reports` 是过渡方案：
 
-- 前端已完成分析后，把结果提交回后端保存
+- 前端完成分析
+- 前端把评分、时间线和总结数据提交给后端保存
 
-但还没有实现：
+尚未实现：
 
 - 上传完成后自动排队
 - 后端异步运行 MediaPipe
 - 后端自动生成分析报告
 - 异步任务状态追踪
 
-也就是说，AI 分析执行链路目前还没有从前端完全迁到后端。
-
-## 4.4 教练端和管理员端完整接口还没有开发完
-
-本轮只完成了面向主链路的数据结构与基础读写能力，没有把教练端、管理员端的完整运营接口全部补齐。
+## 3.3 教练端前端和管理员端完整接口尚未开发完
 
 目前未完成的典型接口包括：
 
-- 教练发布训练任务
-- 教练查看班级学生列表
-- 教练按班级筛报告
-- 教练发布公告
+- 教练端前端页面
+- 教练端任务详情、任务编辑、任务关闭、学生任务完成明细
+- 教练端公告列表、公告编辑、公告置顶、公告过期管理
 - 管理员管理训练营
 - 管理员管理班级
-- 管理员管理模板
-- 管理员上传/删除/修改模板示例视频
+- 管理员管理成员关系
+- 管理员管理模板与模板版本
+- 管理员上传、删除、修改模板示例视频
 - 管理员整体数据总览
 
-## 4.5 没有执行真实数据库迁移
-
-本轮已经写好了 Alembic 脚本，但还没有实际执行：
-
-```bash
-alembic upgrade head
-```
-
-所以当前是“代码与迁移脚本已准备好”，但不是“数据库已经在你的环境里完成升级”。
-
-## 4.6 没有补自动化测试
-
-本轮没有新增 pytest 测试文件，也没有做接口级自动化测试。
-
-当前已做的是：
-
-- 导入检查
-- 语法检查
-- ORM 映射检查
+## 3.4 自动化测试尚未补齐
 
 还没做的是：
 
@@ -318,84 +347,41 @@ alembic upgrade head
 - 迁移执行测试
 - 权限边界测试
 - 训练任务与成就联动测试
+- 前端上传、报告保存、报告读取的自动化端到端测试
 
-## 4.7 没有清理或改造前端已有 Supabase 报告表依赖
+## 3.5 前端仍保留 Supabase Storage 客户端依赖
 
-虽然这轮后端已经能接管报告主记录源，但前端原先依赖的：
+这不是当前阶段的错误，而是过渡方案的一部分。
 
-- Supabase `analysis_reports`
-- Supabase 直接上传视频
+当前前端不再直接写 Supabase `analysis_reports`，但仍会：
 
-这些旧逻辑还在，需要下一轮逐步替换。
+- 使用 Supabase 客户端上传视频对象
+- 使用后端下发的 bucket 和 object_key
 
-## 5. 建议下一步开发顺序
+后续如果实现服务端上传签名或服务端代理上传，再进一步减少前端 Supabase Storage 依赖。
 
-建议后续按下面顺序推进。
+## 4. 建议下一步开发顺序
 
-### 第一步
+下一轮建议按以下顺序推进：
 
-先把前端上传与报告保存接到新后端 API：
+1. 补服务端 Supabase 上传签名或上传凭证方案
+2. 开发教练端第一版前端页面
+3. 补管理员端第一批接口
+4. 补自动化集成测试
+5. 设计并推进后端异步 AI 分析链路
 
-- 上传页改接 `POST /uploads/init`
-- 上传成功后改接 `POST /uploads/complete`
-- 报告保存改接 `POST /reports`
-- 报告页改读 `GET /reports/{report_public_id}`
-- 个人中心改读 `/me/*`
+## 5. 过时信息修正记录
 
-### 第二步
+以下旧判断已经过时：
 
-补服务端对象存储接入：
+- “前端尚未切换到新的后端 API”已经过时。上传、报告保存、报告读取、个人中心主链路已经接入后端 API。
+- “没有执行真实数据库迁移”已经过时。用户已完成本地迁移。
+- “没有清理或改造前端已有 Supabase 报告表依赖”已经过时。前端不再直接读写 Supabase `analysis_reports`。
 
-- 服务端生成 Supabase 上传策略或签名
-- 前端不再自己直接控制对象路径规则
+仍然成立的限制：
 
-### 第三步
-
-补教练端能力：
-
-- 班级查询
-- 学员列表
-- 任务发布
-- 公告发布
-- 学员报告查看
-
-### 第四步
-
-补管理员端能力：
-
-- 训练营管理
-- 班级管理
-- 模板管理
-- 示例视频管理
-- 全局统计
-
-### 第五步
-
-把 AI 分析执行真正迁到后端异步任务中。
-
-## 6. 当前阶段结论
-
-这轮后端开发已经完成了“训练营业务主记录源向 PostgreSQL 收口”的第一阶段基础建设。
-
-更准确地说，当前已经具备：
-
-- 训练营核心表结构
-- 训练上传主链路数据落库能力
-- 报告保存与读取能力
-- 个人中心聚合接口
-- 模板查询接口
-- 基于角色与归属关系的初步访问控制
-
-但还没有完成：
-
-- 前端切换
-- 真实数据库升级执行
-- Supabase 服务端上传签名接入
-- 教练端 / 管理员端完整业务接口
-- 后端异步 AI 分析链路
-- 自动化测试
-
-因此，本轮成果适合定义为：
-
-- “后端核心基础设施和业务主链路已落地”
-- 但“前后端联调和完整业务闭环仍需下一轮继续推进”
+- 服务端 Supabase 上传签名尚未实现
+- 后端异步 AI 分析尚未实现
+- 教练端前端页面尚未实现
+- 管理员端接口尚未补齐
+- 自动化集成测试尚未补齐

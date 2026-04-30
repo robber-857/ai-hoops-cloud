@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useState, useEffect, Suspense, useMemo } from "react";
+import React, { useState, useEffect, Suspense, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation"; 
 import { AccountEntryButton } from "@/components/account/AccountEntryButton";
@@ -16,8 +16,8 @@ import { getAllTemplates, getTemplateById, ActionTemplate } from "@/config/templ
 import { calculateRealScore, ScoreResult, Grade, AngleData } from "@/lib/scoring";
 import { useAnalysisStore, FrameSample } from "@/store/analysisStore";
 import MetricTimelineCard from "@/components/Pose2D/MetricTimelineCard";
-import { ChevronLeft, Share2, Download, Activity, CheckCircle2, AlertCircle, Check, Link as LinkIcon, AlertTriangle } from "lucide-react";
-import { supabase } from "@/lib/supabaseClient"; 
+import { ChevronLeft, Download, Activity, CheckCircle2, AlertCircle, Check, Link as LinkIcon, AlertTriangle } from "lucide-react";
+import { reportService } from "@/services/reports";
 import Image from "next/image";
 
 // --- 1. 类型定义与扩展 ---
@@ -43,6 +43,29 @@ type Tone = {
   led: string;
   badgeClass: string;
 };
+
+type SavedScoreData = ScoreResult & {
+  saved_metrics?: AngleData[];
+  score_context?: {
+    age_group?: string;
+    handedness?: string;
+    [key: string]: unknown;
+  };
+};
+
+type ReportSyncState = "idle" | "saving" | "saved" | "error";
+
+const DEFAULT_AGE_GROUP = "16-18";
+
+function getPersistedAgeGroup(scoreData: SavedScoreData): string {
+  return typeof scoreData.score_context?.age_group === "string"
+    ? scoreData.score_context.age_group
+    : DEFAULT_AGE_GROUP;
+}
+
+function buildReportSignature(templateId: string, ageGroup: string, score: number | null | undefined): string {
+  return `${templateId}:${ageGroup}:${typeof score === "number" ? score.toFixed(2) : "none"}`;
+}
 
 // --- 2. 顶层工具函数 ---
 
@@ -172,12 +195,12 @@ const ScoreCard: React.FC<ScoreCardProps> = ({ title, score, weight, icon: Icon 
 // --- 4. 报告页面主体 ---
 
 function ReportContent() {
-  const { currentScore, currentAngles, currentVideoUrl, currentTemplate, currentTimeline } = useAnalysisStore();
+  const { currentAngles, currentVideoUrl, currentTemplate, currentTimeline } = useAnalysisStore();
 
   const searchParams = useSearchParams();
   const reportId = searchParams.get('id');
 
-  const [ageGroup, setAgeGroup] = useState<string>("16-18");
+  const [ageGroup, setAgeGroup] = useState<string>(DEFAULT_AGE_GROUP);
   const [selectedMode, setSelectedMode] = useState<ActionTemplate['mode']>("dribbling");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   
@@ -191,10 +214,14 @@ function ReportContent() {
   const [dbTimeline, setDbTimeline] = useState<FrameSample[] | null>(null); 
   const [dbVideoUrl, setDbVideoUrl] = useState<string | null>(null);
   const [dbSavedMetrics, setDbSavedMetrics] = useState<AngleData[] | null>(null);
+  const [dbSessionPublicId, setDbSessionPublicId] = useState<string | null>(null);
+  const [dbTemplateVersion, setDbTemplateVersion] = useState<string | null>("v1");
+  const [reportSyncState, setReportSyncState] = useState<ReportSyncState>("idle");
 
   const [isMounted, setIsMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const persistedReportSignatureRef = useRef<string | null>(null);
 
   useEffect(() => setIsMounted(true), []);
 
@@ -239,37 +266,43 @@ function ReportContent() {
     }
   }, [selectedTemplateId, currentAngles, ageGroup, reportId, dbSavedMetrics]);
 
-  // 4. 加载 Supabase 云端报告
+  // 4. Load report detail from the backend by public id.
   useEffect(() => {
-    if (!reportId) return;
+    const reportPublicId = reportId;
+    if (!reportPublicId) return;
 
-    async function fetchReport() {
+    async function fetchReport(publicId: string) {
       setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('analysis_reports')
-          .select('*')
-          .eq('id', reportId)
-          .single();
+        const data = await reportService.getReport(publicId);
+        const scoreData = data.score_data as unknown as SavedScoreData;
+        const persistedAgeGroup = getPersistedAgeGroup(scoreData);
 
-        if (error || !data) {
-          console.error("Report fetch failed");
-        } else {
-          setDbResult(data.score_data);
-          setDbTimeline(data.timeline_data as FrameSample[]);
-          setDbVideoUrl(data.video_url);
+        setDbResult(scoreData);
+        setDbTimeline((data.timeline_data ?? []) as FrameSample[]);
+        setDbVideoUrl(data.video_url);
+        setDbSessionPublicId(data.session_public_id);
+        setDbTemplateVersion(data.template_version ?? "v1");
+        setAgeGroup(persistedAgeGroup);
 
-          if (data.score_data?.saved_metrics) {
-             setDbSavedMetrics(data.score_data.saved_metrics);
+        if (Array.isArray(scoreData.saved_metrics)) {
+          setDbSavedMetrics(scoreData.saved_metrics);
+        }
+
+        if (data.template_code) {
+          const t = getTemplateById(data.template_code);
+          if (t) {
+            setSelectedMode(t.mode);
+            setSelectedTemplateId(data.template_code);
           }
+        }
 
-          if (data.template_id) {
-            const t = getTemplateById(data.template_id);
-            if (t) {
-              setSelectedMode(t.mode);
-              setSelectedTemplateId(data.template_id);
-            }
-          }
+        if (data.template_code) {
+          persistedReportSignatureRef.current = buildReportSignature(
+            data.template_code,
+            persistedAgeGroup,
+            data.overall_score ?? scoreData.overall
+          );
         }
       } catch (e) {
         console.error(e);
@@ -277,8 +310,78 @@ function ReportContent() {
         setLoading(false);
       }
     }
-    fetchReport();
+    fetchReport(reportPublicId);
   }, [reportId]);
+
+  useEffect(() => {
+    if (!reportId || !dbSessionPublicId || !dbSavedMetrics || !dbResult || !selectedTemplateId) {
+      return;
+    }
+
+    const template = getTemplateById(selectedTemplateId);
+    if (!template) {
+      return;
+    }
+
+    const nextSignature = buildReportSignature(selectedTemplateId, ageGroup, dbResult.overall);
+    if (persistedReportSignatureRef.current === nextSignature) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        setReportSyncState("saving");
+
+        const savedReport = await reportService.saveReport({
+          session_public_id: dbSessionPublicId,
+          template_code: selectedTemplateId,
+          template_version: dbTemplateVersion ?? "v1",
+          overall_score: dbResult.overall,
+          grade: dbResult.grade,
+          score_data: {
+            ...dbResult,
+            saved_metrics: dbSavedMetrics,
+            score_context: {
+              age_group: ageGroup,
+              handedness: "right",
+              source: "report_template_selection",
+            },
+          },
+          timeline_data: dbTimeline ?? [],
+          summary_data: {
+            analysis_type: template.mode,
+            handedness: "right",
+            metrics_count: dbSavedMetrics.length,
+            template_name: template.displayName,
+            age_group: ageGroup,
+            source: "report_template_selection",
+          },
+        });
+
+        persistedReportSignatureRef.current = buildReportSignature(
+          savedReport.template_code,
+          ageGroup,
+          savedReport.overall_score ?? dbResult.overall
+        );
+        setDbTemplateVersion(savedReport.template_version ?? "v1");
+        setReportSyncState("saved");
+      } catch (error) {
+        console.error("Failed to sync selected report template:", error);
+        setReportSyncState("error");
+      }
+    }, 500);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [
+    ageGroup,
+    dbResult,
+    dbSavedMetrics,
+    dbSessionPublicId,
+    dbTemplateVersion,
+    dbTimeline,
+    reportId,
+    selectedTemplateId,
+  ]);
 
   const handleShare = () => {
     const url = window.location.href;
@@ -291,6 +394,12 @@ function ReportContent() {
   const finalResult = reportId ? dbResult : result;
   const finalVideoUrl = reportId ? dbVideoUrl : currentVideoUrl;
   const finalTimeline = reportId ? dbTimeline : currentTimeline;
+  const backHref =
+    selectedMode === "dribbling"
+      ? routes.pose2d.dribbling
+      : selectedMode === "training"
+        ? routes.pose2d.training
+        : routes.pose2d.shooting;
 
   // 数据异常提示逻辑
   const isDataMissing = useMemo(() => !finalResult || finalResult.overall <= 0, [finalResult]);
@@ -316,6 +425,14 @@ function ReportContent() {
   const overallGrade = finalResult?.grade || "F";
   const overallNum = Math.round(finalResult?.overall || 0);
   const tone = getGradeTone(overallGrade);
+  const reportSyncLabel =
+    reportSyncState === "saving"
+      ? "Saving"
+      : reportSyncState === "saved"
+        ? "Saved"
+        : reportSyncState === "error"
+          ? "Save failed"
+          : "Ready";
 
   return (
     <div className="report-shell min-h-screen text-slate-900 font-sans pb-20 relative overflow-x-hidden">
@@ -341,7 +458,7 @@ function ReportContent() {
               className="text-white hover:bg-white/10 hover:text-white h-8 w-8 sm:h-10 sm:w-10"
             >
               <Link
-                href={selectedMode === "dribbling" ? routes.pose2d.dribbling : routes.pose2d.shooting}
+                href={backHref}
               >
                 <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
               </Link>
@@ -442,6 +559,20 @@ function ReportContent() {
                 </div>
               </div>
             </div>
+
+            {reportId && (
+              <Badge
+                variant="outline"
+                className={cn(
+                  "mb-0.5 border-white/12 bg-white/[0.04] px-3 py-2 text-[0.68rem] uppercase tracking-[0.22em] text-white/62",
+                  reportSyncState === "saving" && "border-sky-300/20 bg-sky-300/10 text-sky-100",
+                  reportSyncState === "saved" && "border-emerald-300/20 bg-emerald-300/10 text-emerald-100",
+                  reportSyncState === "error" && "border-red-300/20 bg-red-300/10 text-red-100"
+                )}
+              >
+                {reportSyncLabel}
+              </Badge>
+            )}
           </div>
         </section>
 

@@ -35,6 +35,8 @@ Required backend variables:
 - `ACCESS_TOKEN_EXPIRE_MINUTES`
 - `REFRESH_TOKEN_EXPIRE_DAYS`
 - `CORS_ORIGINS`
+- `UPLOAD_VIDEO_BUCKET`
+- `TEMPLATE_VIDEO_BUCKET`
 
 ## Vercel setup
 
@@ -76,9 +78,11 @@ JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 REFRESH_TOKEN_EXPIRE_DAYS=7
 CORS_ORIGINS=["https://ai-hoops-cloud.vercel.app","https://your-project-name.vercel.app"]
+UPLOAD_VIDEO_BUCKET=user-videos
+TEMPLATE_VIDEO_BUCKET=template-videos
 ```
 
-After the first backend deploy, run the database migration:
+After the first backend deploy, run the database migration. Local development migration has already been completed as of 2026-04-30, but each new production database still needs this step:
 
 ```bash
 alembic upgrade head
