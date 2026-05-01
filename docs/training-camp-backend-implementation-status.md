@@ -332,6 +332,7 @@
 - 教练端前端页面
 - 教练端任务详情、任务编辑、任务关闭、学生任务完成明细
 - 教练端公告列表、公告编辑、公告置顶、公告过期管理
+- 教练登录状态管理：教练账号登录跳转教练端，教练端页面需要有log out
 - 管理员管理训练营
 - 管理员管理班级
 - 管理员管理成员关系
@@ -385,3 +386,111 @@
 - 教练端前端页面尚未实现
 - 管理员端接口尚未补齐
 - 自动化集成测试尚未补齐
+# 2026-05-02 最新状态更新
+
+> 本节为最新状态增量记录。若本文后续旧段落仍写有“教练端前端页面尚未实现”等判断，以本节为准。
+
+## 本轮新增完成内容
+
+本轮已完成教练端第一版前端 MVP，并把已完成的后端教练接口接入到可使用的产品页面。
+
+### 教练端前端页面已完成第一版
+
+新增页面：
+
+- `web/src/app/coach/page.tsx`
+- `web/src/app/coach/classes/[classPublicId]/page.tsx`
+- `web/src/app/coach/layout.tsx`
+
+当前能力：
+
+- coach/admin 登录后可以进入 `/coach`
+- coach/admin 可以查看自己可访问的班级列表
+- coach/admin 可以进入 `/coach/classes/{classPublicId}` 查看班级详情
+- 班级详情页可以查看班级学生列表
+- 班级详情页可以查看近期训练报告列表
+- 近期报告可以跳转到现有报告详情页：`/pose-2d/report?id={report_public_id}`
+- 班级详情页可以发布训练任务
+- 班级详情页可以发布班级公告
+- 非 coach/admin 用户访问教练端时会显示无权限状态
+
+### 教练端前端服务层已补齐
+
+新增服务文件：
+
+- `web/src/services/coach.ts`
+
+已接入接口：
+
+- `GET /api/v1/coach/classes`
+- `GET /api/v1/coach/classes/{class_public_id}/students`
+- `GET /api/v1/coach/classes/{class_public_id}/reports`
+- `POST /api/v1/coach/classes/{class_public_id}/tasks`
+- `POST /api/v1/coach/classes/{class_public_id}/announcements`
+
+### 教练端视觉与交互框架已落地
+
+新增组件目录：
+
+- `web/src/components/coach/`
+
+主要组件：
+
+- `CoachShell`
+- `CoachClassList`
+- `CoachClassSummary`
+- `CoachStudentTable`
+- `CoachReportTable`
+- `CreateTaskPanel`
+- `CreateAnnouncementPanel`
+- `coachUtils`
+
+视觉与交互完成情况：
+
+- 深色科技风教练工作台
+- 全局底层 3D Canvas
+- 低多边形粒子流与线框篮球
+- 鼠标视差背景
+- 毛玻璃侧边栏和顶部栏
+- Framer Motion 侧边栏高亮与 Tabs 指示条
+- 班级卡片 3D hover tilt
+- HUD 风格班级概览指标
+- 高密度学生表格与报告表格
+- 移动端详情页已修复横向溢出
+
+新增依赖：
+
+- `framer-motion`
+
+### 验证结果
+
+前端验证：
+
+- `npm.cmd run lint` 通过，当前仅保留既有 warning
+- `npm.cmd run build` 通过
+- 使用 Playwright mock 教练端 API 做桌面与移动端视觉验证
+- 3D Canvas 已确认非空渲染
+- 桌面与移动端页面无 console error/warning
+- 移动端详情页复测 `scrollWidth = viewport`
+
+## 当前仍未完成内容
+
+以下限制仍然成立：
+
+- 服务端 Supabase 上传签名或短期上传凭证尚未实现
+- 后端异步 AI 分析任务链路尚未实现
+- 管理员端接口与前端尚未补齐
+- 教练端任务列表、任务详情、任务编辑、任务关闭、学生任务完成明细尚未实现
+- 教练端公告列表、公告编辑、公告置顶、公告过期管理尚未实现
+- 教练端学生训练档案详情页尚未实现
+- 自动化集成测试仍需补齐
+
+## 下一步建议
+
+下一轮建议优先级更新为：
+
+1. 补服务端 Supabase 上传签名或上传凭证方案
+2. 补教练端后续运营接口：任务列表/详情/编辑/关闭、公告列表/编辑/置顶/过期、学生档案
+3. 补管理员端第一批接口与基础前端
+4. 补后端 API 集成测试与权限边界测试
+5. 设计并推进后端异步 AI 分析链路

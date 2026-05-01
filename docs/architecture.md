@@ -1,3 +1,13 @@
+# 2026-05-02 Architecture Update
+
+- The first coach portal frontend is now implemented in `web/src/app/coach/*`.
+- The coach portal uses `web/src/services/coach.ts` to call the existing `/api/v1/coach/*` backend surface.
+- Coach UI components live under `web/src/components/coach/*`.
+- The coach portal is protected by the existing auth bootstrap and route protection flow.
+- The coach shell includes a client-side 3D Canvas background powered by React Three Fiber / Drei, plus Framer Motion transitions for navigation and tab state.
+- Current coach frontend scope covers class list, class detail, student list, report list, task publishing, and announcement publishing.
+- Remaining coach architecture gaps are task management, announcement management, student profile views, coach dashboard aggregation, and automated E2E coverage against real backend data.
+
 # AI Hoops Cloud Architecture
 
 ## Current direction

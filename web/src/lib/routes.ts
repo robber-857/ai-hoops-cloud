@@ -13,6 +13,10 @@ export const routes = {
   user: {
     me: "/me",
   },
+  coach: {
+    home: "/coach",
+    classDetail: (classPublicId: string) => `/coach/classes/${classPublicId}`,
+  },
   pose: "/pose",
   pose2d: {
     main: "/pose-2d/shooting", // 保留旧路径

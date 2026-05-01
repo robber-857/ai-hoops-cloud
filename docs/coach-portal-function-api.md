@@ -403,3 +403,118 @@ type CoachAnnouncementRead = {
 - coach 可以发布训练任务
 - coach 可以发布班级公告
 - 非 coach/admin 用户不能正常进入教练端工作台
+# 2026-05-02 教练端前端实现状态更新
+
+> 本节记录教练端第一版前端 MVP 的实际实现结果。本文后续“建议前端组件拆分”和“第一版验收标准”已基本落地，后续工作应转向任务/公告/学生档案等扩展能力。
+
+## 已实现页面
+
+- `/coach`
+  - 教练首页
+  - 展示可访问班级列表
+  - 展示班级学生数、状态、容量、周期等运营信息
+
+- `/coach/classes/{classPublicId}`
+  - 班级详情页
+  - Hero 概览面板
+  - 班级学生列表
+  - 近期报告列表
+  - 发布训练任务表单
+  - 发布公告表单
+
+## 已实现前端文件
+
+新增服务层：
+
+- `web/src/services/coach.ts`
+
+新增路由：
+
+- `web/src/app/coach/layout.tsx`
+- `web/src/app/coach/page.tsx`
+- `web/src/app/coach/classes/[classPublicId]/page.tsx`
+
+新增组件：
+
+- `web/src/components/coach/CoachShell.tsx`
+- `web/src/components/coach/CoachClassList.tsx`
+- `web/src/components/coach/CoachClassSummary.tsx`
+- `web/src/components/coach/CoachStudentTable.tsx`
+- `web/src/components/coach/CoachReportTable.tsx`
+- `web/src/components/coach/CreateTaskPanel.tsx`
+- `web/src/components/coach/CreateAnnouncementPanel.tsx`
+- `web/src/components/coach/coachUtils.ts`
+
+更新公共文件：
+
+- `web/src/lib/routes.ts`
+- `web/src/app/globals.css`
+- `web/package.json`
+- `web/package-lock.json`
+
+## 已接入接口
+
+- `GET /api/v1/coach/classes`
+- `GET /api/v1/coach/classes/{class_public_id}/students`
+- `GET /api/v1/coach/classes/{class_public_id}/reports`
+- `POST /api/v1/coach/classes/{class_public_id}/tasks`
+- `POST /api/v1/coach/classes/{class_public_id}/announcements`
+
+## 已实现交互
+
+- coach/admin 登录后可进入教练端
+- 非 coach/admin 用户显示无权限状态
+- 教练首页班级卡片可点击进入班级详情
+- 班级详情页 Tabs 在“班级学生”和“近期报告”之间切换
+- 报告行可打开现有报告详情页 `/pose-2d/report?id={report_public_id}`
+- 训练任务发布成功后展示 assignment 数量反馈
+- 公告发布成功后展示成功反馈
+- 表单提交失败时展示后端错误信息
+
+## 已实现视觉规范
+
+- 深色科技风主题
+- 全局 3D Canvas 背景
+- 低多边形粒子流
+- 线框篮球随鼠标视差微动
+- 毛玻璃侧边栏、顶部栏、面板
+- Framer Motion 侧边栏高亮
+- Framer Motion Tabs 指示条
+- 班级卡片 3D hover tilt
+- 状态 badge 脉冲发光
+- HUD 风格指标数字
+- 表格 hover 高亮
+- 移动端响应式布局
+
+## 验证结果
+
+- `npm.cmd run lint` 通过，保留既有 warning
+- `npm.cmd run build` 通过
+- Playwright mock API 验证：
+  - `/coach` 桌面截图通过
+  - `/coach/classes/{classPublicId}` 桌面截图通过
+  - `/coach/classes/{classPublicId}` 移动端截图通过
+  - 3D Canvas 非空
+  - 移动端无横向溢出
+  - 浏览器 console 无 error/warning
+
+## 后续待补接口
+
+当前第一版只支撑 MVP。下一轮建议补：
+
+- `GET /coach/classes/{class_public_id}/tasks`
+- `GET /coach/classes/{class_public_id}/tasks/{task_public_id}`
+- `PATCH /coach/classes/{class_public_id}/tasks/{task_public_id}`
+- `GET /coach/classes/{class_public_id}/announcements`
+- `PATCH /coach/classes/{class_public_id}/announcements/{announcement_public_id}`
+- `GET /coach/students/{student_public_id}/profile`
+- `GET /coach/students/{student_public_id}/reports`
+- `GET /coach/dashboard`
+
+## 后续前端建议
+
+- 在班级详情页增加任务列表与任务状态维护
+- 增加公告列表、公告编辑、置顶和过期管理
+- 增加学生训练档案页
+- 教练首页增加跨班级 dashboard 汇总
+- 增加真实后端数据下的 Playwright E2E 测试
