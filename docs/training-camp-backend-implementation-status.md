@@ -6,7 +6,7 @@
 
 ## 当前阶段结论
 
-篮球训练营系统已经具备学生端主链路、基础后台数据模型、登录角色跳转、Admin/Coach 初版页面和部分管理接口。当前主要缺口已经从“基础链路是否可用”转为“后台管理能力、教练工作台路由、模板标准导入、公告任务通知治理”。
+篮球训练营系统已经具备学生端主链路、基础后台数据模型、登录角色跳转、Admin/Coach 初版页面、Admin 用户管理第一版、Admin 本地模板同步入口，以及 Coach 关键工作台路由。当前主要缺口已经从“基础链路是否可用”转为“公告任务通知治理、后台监督视图、测试覆盖和上传/异步分析增强”。
 
 用户已在 2026-05-03 手动验证：
 
@@ -45,26 +45,34 @@ Coach 区域已有第一版页面和部分后端接口基础，包含：
 - 学员档案与训练记录的基础展示能力。
 - 任务、公告、通知相关的后端模型和初版页面方向。
 
-当前问题：
+本轮新增/完善：
 
-- Coach 左侧导航中的 `Classes`、`Reports`、`Tasks` 等入口前端外观存在，但点击后没有进入独立可用页面或视图。
-- 下一轮需要补齐 Coach 工作台路由或视图切换，让左侧导航成为真实工作入口。
+- Coach 左侧导航中的 `Classes`、`Reports`、`Tasks` 已经指向真实独立路由。
+- 新增 `/coach/classes`，展示当前教练可见班级列表。
+- 新增 `/coach/reports`，聚合展示可见班级的最近学生训练报告，并支持按班级筛选。
+- 新增 `/coach/tasks`，聚合展示可见班级的训练任务，并支持按班级和状态筛选。
+
+当前剩余问题：
+
+- `/coach/tasks` 当前是聚合只读视图，任务编辑/发布主要仍在班级详情页完成。
+- `/coach/announcements`、`/coach/notifications` 还没有独立聚合页。
 
 ### 4. Admin 初版能力
 
-Admin 当前已经可以进行部分训练营后台管理：
+Admin 当前已经可以进行训练营后台管理：
 
 - 新增和管理 camp。
 - 新增和管理 classes。
 - 管理班级成员的基础接口/页面方向。
 - 管理模板元数据的第一版页面。
+- 管理注册用户的第一版能力：列表、筛选、详情、创建、编辑、禁用/恢复、班级分配。
+- 将本地评分模板 dry-run / sync 到后端模板注册表。
 
 当前缺口：
 
-- Admin 还没有完整的“所有注册人员管理系统”。
-- Admin 还不能统一管理 coach/student 用户数据的增删改查。
 - Admin 还不能发布面向全局、camp 或 class 的公告。
 - Admin 还不能统一查看 coach 发布的 tasks 和 notifications。
+- Admin 用户管理已经具备第一版，但还缺少专门的后端自动化测试和更细的审计/邀请/重置密码流程。
 
 ### 5. 模板与评分资产
 
@@ -102,11 +110,16 @@ Admin 当前已经可以进行部分训练营后台管理：
 
 - `web/src/lib`
 
-当前问题：
+本轮新增/完善：
 
-- Admin 模板管理页还没有加载这些本地 JSON 模板。
-- 后端模板注册表与前端本地评分模板之间还没有稳定的导入/同步桥接。
-- 下一轮应实现“读取本地模板 -> 同步到后端模板表 -> Admin 可查看/管理元数据”的能力，但不得修改模板 JSON 的评分标准内容。
+- Admin 模板管理页新增本地模板 dry-run 和同步按钮。
+- 后端新增 `POST /api/v1/admin/training-templates/sync-local?dry_run=true|false`。
+- 同步逻辑只读取 `web/src/config/templates/*/*.json`，写入或更新 `training_templates` 和 `training_template_versions` 的元数据/版本/规则摘要，不修改本地 JSON。
+
+当前剩余问题：
+
+- 模板同步功能还缺少后端单元/集成测试。
+- Admin 模板详情仍可继续优化“评分规则只读摘要”的展示方式。
 
 ### 6. 视频与模板展示治理
 
@@ -120,11 +133,10 @@ Admin 当前已经可以进行部分训练营后台管理：
 
 ### P0 / P1 缺口
 
-- Admin 用户管理系统缺失：需要能管理 coach、student 等注册用户数据。
-- Admin 公告发布系统缺失：需要能按全局、camp、class 发布公告。
+- Admin 公告发布系统缺失：需要能按全局、camp、class、角色发布公告。
 - Admin 监督视图缺失：需要能查看 coach 发布的 tasks 和 notifications。
-- Coach 左侧导航未接入真实页面/视图：`Classes`、`Reports`、`Tasks` 点击后没有明显反应。
-- Admin 模板页没有加载 `web/src/config/templates` 中已有的 12 个本地评分模板。
+- Admin 用户管理、模板同步、Coach 路由已完成第一版，但还需要补自动化测试和细节打磨。
+- Coach 还缺少 announcements / notifications 的独立聚合入口。
 
 ### 技术债与后续增强
 
@@ -135,21 +147,23 @@ Admin 当前已经可以进行部分训练营后台管理：
 
 ## 最近验证记录
 
-上一轮代码执行后已经验证：
+本轮代码执行后已经验证：
 
 - `npm.cmd run lint`：通过，仅有既存 warning。
 - `npm.cmd run build`：通过。
-- `python -m compileall server\app`：通过。
-- `python -m unittest server.tests.test_report_service_idempotency`：通过。
+- `npx.cmd tsc --noEmit --pretty false`：通过。
+- `python -m compileall server\app`：通过，使用 Codex bundled Python。
 
-本轮只整理开发文档，没有改动业务代码，也没有重新运行构建或单元测试。
+未完成验证：
+
+- `python -m unittest server.tests.test_report_service_idempotency` 本轮未能通过当前本地 Python 环境执行：Codex bundled Python 缺少 `fastapi`，而 `server/.venv` 指向的解释器不可用。需要修复后端本地 Python 环境后重新跑后端测试。
 
 ## 下一阶段优先级
 
 建议下一轮优先按以下顺序推进：
 
-1. Admin 用户管理系统：先做 coach/student 用户列表、筛选、详情、创建、编辑、禁用/恢复。
-2. Admin 模板同步：只读取并导入 `web/src/config/templates` 中的本地模板，不改模板 JSON 和评分逻辑。
-3. Coach 工作台路由：让 `Classes`、`Reports`、`Tasks` 等左侧导航进入真实页面或稳定视图。
-4. Admin 公告、任务、通知监督：Admin 可以发布公告，也可以查看 coach 发布的任务和通知。
-5. 增加后端测试和必要的前端构建验证。
+1. Admin 公告发布系统：实现全局、camp、class、角色范围公告的后端接口和 Admin 页面。
+2. Admin 任务/通知监督：实现查看 coach tasks、系统 notifications 的后台监督接口和页面。
+3. 测试补齐：优先补 Admin 用户管理权限、创建/编辑/禁用、模板同步 dry-run/import、非 Admin 拒绝访问。
+4. Coach 聚合入口增强：补 `/coach/announcements`、`/coach/notifications`，并让 `/coach/tasks` 支持更完整编辑或跳转上下文。
+5. 技术增强继续排期：Supabase signed upload、后端异步 AI 分析、模板示例视频审核发布流程。

@@ -3,9 +3,9 @@ from __future__ import annotations
 from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
-from app.models.enums import AnalysisType, StorageProvider
+from app.models.enums import AnalysisType, StorageProvider, UserRole, UserStatus
 
 
 class AdminCampRead(BaseModel):
@@ -118,6 +118,73 @@ class AdminCreateClassMemberRequest(BaseModel):
     remarks: str | None = None
 
 
+class AdminUserClassMembershipRead(BaseModel):
+    public_id: UUID
+    class_public_id: UUID
+    class_name: str
+    class_code: str
+    camp_public_id: UUID
+    camp_name: str
+    member_role: str
+    status: str
+    joined_at: datetime | None = None
+    left_at: datetime | None = None
+
+
+class AdminUserRead(BaseModel):
+    public_id: UUID
+    username: str
+    nickname: str | None = None
+    email: EmailStr | None = None
+    phone_number: str
+    role: UserRole
+    status: UserStatus
+    is_active: bool
+    class_names: list[str]
+    camp_names: list[str]
+    active_class_count: int
+    report_count: int
+    task_assignment_count: int
+    last_training_at: datetime | None = None
+    last_login_at: datetime | None = None
+    deleted_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class AdminUserDetailRead(AdminUserRead):
+    memberships: list[AdminUserClassMembershipRead]
+
+
+class AdminUsersResponse(BaseModel):
+    items: list[AdminUserRead]
+    total: int
+    page: int
+    page_size: int
+
+
+class AdminCreateUserRequest(BaseModel):
+    username: str = Field(min_length=3, max_length=50)
+    password: str = Field(min_length=8, max_length=128)
+    phone_number: str = Field(min_length=1, max_length=32)
+    email: EmailStr | None = None
+    nickname: str | None = Field(default=None, max_length=100)
+    role: UserRole = UserRole.student
+    status: UserStatus = UserStatus.active
+    class_public_ids: list[UUID] | None = None
+
+
+class AdminUpdateUserRequest(BaseModel):
+    username: str | None = Field(default=None, min_length=3, max_length=50)
+    password: str | None = Field(default=None, min_length=8, max_length=128)
+    phone_number: str | None = Field(default=None, min_length=1, max_length=32)
+    email: EmailStr | None = None
+    nickname: str | None = Field(default=None, max_length=100)
+    role: UserRole | None = None
+    status: UserStatus | None = None
+    class_public_ids: list[UUID] | None = None
+
+
 class AdminTrainingTemplateVersionRead(BaseModel):
     public_id: UUID
     version: str
@@ -147,6 +214,24 @@ class AdminTrainingTemplateRead(BaseModel):
 
 class AdminTrainingTemplatesResponse(BaseModel):
     items: list[AdminTrainingTemplateRead]
+
+
+class AdminLocalTemplateSyncItem(BaseModel):
+    template_code: str
+    name: str
+    analysis_type: AnalysisType
+    source_path: str
+    version: str
+    action: str
+    reason: str | None = None
+
+
+class AdminLocalTemplateSyncResponse(BaseModel):
+    dry_run: bool
+    created: int
+    updated: int
+    skipped: int
+    items: list[AdminLocalTemplateSyncItem]
 
 
 class AdminCreateTrainingTemplateRequest(BaseModel):

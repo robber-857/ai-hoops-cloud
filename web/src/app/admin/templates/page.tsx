@@ -9,6 +9,7 @@ import {
   Loader2,
   Pencil,
   Plus,
+  RefreshCw,
   Save,
   Trash2,
   Video,
@@ -22,6 +23,7 @@ import {
 import { analysisTypeLabels, formatDateTime } from "@/components/coach/coachUtils";
 import {
   adminService,
+  type AdminLocalTemplateSyncResponse,
   type AdminTemplateExampleVideoRead,
   type AdminTrainingTemplateRead,
   type AdminTrainingTemplateVersionRead,
@@ -111,6 +113,8 @@ export default function AdminTemplatesPage() {
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const [isSubmittingVersion, setIsSubmittingVersion] = useState(false);
   const [isSavingVideo, setIsSavingVideo] = useState(false);
+  const [isSyncingLocalTemplates, setIsSyncingLocalTemplates] = useState(false);
+  const [syncResult, setSyncResult] = useState<AdminLocalTemplateSyncResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -425,6 +429,29 @@ export default function AdminTemplatesPage() {
     }
   };
 
+  const syncLocalTemplates = async (dryRun: boolean) => {
+    setIsSyncingLocalTemplates(true);
+    setError(null);
+    setMessage(null);
+    setSyncResult(null);
+    try {
+      const result = await adminService.syncLocalTrainingTemplates(dryRun);
+      setSyncResult(result);
+      setMessage(
+        dryRun
+          ? `Dry run: ${result.created} create, ${result.updated} update, ${result.skipped} skip.`
+          : `Synced local templates: ${result.created} created, ${result.updated} updated.`,
+      );
+      if (!dryRun) {
+        await loadTemplates();
+      }
+    } catch (syncError) {
+      setError(syncError instanceof Error ? syncError.message : "Unable to sync local templates.");
+    } finally {
+      setIsSyncingLocalTemplates(false);
+    }
+  };
+
   if (!hasInitialized || isInitializing || !user) {
     return <AdminLoadingSurface />;
   }
@@ -459,8 +486,53 @@ export default function AdminTemplatesPage() {
                 Training templates
               </h1>
             </div>
-            {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-[#65f7ff]" /> : null}
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => syncLocalTemplates(true)}
+                disabled={isSyncingLocalTemplates}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.045] px-3 text-xs font-semibold text-white/72 transition hover:border-[#65f7ff]/32 hover:bg-[#65f7ff]/10 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSyncingLocalTemplates ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                Dry run
+              </button>
+              <button
+                type="button"
+                onClick={() => syncLocalTemplates(false)}
+                disabled={isSyncingLocalTemplates}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[#d8ff5d]/24 bg-[#d8ff5d]/10 px-3 text-xs font-semibold text-[#f1ffc1] transition hover:bg-[#d8ff5d]/16 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSyncingLocalTemplates ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                Sync local
+              </button>
+              {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-[#65f7ff]" /> : null}
+            </div>
           </div>
+
+          {syncResult ? (
+            <div className="mt-4 rounded-lg border border-white/10 bg-black/18 p-3 text-sm text-white/60">
+              <div className="font-semibold text-white">
+                Local sync {syncResult.dry_run ? "preview" : "result"}: {syncResult.created} create / {syncResult.updated} update / {syncResult.skipped} skip
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {syncResult.items.slice(0, 12).map((item) => (
+                  <span
+                    key={`${item.template_code}-${item.action}`}
+                    className={cn(
+                      "rounded-full border px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.12em]",
+                      item.action === "skip"
+                        ? "border-white/10 bg-white/[0.04] text-white/48"
+                        : item.action === "create"
+                          ? "border-[#d8ff5d]/24 bg-[#d8ff5d]/10 text-[#e8ff9a]"
+                          : "border-[#65f7ff]/24 bg-[#65f7ff]/10 text-[#dffbff]",
+                    )}
+                  >
+                    {item.action}: {item.template_code}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           <div className="mt-5 overflow-hidden rounded-lg border border-white/10 bg-black/18">
             <div className="overflow-x-auto">

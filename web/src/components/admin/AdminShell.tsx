@@ -26,6 +26,7 @@ type AdminShellProps = {
 
 const navItems = [
   { href: routes.admin.home, label: "Overview", icon: LayoutDashboard },
+  { href: routes.admin.users, label: "Users", icon: UsersRound },
   { href: routes.admin.camps, label: "Camps", icon: Boxes },
   { href: routes.admin.classes, label: "Classes", icon: UsersRound },
   { href: routes.admin.templates, label: "Templates", icon: BookOpenCheck },

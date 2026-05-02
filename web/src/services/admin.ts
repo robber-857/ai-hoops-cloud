@@ -82,6 +82,67 @@ export type AdminCreateClassMemberPayload = {
   remarks?: string | null;
 };
 
+export type AdminUserRole = "user" | "student" | "coach" | "admin";
+export type AdminUserStatus = "active" | "disabled" | "locked";
+
+export type AdminUserClassMembershipRead = {
+  public_id: string;
+  class_public_id: string;
+  class_name: string;
+  class_code: string;
+  camp_public_id: string;
+  camp_name: string;
+  member_role: string;
+  status: string;
+  joined_at: string | null;
+  left_at: string | null;
+};
+
+export type AdminUserRead = {
+  public_id: string;
+  username: string;
+  nickname: string | null;
+  email: string | null;
+  phone_number: string;
+  role: AdminUserRole;
+  status: AdminUserStatus;
+  is_active: boolean;
+  class_names: string[];
+  camp_names: string[];
+  active_class_count: number;
+  report_count: number;
+  task_assignment_count: number;
+  last_training_at: string | null;
+  last_login_at: string | null;
+  deleted_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdminUserDetailRead = AdminUserRead & {
+  memberships: AdminUserClassMembershipRead[];
+};
+
+export type AdminUsersResponse = {
+  items: AdminUserRead[];
+  total: number;
+  page: number;
+  page_size: number;
+};
+
+export type AdminCreateUserPayload = {
+  username: string;
+  password: string;
+  phone_number: string;
+  email?: string | null;
+  nickname?: string | null;
+  role?: AdminUserRole;
+  status?: AdminUserStatus;
+  class_public_ids?: string[] | null;
+};
+
+export type AdminUpdateUserPayload = Partial<AdminCreateUserPayload>;
+
 export type AdminTrainingTemplateRead = {
   public_id: string;
   template_code: string;
@@ -94,6 +155,24 @@ export type AdminTrainingTemplateRead = {
   version_count: number;
   published_at: string | null;
   created_at: string;
+};
+
+export type AdminLocalTemplateSyncItem = {
+  template_code: string;
+  name: string;
+  analysis_type: ReportAnalysisType;
+  source_path: string;
+  version: string;
+  action: "create" | "update" | "skip";
+  reason: string | null;
+};
+
+export type AdminLocalTemplateSyncResponse = {
+  dry_run: boolean;
+  created: number;
+  updated: number;
+  skipped: number;
+  items: AdminLocalTemplateSyncItem[];
 };
 
 export type AdminCreateTrainingTemplatePayload = {
@@ -174,6 +253,52 @@ type ItemsResponse<TItem> = {
 };
 
 export const adminService = {
+  listUsers(filters: {
+    role?: AdminUserRole | "";
+    status?: AdminUserStatus | "";
+    keyword?: string;
+    page?: number;
+    page_size?: number;
+  } = {}) {
+    const searchParams = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === "") {
+        return;
+      }
+      searchParams.set(key, String(value));
+    });
+    const query = searchParams.toString();
+    return apiRequest<AdminUsersResponse>(`/admin/users${query ? `?${query}` : ""}`, {
+      method: "GET",
+    });
+  },
+
+  createUser(payload: AdminCreateUserPayload) {
+    return apiRequest<AdminUserDetailRead>("/admin/users", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  getUser(userPublicId: string) {
+    return apiRequest<AdminUserDetailRead>(`/admin/users/${userPublicId}`, {
+      method: "GET",
+    });
+  },
+
+  updateUser(userPublicId: string, payload: AdminUpdateUserPayload) {
+    return apiRequest<AdminUserDetailRead>(`/admin/users/${userPublicId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  disableUser(userPublicId: string) {
+    return apiRequest<null>(`/admin/users/${userPublicId}`, {
+      method: "DELETE",
+    });
+  },
+
   listCamps() {
     return apiRequest<ItemsResponse<AdminCampRead>>("/admin/camps", {
       method: "GET",
@@ -241,6 +366,15 @@ export const adminService = {
     return apiRequest<ItemsResponse<AdminTrainingTemplateRead>>("/admin/training-templates", {
       method: "GET",
     });
+  },
+
+  syncLocalTrainingTemplates(dryRun = true) {
+    return apiRequest<AdminLocalTemplateSyncResponse>(
+      `/admin/training-templates/sync-local?dry_run=${String(dryRun)}`,
+      {
+        method: "POST",
+      },
+    );
   },
 
   createTrainingTemplate(payload: AdminCreateTrainingTemplatePayload) {

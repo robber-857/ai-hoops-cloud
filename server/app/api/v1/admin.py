@@ -18,10 +18,13 @@ from app.schemas.admin import (
     AdminCreateTemplateExampleVideoRequest,
     AdminCreateTrainingTemplateRequest,
     AdminCreateTrainingTemplateVersionRequest,
+    AdminCreateUserRequest,
+    AdminLocalTemplateSyncResponse,
     AdminTrainingTemplateRead,
     AdminTrainingTemplatesResponse,
     AdminTrainingTemplateVersionRead,
     AdminTrainingTemplateVersionsResponse,
+    AdminUpdateUserRequest,
     AdminUpdateClassRequest,
     AdminTemplateExampleVideoRead,
     AdminTemplateExampleVideosResponse,
@@ -29,10 +32,85 @@ from app.schemas.admin import (
     AdminUpdateTemplateExampleVideoRequest,
     AdminUpdateTrainingTemplateRequest,
     AdminUpdateTrainingTemplateVersionRequest,
+    AdminUserDetailRead,
+    AdminUsersResponse,
 )
 from app.services.admin_service import AdminService
+from app.models.enums import UserRole, UserStatus
 
 router = APIRouter()
+
+
+@router.get("/users", response_model=AdminUsersResponse, status_code=status.HTTP_200_OK)
+def list_users(
+    role: UserRole | None = Query(default=None),
+    user_status: UserStatus | None = Query(default=None, alias="status"),
+    keyword: str | None = Query(default=None, max_length=100),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AdminUsersResponse:
+    service = AdminService(db)
+    items, total = service.list_users(
+        current_user,
+        role=role,
+        user_status=user_status,
+        keyword=keyword,
+        page=page,
+        page_size=page_size,
+    )
+    return AdminUsersResponse(items=items, total=total, page=page, page_size=page_size)
+
+
+@router.post("/users", response_model=AdminUserDetailRead, status_code=status.HTTP_201_CREATED)
+def create_user(
+    payload: AdminCreateUserRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AdminUserDetailRead:
+    service = AdminService(db)
+    return service.create_user(current_user, payload)
+
+
+@router.get(
+    "/users/{user_public_id}",
+    response_model=AdminUserDetailRead,
+    status_code=status.HTTP_200_OK,
+)
+def get_user_detail(
+    user_public_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AdminUserDetailRead:
+    service = AdminService(db)
+    return service.get_user_detail(current_user, user_public_id)
+
+
+@router.patch(
+    "/users/{user_public_id}",
+    response_model=AdminUserDetailRead,
+    status_code=status.HTTP_200_OK,
+)
+def update_user(
+    user_public_id: UUID,
+    payload: AdminUpdateUserRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AdminUserDetailRead:
+    service = AdminService(db)
+    return service.update_user(current_user, user_public_id, payload)
+
+
+@router.delete("/users/{user_public_id}", status_code=status.HTTP_204_NO_CONTENT)
+def disable_user(
+    user_public_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    service = AdminService(db)
+    service.disable_user(current_user, user_public_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/camps", response_model=AdminCampsResponse, status_code=status.HTTP_200_OK)
@@ -159,6 +237,20 @@ def list_training_templates(
 ) -> AdminTrainingTemplatesResponse:
     service = AdminService(db)
     return AdminTrainingTemplatesResponse(items=service.list_training_templates(current_user))
+
+
+@router.post(
+    "/training-templates/sync-local",
+    response_model=AdminLocalTemplateSyncResponse,
+    status_code=status.HTTP_200_OK,
+)
+def sync_local_training_templates(
+    dry_run: bool = Query(default=True),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AdminLocalTemplateSyncResponse:
+    service = AdminService(db)
+    return service.sync_local_training_templates(current_user, dry_run=dry_run)
 
 
 @router.post(

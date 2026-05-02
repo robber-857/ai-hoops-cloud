@@ -1,17 +1,24 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from datetime import datetime, timezone
+from pathlib import Path
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
+from app.core.security import hash_password
+from app.models.analysis_report import AnalysisReport
 from app.models.camp_class import CampClass
 from app.models.class_member import ClassMember
-from app.models.enums import UserRole
+from app.models.enums import AnalysisType, UserRole, UserStatus
 from app.models.template_example_video import TemplateExampleVideo
 from app.models.training_camp import TrainingCamp
+from app.models.training_session import TrainingSession
+from app.models.training_task_assignment import TrainingTaskAssignment
 from app.models.training_template import TrainingTemplate
 from app.models.training_template_version import TrainingTemplateVersion
 from app.models.user import User
@@ -25,6 +32,9 @@ from app.schemas.admin import (
     AdminCreateTemplateExampleVideoRequest,
     AdminCreateTrainingTemplateRequest,
     AdminCreateTrainingTemplateVersionRequest,
+    AdminCreateUserRequest,
+    AdminLocalTemplateSyncItem,
+    AdminLocalTemplateSyncResponse,
     AdminTrainingTemplateRead,
     AdminTrainingTemplateVersionRead,
     AdminUpdateClassRequest,
@@ -33,6 +43,10 @@ from app.schemas.admin import (
     AdminUpdateTemplateExampleVideoRequest,
     AdminUpdateTrainingTemplateRequest,
     AdminUpdateTrainingTemplateVersionRequest,
+    AdminUpdateUserRequest,
+    AdminUserClassMembershipRead,
+    AdminUserDetailRead,
+    AdminUserRead,
 )
 
 
@@ -101,6 +115,68 @@ def _member_read(member: ClassMember) -> AdminClassMemberRead:
     )
 
 
+def _membership_read(member: ClassMember) -> AdminUserClassMembershipRead:
+    return AdminUserClassMembershipRead(
+        public_id=member.public_id,
+        class_public_id=member.camp_class.public_id,
+        class_name=member.camp_class.name,
+        class_code=member.camp_class.code,
+        camp_public_id=member.camp_class.camp.public_id,
+        camp_name=member.camp_class.camp.name,
+        member_role=member.member_role,
+        status=member.status,
+        joined_at=member.joined_at,
+        left_at=member.left_at,
+    )
+
+
+def _active_memberships(user: User) -> list[ClassMember]:
+    return [
+        member
+        for member in user.class_members
+        if member.status == "active" and member.camp_class is not None
+    ]
+
+
+def _user_read(
+    user: User,
+    *,
+    report_count: int = 0,
+    task_assignment_count: int = 0,
+    last_training_at: datetime | None = None,
+) -> AdminUserRead:
+    active_memberships = _active_memberships(user)
+    class_names = sorted({member.camp_class.name for member in active_memberships})
+    camp_names = sorted(
+        {
+            member.camp_class.camp.name
+            for member in active_memberships
+            if member.camp_class.camp is not None
+        }
+    )
+
+    return AdminUserRead(
+        public_id=user.public_id,
+        username=user.username,
+        nickname=user.nickname,
+        email=user.email,
+        phone_number=user.phone_number,
+        role=user.role,
+        status=user.status,
+        is_active=user.is_active,
+        class_names=class_names,
+        camp_names=camp_names,
+        active_class_count=len(class_names),
+        report_count=report_count,
+        task_assignment_count=task_assignment_count,
+        last_training_at=last_training_at,
+        last_login_at=user.last_login_at,
+        deleted_at=user.deleted_at,
+        created_at=user.created_at,
+        updated_at=user.updated_at,
+    )
+
+
 def _template_read(template: TrainingTemplate, version_count: int) -> AdminTrainingTemplateRead:
     return AdminTrainingTemplateRead(
         public_id=template.public_id,
@@ -161,6 +237,172 @@ def _numeric_to_float(value) -> float | None:
 class AdminService:
     def __init__(self, db: Session) -> None:
         self.db = db
+
+    def list_users(
+        self,
+        current_user: User,
+        *,
+        role: UserRole | None = None,
+        user_status: UserStatus | None = None,
+        keyword: str | None = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> tuple[list[AdminUserRead], int]:
+        _ensure_admin_access(current_user)
+        page = max(page, 1)
+        page_size = min(max(page_size, 1), 100)
+        conditions = []
+
+        if role:
+            conditions.append(User.role == role)
+        if user_status:
+            conditions.append(User.status == user_status)
+        if keyword and keyword.strip():
+            normalized_keyword = f"%{keyword.strip()}%"
+            conditions.append(
+                or_(
+                    User.username.ilike(normalized_keyword),
+                    User.nickname.ilike(normalized_keyword),
+                    User.email.ilike(normalized_keyword),
+                    User.phone_number.ilike(normalized_keyword),
+                )
+            )
+
+        count_stmt = select(func.count(User.id))
+        stmt = (
+            select(User)
+            .options(
+                selectinload(User.class_members)
+                .selectinload(ClassMember.camp_class)
+                .selectinload(CampClass.camp)
+            )
+            .order_by(User.created_at.desc())
+        )
+        if conditions:
+            count_stmt = count_stmt.where(*conditions)
+            stmt = stmt.where(*conditions)
+
+        total = int(self.db.scalar(count_stmt) or 0)
+        users = self.db.scalars(stmt.offset((page - 1) * page_size).limit(page_size)).all()
+        summaries = self._user_summaries_by_user_id([user.id for user in users])
+        return [
+            _user_read(
+                user,
+                report_count=summaries.get(user.id, {}).get("report_count", 0),
+                task_assignment_count=summaries.get(user.id, {}).get("task_assignment_count", 0),
+                last_training_at=summaries.get(user.id, {}).get("last_training_at"),
+            )
+            for user in users
+        ], total
+
+    def create_user(self, current_user: User, payload: AdminCreateUserRequest) -> AdminUserDetailRead:
+        _ensure_admin_access(current_user)
+        username = payload.username.strip()
+        phone_number = self._normalize_phone_number(payload.phone_number)
+        email = self._normalize_email(payload.email) if payload.email else None
+        self._ensure_unique_user_identity(username=username, phone_number=phone_number, email=email)
+
+        user = User(
+            username=username,
+            password_hash=hash_password(payload.password),
+            phone_number=phone_number,
+            email=email,
+            nickname=payload.nickname.strip() if payload.nickname else None,
+            role=payload.role,
+            status=payload.status,
+            is_email_verified=bool(email),
+            is_phone_verified=False,
+        )
+        self.db.add(user)
+        self.db.flush()
+
+        if payload.class_public_ids is not None:
+            self._sync_user_class_memberships(user, payload.class_public_ids)
+
+        self.db.commit()
+        self.db.refresh(user)
+        user = self._get_user_by_public_id(user.public_id, include_memberships=True)
+        return self._user_detail_read(user)
+
+    def get_user_detail(self, current_user: User, user_public_id: UUID) -> AdminUserDetailRead:
+        _ensure_admin_access(current_user)
+        user = self._get_user_by_public_id(user_public_id, include_memberships=True)
+        return self._user_detail_read(user)
+
+    def update_user(
+        self,
+        current_user: User,
+        user_public_id: UUID,
+        payload: AdminUpdateUserRequest,
+    ) -> AdminUserDetailRead:
+        _ensure_admin_access(current_user)
+        user = self._get_user_by_public_id(user_public_id, include_memberships=True)
+        fields_set = payload.model_fields_set
+
+        if "role" in fields_set and payload.role is not None:
+            self._ensure_not_self_lockout(current_user, user, new_role=payload.role)
+            user.role = payload.role
+        if "status" in fields_set and payload.status is not None:
+            self._ensure_not_self_lockout(current_user, user, new_status=payload.status)
+            user.status = payload.status
+            if payload.status == UserStatus.active:
+                user.deleted_at = None
+
+        if "username" in fields_set and payload.username is not None:
+            username = payload.username.strip()
+            if username != user.username:
+                self._ensure_unique_user_identity(
+                    username=username,
+                    phone_number=None,
+                    email=None,
+                    exclude_user_id=user.id,
+                )
+                user.username = username
+        if "password" in fields_set and payload.password is not None:
+            user.password_hash = hash_password(payload.password)
+        if "phone_number" in fields_set and payload.phone_number is not None:
+            phone_number = self._normalize_phone_number(payload.phone_number)
+            if phone_number != user.phone_number:
+                self._ensure_unique_user_identity(
+                    username=None,
+                    phone_number=phone_number,
+                    email=None,
+                    exclude_user_id=user.id,
+                )
+                user.phone_number = phone_number
+                user.is_phone_verified = False
+        if "email" in fields_set:
+            email = self._normalize_email(payload.email) if payload.email else None
+            if email != user.email:
+                self._ensure_unique_user_identity(
+                    username=None,
+                    phone_number=None,
+                    email=email,
+                    exclude_user_id=user.id,
+                )
+                user.email = email
+                user.is_email_verified = bool(email)
+        if "nickname" in fields_set:
+            user.nickname = payload.nickname.strip() if payload.nickname else None
+
+        self.db.add(user)
+        self.db.flush()
+
+        if "class_public_ids" in fields_set and payload.class_public_ids is not None:
+            self._sync_user_class_memberships(user, payload.class_public_ids)
+
+        self.db.commit()
+        user = self._get_user_by_public_id(user_public_id, include_memberships=True)
+        return self._user_detail_read(user)
+
+    def disable_user(self, current_user: User, user_public_id: UUID) -> None:
+        _ensure_admin_access(current_user)
+        user = self._get_user_by_public_id(user_public_id)
+        self._ensure_not_self_lockout(current_user, user, new_status=UserStatus.disabled)
+        user.status = UserStatus.disabled
+        user.deleted_at = datetime.now(timezone.utc)
+        self.db.add(user)
+        self.db.commit()
 
     def list_camps(self, current_user: User) -> list[AdminCampRead]:
         _ensure_admin_access(current_user)
@@ -400,6 +642,127 @@ class AdminService:
         ).all()
         version_counts = self._version_counts_by_template([template.id for template in templates])
         return [_template_read(template, version_counts.get(template.id, 0)) for template in templates]
+
+    def sync_local_training_templates(
+        self,
+        current_user: User,
+        *,
+        dry_run: bool = True,
+    ) -> AdminLocalTemplateSyncResponse:
+        _ensure_admin_access(current_user)
+        local_templates = self._load_local_template_payloads()
+        items: list[AdminLocalTemplateSyncItem] = []
+        created = 0
+        updated = 0
+        skipped = 0
+        now = datetime.now(timezone.utc)
+
+        for local_template in local_templates:
+            existing_template = self.db.scalar(
+                select(TrainingTemplate).where(
+                    TrainingTemplate.template_code == local_template["template_code"]
+                )
+            )
+            existing_version = None
+            action = "create"
+            reason: str | None = None
+
+            if existing_template:
+                existing_version = self.db.scalar(
+                    select(TrainingTemplateVersion).where(
+                        TrainingTemplateVersion.template_id == existing_template.id,
+                        TrainingTemplateVersion.version == local_template["version"],
+                    )
+                )
+                if existing_version and self._local_template_version_matches(
+                    existing_template,
+                    existing_version,
+                    local_template,
+                ):
+                    action = "skip"
+                    reason = "Local template metadata and rules are already in sync."
+                else:
+                    action = "update"
+
+            if action == "create":
+                created += 1
+            elif action == "update":
+                updated += 1
+            else:
+                skipped += 1
+
+            items.append(
+                AdminLocalTemplateSyncItem(
+                    template_code=local_template["template_code"],
+                    name=local_template["name"],
+                    analysis_type=local_template["analysis_type"],
+                    source_path=local_template["source_path"],
+                    version=local_template["version"],
+                    action=action,
+                    reason=reason,
+                )
+            )
+
+            if dry_run or action == "skip":
+                continue
+
+            template = existing_template or TrainingTemplate(
+                template_code=local_template["template_code"],
+                name=local_template["name"],
+                analysis_type=local_template["analysis_type"],
+                description=local_template["description"],
+                difficulty_level=None,
+                status="active",
+                current_version=local_template["version"],
+                created_by_user_id=current_user.id,
+                updated_by_user_id=current_user.id,
+                published_at=now,
+            )
+            template.name = local_template["name"]
+            template.analysis_type = local_template["analysis_type"]
+            template.description = local_template["description"]
+            template.status = "active"
+            template.current_version = local_template["version"]
+            template.updated_by_user_id = current_user.id
+            if not template.published_at:
+                template.published_at = now
+            self.db.add(template)
+            self.db.flush()
+
+            existing_versions = self.db.scalars(
+                select(TrainingTemplateVersion).where(
+                    TrainingTemplateVersion.template_id == template.id
+                )
+            ).all()
+            for version_row in existing_versions:
+                version_row.is_default = False
+                self.db.add(version_row)
+
+            version = existing_version or TrainingTemplateVersion(
+                template_id=template.id,
+                version=local_template["version"],
+                created_by_user_id=current_user.id,
+            )
+            version.scoring_rules = local_template["scoring_rules"]
+            version.metric_definitions = local_template["metric_definitions"]
+            version.mediapipe_config = local_template["mediapipe_config"]
+            version.summary_template = local_template["summary_template"]
+            version.status = "active"
+            version.is_default = True
+            if not version.published_at:
+                version.published_at = now
+            self.db.add(version)
+
+        if not dry_run:
+            self.db.commit()
+
+        return AdminLocalTemplateSyncResponse(
+            dry_run=dry_run,
+            created=created,
+            updated=updated,
+            skipped=skipped,
+            items=items,
+        )
 
     def create_training_template(
         self,
@@ -673,6 +1036,289 @@ class AdminService:
         self.db.delete(video)
         self.db.commit()
 
+    def _user_detail_read(self, user: User) -> AdminUserDetailRead:
+        summaries = self._user_summaries_by_user_id([user.id])
+        base = _user_read(
+            user,
+            report_count=summaries.get(user.id, {}).get("report_count", 0),
+            task_assignment_count=summaries.get(user.id, {}).get("task_assignment_count", 0),
+            last_training_at=summaries.get(user.id, {}).get("last_training_at"),
+        )
+        memberships = [
+            _membership_read(member)
+            for member in sorted(
+                user.class_members,
+                key=lambda item: (
+                    item.status != "active",
+                    item.member_role,
+                    item.camp_class.name if item.camp_class else "",
+                ),
+            )
+            if member.camp_class is not None and member.camp_class.camp is not None
+        ]
+        return AdminUserDetailRead(**base.model_dump(), memberships=memberships)
+
+    def _sync_user_class_memberships(
+        self,
+        user: User,
+        class_public_ids: list[UUID],
+    ) -> None:
+        desired_class_ids = set(self._get_class_ids_by_public_ids(class_public_ids))
+        member_role = "coach" if user.role == UserRole.coach else "student"
+        if user.role not in {UserRole.coach, UserRole.student} and desired_class_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only coach and student users can be assigned to classes.",
+            )
+
+        now = datetime.now(timezone.utc)
+        memberships = self.db.scalars(
+            select(ClassMember).where(ClassMember.user_id == user.id)
+        ).all()
+        existing_by_key = {
+            (member.class_id, member.member_role): member
+            for member in memberships
+            if member.member_role in {"coach", "student"}
+        }
+
+        for member in memberships:
+            if member.member_role not in {"coach", "student"}:
+                continue
+            should_be_active = (
+                member.member_role == member_role
+                and member.class_id in desired_class_ids
+                and user.role in {UserRole.coach, UserRole.student}
+            )
+            if should_be_active:
+                member.status = "active"
+                member.left_at = None
+                member.joined_at = member.joined_at or now
+            elif member.status == "active":
+                member.status = "removed"
+                member.left_at = now
+            self.db.add(member)
+
+        if user.role not in {UserRole.coach, UserRole.student}:
+            return
+
+        for class_id in desired_class_ids:
+            if (class_id, member_role) in existing_by_key:
+                continue
+            self.db.add(
+                ClassMember(
+                    class_id=class_id,
+                    user_id=user.id,
+                    member_role=member_role,
+                    status="active",
+                    joined_at=now,
+                )
+            )
+
+    def _get_class_ids_by_public_ids(self, class_public_ids: list[UUID]) -> list[int]:
+        if not class_public_ids:
+            return []
+
+        unique_public_ids = list(dict.fromkeys(class_public_ids))
+        rows = self.db.scalars(
+            select(CampClass).where(CampClass.public_id.in_(unique_public_ids))
+        ).all()
+        found_by_public_id = {row.public_id: row for row in rows}
+        missing = [public_id for public_id in unique_public_ids if public_id not in found_by_public_id]
+        if missing:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="One or more classes were not found.",
+            )
+        return [found_by_public_id[public_id].id for public_id in unique_public_ids]
+
+    def _ensure_unique_user_identity(
+        self,
+        *,
+        username: str | None,
+        phone_number: str | None,
+        email: str | None,
+        exclude_user_id: int | None = None,
+    ) -> None:
+        checks = []
+        if username:
+            checks.append(User.username == username)
+        if phone_number:
+            checks.append(User.phone_number == phone_number)
+        if email:
+            checks.append(User.email == email)
+        if not checks:
+            return
+
+        stmt = select(User.id).where(or_(*checks))
+        if exclude_user_id is not None:
+            stmt = stmt.where(User.id != exclude_user_id)
+        if self.db.scalar(stmt):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Username, phone number, or email already exists.",
+            )
+
+    def _ensure_not_self_lockout(
+        self,
+        current_user: User,
+        target_user: User,
+        *,
+        new_role: UserRole | None = None,
+        new_status: UserStatus | None = None,
+    ) -> None:
+        if current_user.id != target_user.id:
+            return
+        if new_role is not None and new_role != UserRole.admin:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Admin users cannot remove their own admin role.",
+            )
+        if new_status is not None and new_status != UserStatus.active:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Admin users cannot disable their own account.",
+            )
+
+    def _normalize_phone_number(self, phone_number: str) -> str:
+        phone_number = phone_number.strip()
+        normalized = "".join(
+            character for character in phone_number if character.isdigit() or character == "+"
+        )
+        return normalized or phone_number
+
+    def _normalize_email(self, email: str) -> str:
+        return email.strip().lower()
+
+    def _user_summaries_by_user_id(self, user_ids: list[int]) -> dict[int, dict]:
+        if not user_ids:
+            return {}
+
+        summaries: dict[int, dict] = {user_id: {} for user_id in user_ids}
+        report_rows = self.db.execute(
+            select(AnalysisReport.user_id, func.count(AnalysisReport.id))
+            .where(
+                AnalysisReport.user_id.in_(user_ids),
+                AnalysisReport.deleted_at.is_(None),
+            )
+            .group_by(AnalysisReport.user_id)
+        ).all()
+        for user_id, count in report_rows:
+            summaries.setdefault(user_id, {})["report_count"] = int(count)
+
+        task_rows = self.db.execute(
+            select(TrainingTaskAssignment.student_id, func.count(TrainingTaskAssignment.id))
+            .where(TrainingTaskAssignment.student_id.in_(user_ids))
+            .group_by(TrainingTaskAssignment.student_id)
+        ).all()
+        for user_id, count in task_rows:
+            summaries.setdefault(user_id, {})["task_assignment_count"] = int(count)
+
+        latest_training_rows = self.db.execute(
+            select(TrainingSession.student_id, func.max(TrainingSession.created_at))
+            .where(TrainingSession.student_id.in_(user_ids))
+            .group_by(TrainingSession.student_id)
+        ).all()
+        for user_id, last_training_at in latest_training_rows:
+            summaries.setdefault(user_id, {})["last_training_at"] = last_training_at
+
+        return summaries
+
+    def _load_local_template_payloads(self) -> list[dict]:
+        templates_root = Path(__file__).resolve().parents[3] / "web" / "src" / "config" / "templates"
+        if not templates_root.exists():
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Local template directory was not found.",
+            )
+
+        payloads: list[dict] = []
+        for template_path in sorted(templates_root.glob("*/*.json")):
+            with template_path.open("r", encoding="utf-8") as template_file:
+                raw_template = json.load(template_file)
+
+            template_code = str(raw_template.get("templateId") or template_path.stem)
+            mode = raw_template.get("mode") or template_path.parent.name
+            if mode not in {item.value for item in AnalysisType}:
+                mode = template_path.parent.name
+            if mode not in {AnalysisType.shooting.value, AnalysisType.dribbling.value, AnalysisType.training.value}:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Unsupported local template mode: {mode}.",
+                )
+
+            content_hash = hashlib.sha256(
+                json.dumps(raw_template, ensure_ascii=False, sort_keys=True).encode("utf-8")
+            ).hexdigest()
+            relative_source_path = template_path.relative_to(Path(__file__).resolve().parents[3]).as_posix()
+            metrics = raw_template.get("metrics") if isinstance(raw_template.get("metrics"), list) else []
+            metric_summary = [
+                {
+                    "metric_id": metric.get("metricId"),
+                    "category": metric.get("category"),
+                    "type": metric.get("type"),
+                    "compute_key": metric.get("computeKey"),
+                    "weight": metric.get("weight"),
+                }
+                for metric in metrics
+                if isinstance(metric, dict)
+            ]
+            version = str(raw_template.get("version") or "local-v1")
+
+            payloads.append(
+                {
+                    "template_code": template_code,
+                    "name": str(raw_template.get("displayName") or template_code),
+                    "analysis_type": AnalysisType(mode),
+                    "description": f"Imported from {relative_source_path}; camera={raw_template.get('camera', 'unknown')}.",
+                    "source_path": relative_source_path,
+                    "version": version,
+                    "content_hash": content_hash,
+                    "scoring_rules": {
+                        "source": "local_json",
+                        "content_hash": content_hash,
+                        "template": raw_template,
+                    },
+                    "metric_definitions": {
+                        "source_path": relative_source_path,
+                        "metric_count": len(metric_summary),
+                        "metrics": metric_summary,
+                        "category_weights": raw_template.get("categoryWeights")
+                        or raw_template.get("overallWeights"),
+                    },
+                    "mediapipe_config": {
+                        "camera": raw_template.get("camera"),
+                        "options": raw_template.get("options") or {},
+                        "age_groups": raw_template.get("ageGroups") or [],
+                    },
+                    "summary_template": {
+                        "display_name": raw_template.get("displayName"),
+                        "mode": mode,
+                        "rules_note": raw_template.get("rulesNote"),
+                        "source_path": relative_source_path,
+                        "content_hash": content_hash,
+                    },
+                }
+            )
+
+        return payloads
+
+    def _local_template_version_matches(
+        self,
+        template: TrainingTemplate,
+        version: TrainingTemplateVersion,
+        local_template: dict,
+    ) -> bool:
+        summary_template = version.summary_template if isinstance(version.summary_template, dict) else {}
+        version_hash = summary_template.get("content_hash")
+        return (
+            template.name == local_template["name"]
+            and template.analysis_type == local_template["analysis_type"]
+            and template.current_version == local_template["version"]
+            and version_hash == local_template["content_hash"]
+            and version.is_default
+            and version.status == "active"
+        )
+
     def _get_camp_by_public_id(self, camp_public_id: UUID) -> TrainingCamp:
         camp = self.db.scalar(select(TrainingCamp).where(TrainingCamp.public_id == camp_public_id))
         if not camp:
@@ -689,8 +1335,20 @@ class AdminService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Class not found.")
         return class_row
 
-    def _get_user_by_public_id(self, user_public_id: UUID) -> User:
-        user = self.db.scalar(select(User).where(User.public_id == user_public_id))
+    def _get_user_by_public_id(
+        self,
+        user_public_id: UUID,
+        *,
+        include_memberships: bool = False,
+    ) -> User:
+        stmt = select(User).where(User.public_id == user_public_id)
+        if include_memberships:
+            stmt = stmt.options(
+                selectinload(User.class_members)
+                .selectinload(ClassMember.camp_class)
+                .selectinload(CampClass.camp)
+            )
+        user = self.db.scalar(stmt)
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
         return user

@@ -15,11 +15,17 @@ export const routes = {
   },
   coach: {
     home: "/coach",
+    classes: "/coach/classes",
+    reports: "/coach/reports",
+    tasks: "/coach/tasks",
+    announcements: "/coach/announcements",
+    notifications: "/coach/notifications",
     classDetail: (classPublicId: string) => `/coach/classes/${classPublicId}`,
     studentProfile: (studentPublicId: string) => `/coach/students/${studentPublicId}`,
   },
   admin: {
     home: "/admin",
+    users: "/admin/users",
     camps: "/admin/camps",
     classes: "/admin/classes",
     classMembers: (classPublicId: string) => `/admin/classes/${classPublicId}/members`,

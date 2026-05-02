@@ -42,17 +42,17 @@ const navItems = [
     icon: LayoutDashboard,
   },
   {
-    href: routes.coach.home,
+    href: routes.coach.classes,
     label: "Classes",
     icon: UsersRound,
   },
   {
-    href: routes.coach.home,
+    href: routes.coach.reports,
     label: "Reports",
     icon: BarChart3,
   },
   {
-    href: routes.coach.home,
+    href: routes.coach.tasks,
     label: "Tasks",
     icon: ClipboardList,
   },
@@ -215,7 +215,7 @@ export function CoachShell({ children, user, title, breadcrumb }: CoachShellProp
             const isActive =
               index === 0
                 ? pathname === item.href
-                : item.label === "Classes" && pathname.startsWith("/coach/classes");
+                : pathname === item.href || pathname.startsWith(`${item.href}/`);
 
             return (
               <Link
