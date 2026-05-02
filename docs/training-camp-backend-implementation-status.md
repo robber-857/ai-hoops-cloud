@@ -494,3 +494,193 @@
 3. 补管理员端第一批接口与基础前端
 4. 补后端 API 集成测试与权限边界测试
 5. 设计并推进后端异步 AI 分析链路
+
+# 2026-05-02 教练端后续运营与管理员端第一版更新
+
+本轮优先处理教练端和管理员端，已完成以下增量：
+
+## 教练端后续运营能力
+
+后端新增：
+
+- `GET /api/v1/coach/dashboard`
+- `GET /api/v1/coach/classes/{class_public_id}/tasks`
+- `GET /api/v1/coach/classes/{class_public_id}/tasks/{task_public_id}`
+- `PATCH /api/v1/coach/classes/{class_public_id}/tasks/{task_public_id}`
+- `GET /api/v1/coach/classes/{class_public_id}/announcements`
+- `PATCH /api/v1/coach/classes/{class_public_id}/announcements/{announcement_public_id}`
+- `GET /api/v1/coach/students/{student_public_id}/profile`
+- `GET /api/v1/coach/students/{student_public_id}/reports`
+
+前端新增或扩展：
+
+- `/coach` 接入跨班级 dashboard 聚合
+- `/coach/classes/{classPublicId}` 增加任务列表、任务关闭/重新发布、任务 assignment 明细查看
+- `/coach/classes/{classPublicId}` 增加公告列表、置顶/取消置顶、归档
+- `/coach/students/{studentPublicId}` 增加学生训练档案页和报告历史
+
+## 管理员端第一批能力
+
+后端新增：
+
+- `GET /api/v1/admin/camps`
+- `POST /api/v1/admin/camps`
+- `GET /api/v1/admin/classes`
+- `POST /api/v1/admin/classes`
+- `PATCH /api/v1/admin/classes/{class_public_id}`
+- `GET /api/v1/admin/classes/{class_public_id}/members`
+- `POST /api/v1/admin/classes/{class_public_id}/members`
+- `DELETE /api/v1/admin/classes/{class_public_id}/members/{member_public_id}`
+- `GET /api/v1/admin/training-templates`
+- `POST /api/v1/admin/training-templates`
+- `POST /api/v1/admin/training-templates/{template_public_id}/versions`
+
+前端新增：
+
+- `/admin` 管理概览
+- `/admin/camps` 训练营创建与列表
+- `/admin/classes` 班级创建、列表、状态维护
+- `/admin/classes/{classPublicId}/members` 班级成员列表、添加、软移除
+- `/admin/templates` 模板创建与模板版本创建
+
+验证：
+
+- `python -m compileall server/app` 通过
+- `npm.cmd run lint` 通过，仅保留既有 warning
+- `npm.cmd run build` 通过
+
+仍未完成：
+
+- 服务端 Supabase 上传签名或短期上传凭证
+- 后端异步 AI 分析任务链路
+- 管理员端更完整的编辑体验，例如训练营编辑、模板编辑、模板示例视频维护
+- 教练端任务完整编辑表单、公告完整编辑表单、任务 assignment 的筛选/批量管理
+- 后端 API 集成测试与权限边界测试仍需补齐
+
+## 本轮执行总结
+
+本轮的核心目标是先把教练端和管理员端从“只能做 MVP 操作”推进到“可以开始承担训练营运营后台”的状态。
+
+本轮实际完成：
+
+- 教练端补齐了任务、公告、学生档案相关的第一批后续运营接口。
+- 教练端班级详情页从“学生/报告/发布表单”扩展为“学生、报告、任务、公告”四类运营视图。
+- 教练端任务现在可以查看 assignment 完成情况，并支持关闭/重新发布。
+- 教练端公告现在可以查看列表，并支持置顶/取消置顶、归档。
+- 教练端新增学生训练档案页，支持查看学生基础信息、所属班级、任务概览和报告历史。
+- 管理员端新增第一批后端接口，覆盖训练营、班级、成员关系、训练模板和模板版本。
+- 管理员端新增基础前端页面，覆盖管理概览、训练营列表/创建、班级列表/创建/状态维护、班级成员添加/软移除、模板和模板版本创建。
+- 两份开发文档已记录本轮新增接口、页面和剩余任务。
+
+本轮未完成或只完成第一版的内容：
+
+- 管理员端仍缺更完整的编辑能力：训练营编辑、模板编辑、模板示例视频维护。
+- 教练端任务/公告仍缺完整编辑表单、筛选、批量管理。
+- 教练端和管理员端登录后的角色识别与自动跳转还没有完善。
+- 教练端和管理员端各自主页面还没有专门的 logout 入口。
+- 新增 coach/admin 接口还没有系统化集成测试和权限边界测试。
+- 服务端 Supabase 上传签名或短期上传凭证仍未实现。
+- 后端异步 AI 分析任务链路仍未实现。
+
+## 下一轮目标锁定
+
+下一轮优先围绕后台运营体验继续补齐，目标如下：
+
+1. 管理端更完整的编辑能力
+   - 训练营编辑：支持修改名称、编码、赛季、状态、日期、描述。
+   - 模板编辑：支持修改模板基础信息、状态、当前版本。
+   - 模板示例视频维护：支持新增、查看、修改、下架或删除模板示例视频元数据。
+
+2. 教练端任务/公告完整管理
+   - 任务完整编辑表单：标题、描述、动作类型、模板、目标配置、发布时间、开始时间、截止时间、状态。
+   - 公告完整编辑表单：标题、内容、置顶、发布时间、过期时间、状态。
+   - 任务/公告列表筛选：状态、类型、时间、关键词。
+   - 批量管理：批量关闭任务、批量归档公告、批量置顶/取消置顶公告。
+
+3. 角色登录跳转与退出登录
+   - 登录成功后按角色跳转：admin 到 `/admin`，coach 到 `/coach`，student/user 到 `/me` 或学生端默认页。
+   - 非 admin 用户访问 `/admin` 时保持清晰无权限提示或跳回合适入口。
+   - 非 coach/admin 用户访问 `/coach` 时保持清晰无权限提示或跳回合适入口。
+   - 教练端和管理端主页面增加 logout 入口，并复用现有退出登录逻辑清理会话。
+
+4. 回归验证
+   - 补新增管理端和教练端关键接口的后端集成测试。
+   - 补角色权限边界测试：admin、coach、student/user 分别访问后台接口的行为。
+   - 前端至少跑通 `npm.cmd run lint` 和 `npm.cmd run build`。
+
+# 2026-05-02 教练端与管理端完善执行后更新
+
+本轮继续围绕“教练端与管理端体验闭环”推进，服务端上传签名和后端异步 AI 分析仍按上一轮约定保留为后续技术任务。
+
+## 本轮新增完成内容
+
+### 管理端完整编辑能力第一版
+
+后端新增或扩展：
+
+- `PATCH /api/v1/admin/camps/{camp_public_id}`
+- `PATCH /api/v1/admin/training-templates/{template_public_id}`
+- `GET /api/v1/admin/training-templates/{template_public_id}/versions`
+- `PATCH /api/v1/admin/training-templates/{template_public_id}/versions/{version_public_id}`
+- `GET /api/v1/admin/training-templates/{template_public_id}/example-videos`
+- `POST /api/v1/admin/training-templates/{template_public_id}/example-videos`
+- `PATCH /api/v1/admin/training-templates/{template_public_id}/example-videos/{video_public_id}`
+- `DELETE /api/v1/admin/training-templates/{template_public_id}/example-videos/{video_public_id}`
+
+前端新增或扩展：
+
+- `/admin/camps` 增加训练营编辑面板，支持名称、编码、赛季、状态、日期和描述维护。
+- `/admin/templates` 增加模板基础信息编辑。
+- `/admin/templates` 增加模板版本列表、状态切换和默认版本设置。
+- `/admin/templates` 增加模板示例视频元数据新增、编辑和删除。
+
+### 教练端任务和公告完整管理第一版
+
+后端扩展：
+
+- `GET /api/v1/coach/classes/{class_public_id}/tasks` 支持 `status`、`analysis_type`、`keyword`、`from_date`、`to_date` query。
+- `GET /api/v1/coach/classes/{class_public_id}/announcements` 支持 `status`、`is_pinned`、`keyword`、`from_date`、`to_date` query。
+- `POST /api/v1/coach/classes/{class_public_id}/tasks/bulk-update`
+- `POST /api/v1/coach/classes/{class_public_id}/announcements/bulk-update`
+
+前端扩展：
+
+- `/coach/classes/{classPublicId}` 的任务列表增加状态、动作类型、关键词、截止时间筛选。
+- 任务列表增加批量选择和批量关闭。
+- 任务列表增加完整编辑表单，支持标题、描述、动作类型、模板、目标配置、发布时间、开始时间、截止时间和状态。
+- 公告列表增加状态、置顶状态、关键词、发布时间筛选。
+- 公告列表增加批量归档、批量置顶和批量取消置顶。
+- 公告列表增加完整编辑表单，支持标题、内容、置顶、发布时间、过期时间和状态。
+
+### 角色登录跳转与退出登录
+
+前端新增：
+
+- 登录成功后按角色默认跳转：`admin -> /admin`，`coach -> /coach`，`student/user -> /me`。
+- 登录页 `next` 参数增加角色可访问性校验，避免 coach 误入 `/admin`，避免普通用户误入 `/admin` 或 `/coach`。
+- `AdminShell` 增加 logout 入口。
+- `CoachShell` 增加 logout 入口。
+- logout 复用现有 `LogoutButton` 和 `authService.logout`，退出后清理本地 auth store 并回到登录页。
+
+## 验证结果
+
+- `python -m compileall server/app` 通过。
+- `npm.cmd run lint` 通过，仅保留既有 warning。
+- `npm.cmd run build` 通过。第一次在沙箱内 TypeScript 阶段遇到 `spawn EPERM`，放开构建子进程权限后通过。
+- `python -m unittest server.tests.test_report_service_idempotency` 通过。当前本地 `server/.venv` 启动器指向的 Python 不存在，实际使用 bundled Python 加 `server/.venv/Lib/site-packages` 跑通。
+
+## 当前仍未完成内容
+
+- 服务端 Supabase 上传签名或短期上传凭证仍未实现。
+- 后端异步 AI 分析任务链路仍未实现。
+- coach/admin 新增接口还缺系统化 API 集成测试与权限边界测试。
+- 管理端示例视频目前维护的是元数据，真实视频上传/签名仍依赖后续上传策略任务。
+- 管理端模板版本编辑目前完成状态和默认版本维护，复杂 JSON 规则的可视化编辑仍可后续增强。
+- 教练端任务和公告批量能力已覆盖状态类操作，assignment 筛选和批量管理仍未展开。
+
+## 下一轮建议
+
+1. 优先补 coach/admin 新增接口的集成测试和权限边界测试。
+2. 继续推进服务端 Supabase 上传签名或短期上传凭证方案。
+3. 进入后端异步 AI 分析任务模型和最小 worker 链路设计。
+4. 视运营需要增强模板版本 JSON 可视化编辑、任务 assignment 筛选与批量管理。

@@ -16,6 +16,14 @@ export const routes = {
   coach: {
     home: "/coach",
     classDetail: (classPublicId: string) => `/coach/classes/${classPublicId}`,
+    studentProfile: (studentPublicId: string) => `/coach/students/${studentPublicId}`,
+  },
+  admin: {
+    home: "/admin",
+    camps: "/admin/camps",
+    classes: "/admin/classes",
+    classMembers: (classPublicId: string) => `/admin/classes/${classPublicId}/members`,
+    templates: "/admin/templates",
   },
   pose: "/pose",
   pose2d: {

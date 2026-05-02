@@ -14,7 +14,11 @@ import {
 import { CoachClassList } from "@/components/coach/CoachClassList";
 import { CoachShell } from "@/components/coach/CoachShell";
 import { formatDate } from "@/components/coach/coachUtils";
-import { coachService, type CoachClassRead } from "@/services/coach";
+import {
+  coachService,
+  type CoachClassRead,
+  type CoachDashboardResponse,
+} from "@/services/coach";
 import { useAuthStore } from "@/store/authStore";
 
 function MetricTile({
@@ -64,6 +68,7 @@ export default function CoachHomePage() {
   const hasInitialized = useAuthStore((state) => state.hasInitialized);
   const isInitializing = useAuthStore((state) => state.isInitializing);
   const [classes, setClasses] = useState<CoachClassRead[]>([]);
+  const [dashboard, setDashboard] = useState<CoachDashboardResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -79,13 +84,13 @@ export default function CoachHomePage() {
     setIsLoading(true);
     setError(null);
 
-    void coachService
-      .listClasses()
-      .then((response) => {
+    void Promise.all([coachService.listClasses(), coachService.getDashboard()])
+      .then(([classesResponse, dashboardResponse]) => {
         if (!isActive) {
           return;
         }
-        setClasses(response.items);
+        setClasses(classesResponse.items);
+        setDashboard(dashboardResponse);
       })
       .catch((fetchError) => {
         if (!isActive) {
@@ -105,8 +110,12 @@ export default function CoachHomePage() {
   }, [canAccessCoach, hasInitialized, user]);
 
   const metrics = useMemo(() => {
-    const activeClasses = classes.filter((classItem) => classItem.status === "active").length;
-    const students = classes.reduce((sum, classItem) => sum + classItem.student_count, 0);
+    const activeClasses =
+      dashboard?.active_class_count ??
+      classes.filter((classItem) => classItem.status === "active").length;
+    const students =
+      dashboard?.student_count ??
+      classes.reduce((sum, classItem) => sum + classItem.student_count, 0);
     const capacity = classes.reduce((sum, classItem) => sum + (classItem.max_students ?? 0), 0);
     const nextEndingClass = [...classes]
       .filter((classItem) => classItem.end_date)
@@ -120,8 +129,11 @@ export default function CoachHomePage() {
       students,
       capacity,
       nextEndingClass,
+      openTasks: dashboard?.open_task_count ?? 0,
+      recentReports: dashboard?.recent_report_count ?? 0,
+      announcements: dashboard?.announcement_count ?? 0,
     };
-  }, [classes]);
+  }, [classes, dashboard]);
 
   if (!hasInitialized || isInitializing || !user) {
     return <CoachLoadingSurface />;
@@ -173,13 +185,13 @@ export default function CoachHomePage() {
             <MetricTile
               label="Students"
               value={String(metrics.students)}
-              helper="Active class members"
+              helper={metrics.capacity > 0 ? `${metrics.capacity} configured seats` : "Active class members"}
               accent="lime"
             />
             <MetricTile
-              label="Capacity"
-              value={metrics.capacity > 0 ? String(metrics.capacity) : "--"}
-              helper="Configured roster limit"
+              label="Open tasks"
+              value={String(metrics.openTasks)}
+              helper={`${metrics.recentReports} reports in 7 days`}
               accent="violet"
             />
           </div>
@@ -211,14 +223,13 @@ export default function CoachHomePage() {
             <div className="flex items-center justify-between rounded-lg border border-white/10 bg-black/18 px-4 py-3">
               <span className="flex items-center gap-2 text-sm text-white/64">
                 <BarChart3 className="h-4 w-4 text-[#d8ff5d]" />
-                Next class end
+                Notices
               </span>
-              <span className="font-semibold text-white">
-                {formatDate(metrics.nextEndingClass?.end_date)}
-              </span>
+              <span className="font-semibold text-white">{metrics.announcements}</span>
             </div>
             <div className="rounded-lg border border-[#65f7ff]/20 bg-[#65f7ff]/10 px-4 py-3 text-sm leading-6 text-[#dffbff]">
-              Class detail pages include students, reports, task publishing, and announcements.
+              Next class end: {formatDate(metrics.nextEndingClass?.end_date)}. Class pages now include
+              task and notice maintenance.
             </div>
           </div>
         </aside>

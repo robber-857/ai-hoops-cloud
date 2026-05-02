@@ -1,10 +1,12 @@
 import { CircleUserRound, Search } from "lucide-react";
+import Link from "next/link";
 
 import {
   formatDateTime,
   formatScore,
   getStudentDisplayName,
 } from "@/components/coach/coachUtils";
+import { routes } from "@/lib/routes";
 import type { CoachStudentRead } from "@/services/coach";
 
 type CoachStudentTableProps = {
@@ -45,7 +47,10 @@ export function CoachStudentTable({ students }: CoachStudentTableProps) {
                 className="transition-colors hover:bg-[#65f7ff]/[0.055]"
               >
                 <td className="px-4 py-4">
-                  <div className="flex items-center gap-3">
+                  <Link
+                    href={routes.coach.studentProfile(student.public_id)}
+                    className="flex items-center gap-3 transition hover:text-[#65f7ff]"
+                  >
                     <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#65f7ff]/18 bg-[#65f7ff]/10 text-[#65f7ff]">
                       <CircleUserRound className="h-4 w-4" />
                     </span>
@@ -57,7 +62,7 @@ export function CoachStudentTable({ students }: CoachStudentTableProps) {
                         @{student.username}
                       </span>
                     </span>
-                  </div>
+                  </Link>
                 </td>
                 <td className="px-4 py-4 text-white/62">
                   <div className="max-w-[14rem] truncate">{student.email || student.phone_number}</div>

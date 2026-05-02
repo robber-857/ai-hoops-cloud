@@ -30,6 +30,39 @@ const loginTabs: Array<{ value: LoginMode; label: string }> = [
 const heroImage =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuACQ5vruTNWYcUakJXGSrvRP6pqhZeTpwWP8aBveh5wi3g9srP-Vt6b5wJqiksIhwKTaveGJYz5mobDZc05uF5PhIROT3_VHK5oFjC-fp_XzWVg6Q_Vvwm1yWdA_llgVW5Jt3oMJ2B_ILNJrttdf4FXWfvGcnHPeKv7kJFWgFUTQFgLu4MPFgZADV1_0hIVFHF-O8O2za9zPKEhzDgTy6jiQKXaV71iMEkMguQEqFwIF12oHZx8ekkQrI8nk8yGnBJcdx7kp6zCRvmo";
 
+function isSafeLocalPath(path: string | null) {
+  return Boolean(path && path.startsWith("/") && !path.startsWith("//"));
+}
+
+function canRoleOpenPath(role: string, path: string) {
+  if (role === "admin") {
+    return true;
+  }
+
+  if (role === "coach") {
+    return !path.startsWith(routes.admin.home);
+  }
+
+  return !path.startsWith(routes.admin.home) && !path.startsWith(routes.coach.home);
+}
+
+function getDefaultPathForRole(role: string) {
+  if (role === "admin") {
+    return routes.admin.home;
+  }
+  if (role === "coach") {
+    return routes.coach.home;
+  }
+  return routes.user.me;
+}
+
+function resolveLoginRedirect(role: string, nextPath: string | null) {
+  if (isSafeLocalPath(nextPath) && nextPath && canRoleOpenPath(role, nextPath)) {
+    return nextPath;
+  }
+  return getDefaultPathForRole(role);
+}
+
 function FieldLabel({
   htmlFor,
   children,
@@ -110,9 +143,10 @@ export function LoginClient() {
               : await authService.loginWithEmailCode(emailForm);
 
         setSession(session);
-        setSuccess("Signed in. Redirecting to the shooting studio.");
         const nextPath = searchParams.get("next");
-        router.push(nextPath || routes.pose2d.main);
+        const redirectPath = resolveLoginRedirect(session.user.role, nextPath);
+        setSuccess("Signed in. Redirecting to your workspace.");
+        router.push(redirectPath);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unable to sign in.");
       }

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { Group, Points } from "three";
 
+import { LogoutButton } from "@/components/account/LogoutButton";
 import { routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import type { AuthUser } from "@/types/auth";
@@ -288,6 +289,10 @@ export function CoachShell({ children, user, title, breadcrumb }: CoachShellProp
                 {user.role}
               </span>
             </div>
+            <LogoutButton
+              label="Log out"
+              className="min-h-10 rounded-lg border-white/10 bg-white/[0.045] px-3 text-xs text-white/72 hover:bg-white/[0.08]"
+            />
           </div>
         </header>
 
