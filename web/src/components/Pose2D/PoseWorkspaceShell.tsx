@@ -13,6 +13,11 @@ import {
 import { AccountEntryButton } from '@/components/account/AccountEntryButton';
 import { routes } from '@/lib/routes';
 import { cn } from '@/lib/utils';
+import {
+  resolveTemplateExampleVideoSource,
+  templateService,
+  type TrainingTemplateRead,
+} from '@/services/templates';
 
 type AnalysisMode = 'shooting' | 'dribbling' | 'training';
 
@@ -51,9 +56,10 @@ type DribblingTemplateDemo = {
   zoomSrc?: string;
   demoDescription: string;
   zoomDescription?: string;
+  status: 'active' | 'hidden';
 };
 
-const dribblingTemplateDemos: DribblingTemplateDemo[] = [
+const legacyDribblingTemplateDemos: DribblingTemplateDemo[] = [
   {
     id: 'front-crossover',
     label: 'Narrow Crossover',
@@ -65,6 +71,7 @@ const dribblingTemplateDemos: DribblingTemplateDemo[] = [
       'Front-angle crossover demo for comparing cadence, shoulder level, and the ball transfer path before upload.',
     zoomDescription:
       '360 zoom-in clip for crossover. This shared view is used by both the front and side crossover templates.',
+    status: 'hidden',
   },
   {
     id: 'front-onehandoneside',
@@ -77,6 +84,7 @@ const dribblingTemplateDemos: DribblingTemplateDemo[] = [
       'Front-angle one-hand one-side demo for checking handle height, torso balance, and ball return rhythm.',
     zoomDescription:
       '360 zoom-in clip for one-hand one-side. This shared view is used by both the front and side templates.',
+    status: 'hidden',
   },
   {
     id: 'front-onehand-v',
@@ -89,6 +97,7 @@ const dribblingTemplateDemos: DribblingTemplateDemo[] = [
       'Front-angle one-hand V demo for inspecting wrist rhythm, handle width, and the return path into the next cycle.',
     zoomDescription:
       '360 zoom-in clip for one-hand V so players can study the tighter hand path and timing in more detail.',
+    status: 'hidden',
   },
   {
     id: 'side-crossover',
@@ -101,6 +110,7 @@ const dribblingTemplateDemos: DribblingTemplateDemo[] = [
       'Side-angle crossover demo for checking stance depth, hip timing, and how the dribble travels across the body.',
     zoomDescription:
       '360 zoom-in clip for crossover. This shared view is used by both the front and side crossover templates.',
+    status: 'hidden',
   },
   {
     id: 'side-onehandoneside',
@@ -113,8 +123,43 @@ const dribblingTemplateDemos: DribblingTemplateDemo[] = [
       'Side-angle one-hand one-side demo for comparing posture, elbow position, and ball control through each repetition.',
     zoomDescription:
       '360 zoom-in clip for one-hand one-side. This shared view is used by both the front and side templates.',
+    status: 'hidden',
   },
 ];
+
+function buildManagedDribblingDemos(templates: TrainingTemplateRead[]): DribblingTemplateDemo[] {
+  return templates
+    .filter((template) => template.analysis_type === 'dribbling' && template.status === 'active')
+    .flatMap((template) => {
+      const demos: DribblingTemplateDemo[] = [];
+
+      template.example_videos
+        .filter((video) => video.status === 'active')
+        .forEach((video) => {
+          const demoSrc = resolveTemplateExampleVideoSource(video);
+
+          if (!demoSrc) {
+            return;
+          }
+
+          demos.push({
+            id: video.public_id,
+            label: video.title,
+            motionLabel: template.name,
+            viewLabel: video.template_version
+              ? `Version ${video.template_version}`
+              : 'Managed Example',
+            demoSrc,
+            demoDescription:
+              video.description ||
+              `${template.name} managed example video. Visibility is controlled by admin metadata.`,
+            status: 'active' as const,
+          });
+        });
+
+      return demos;
+    });
+}
 
 const modeConfig: Record<AnalysisMode, ModeConfig> = {
   shooting: {
@@ -163,14 +208,14 @@ const modeConfig: Record<AnalysisMode, ModeConfig> = {
     accentButtonMuted:
       'border-fuchsia-300/18 bg-fuchsia-300/10 text-fuchsia-100 hover:border-fuchsia-300/35 hover:bg-fuchsia-300/16',
     sampleLabel: 'Front / Side dribble template',
-    sampleTitle: 'Example handle preview placeholder',
+    sampleTitle: 'Managed demo preview is hidden',
     sampleDescription:
-      'Use this space for each dribbling template demo later, so users can compare cadence, crossover path, and body stance before upload.',
+      'Dribbling example videos are hidden until admin marks approved video metadata as active. The upload flow remains available below.',
     templates: ['Narrow Crossover', 'One Hand Height', 'Side Control'],
     guide: [
       'Keep both feet visible and avoid cutting off the ball path.',
       'Use enough clip length to capture several complete cycles.',
-      'Use 360° vision to inspect the matching motion before upload.',
+      'Managed example videos can be restored from the admin template video status controls.',
     ],
     stats: [
       { label: 'Templates', value: '05' },
@@ -224,10 +269,54 @@ export default function PoseWorkspaceShell({
 }: PoseWorkspaceShellProps) {
   const config = modeConfig[mode];
   const isInteractiveDribblingMode = mode === 'dribbling';
-  const [selectedDribblingDemoId, setSelectedDribblingDemoId] = React.useState(
-    dribblingTemplateDemos[0]?.id ?? ''
-  );
+  const [managedDribblingDemos, setManagedDribblingDemos] = React.useState<
+    DribblingTemplateDemo[]
+  >([]);
+  const [selectedDribblingDemoId, setSelectedDribblingDemoId] = React.useState('');
   const [showZoomInDemo, setShowZoomInDemo] = React.useState(false);
+  const [isLoadingDribblingDemos, setIsLoadingDribblingDemos] = React.useState(false);
+
+  const visibleDribblingDemos = React.useMemo(
+    () => [
+      ...managedDribblingDemos,
+      ...legacyDribblingTemplateDemos.filter((template) => template.status === 'active'),
+    ],
+    [managedDribblingDemos]
+  );
+
+  React.useEffect(() => {
+    if (mode !== 'dribbling') {
+      return;
+    }
+
+    let isActive = true;
+    setIsLoadingDribblingDemos(true);
+
+    void templateService
+      .listTemplates()
+      .then((templates) => {
+        if (!isActive) {
+          return;
+        }
+        setManagedDribblingDemos(buildManagedDribblingDemos(templates));
+      })
+      .catch(() => {
+        if (!isActive) {
+          return;
+        }
+        setManagedDribblingDemos([]);
+      })
+      .finally(() => {
+        if (!isActive) {
+          return;
+        }
+        setIsLoadingDribblingDemos(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [mode]);
 
   React.useEffect(() => {
     if (mode !== 'dribbling') {
@@ -235,13 +324,25 @@ export default function PoseWorkspaceShell({
       return;
     }
 
-    setSelectedDribblingDemoId(dribblingTemplateDemos[0]?.id ?? '');
     setShowZoomInDemo(false);
   }, [mode]);
 
+  React.useEffect(() => {
+    if (mode !== 'dribbling') {
+      setSelectedDribblingDemoId('');
+      return;
+    }
+
+    setSelectedDribblingDemoId((current) =>
+      visibleDribblingDemos.some((template) => template.id === current)
+        ? current
+        : visibleDribblingDemos[0]?.id ?? ''
+    );
+  }, [mode, visibleDribblingDemos]);
+
   const selectedDribblingDemo = isInteractiveDribblingMode
-    ? dribblingTemplateDemos.find((template) => template.id === selectedDribblingDemoId) ??
-      dribblingTemplateDemos[0]
+    ? visibleDribblingDemos.find((template) => template.id === selectedDribblingDemoId) ??
+      null
     : null;
 
   const activeDribblingVideoSrc = selectedDribblingDemo
@@ -472,26 +573,26 @@ export default function PoseWorkspaceShell({
                         )}
                       </div>
                     </div>
-                    {selectedDribblingDemo ? (
+                    {selectedDribblingDemo?.zoomSrc ? (
                       <button
                         type="button"
                         onClick={() => {
-                          if (!selectedDribblingDemo.zoomSrc) {
-                            return;
-                          }
-
                           setShowZoomInDemo((current) => !current);
                         }}
                         aria-pressed={showZoomInDemo}
-                        disabled={!selectedDribblingDemo.zoomSrc}
                         className={cn(
-                          'inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[0.04] disabled:text-white/35',
+                          'inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200',
                           showZoomInDemo ? config.accentButton : config.accentButtonMuted
                         )}
                       >
                         {showZoomInDemo ? 'Back to Template Demo' : '360° vision'}
                         <MoveRight className="h-4 w-4" />
                       </button>
+                    ) : selectedDribblingDemo ? (
+                      <div className="inline-flex items-center gap-2 text-sm text-white/60">
+                        Managed by admin status
+                        <MoveRight className="h-4 w-4" />
+                      </div>
                     ) : (
                       <div className="inline-flex items-center gap-2 text-sm text-white/60">
                         Template switch placeholder
@@ -522,46 +623,57 @@ export default function PoseWorkspaceShell({
                     config.accentText
                   )}
                 >
-                  {isInteractiveDribblingMode ? 'Live demo' : 'Placeholder'}
+                  {isInteractiveDribblingMode
+                    ? isLoadingDribblingDemos
+                      ? 'Loading'
+                      : `${visibleDribblingDemos.length} active`
+                    : 'Placeholder'}
                 </div>
               </div>
 
               <div className="mt-5 grid gap-3">
                 {isInteractiveDribblingMode
-                  ? dribblingTemplateDemos.map((template) => {
-                      const isActive = template.id === selectedDribblingDemo?.id;
+                  ? visibleDribblingDemos.length > 0
+                    ? visibleDribblingDemos.map((template) => {
+                        const isActive = template.id === selectedDribblingDemo?.id;
 
-                      return (
-                        <button
-                          key={template.id}
-                          type="button"
-                          aria-pressed={isActive}
-                          onClick={() => {
-                            setSelectedDribblingDemoId(template.id);
-                            setShowZoomInDemo(false);
-                          }}
-                          className={cn(
-                            'flex min-h-16 items-center justify-between gap-4 rounded-2xl border px-4 py-3 text-left transition-all duration-200',
-                            isActive
-                              ? cn(
-                                  config.accentButtonMuted,
-                                  'shadow-[0_12px_30px_rgba(15,23,42,0.25)]'
-                                )
-                              : 'border-white/10 bg-white/[0.03] text-white/72 hover:border-white/20 hover:bg-white/[0.06]'
-                          )}
-                        >
-                          <span className="min-w-0">
-                            <span className="block font-medium text-white">{template.label}</span>
-                            <span className="mt-1 block text-[0.68rem] uppercase tracking-[0.24em] text-white/45">
-                              {template.viewLabel}
+                        return (
+                          <button
+                            key={template.id}
+                            type="button"
+                            aria-pressed={isActive}
+                            onClick={() => {
+                              setSelectedDribblingDemoId(template.id);
+                              setShowZoomInDemo(false);
+                            }}
+                            className={cn(
+                              'flex min-h-16 items-center justify-between gap-4 rounded-2xl border px-4 py-3 text-left transition-all duration-200',
+                              isActive
+                                ? cn(
+                                    config.accentButtonMuted,
+                                    'shadow-[0_12px_30px_rgba(15,23,42,0.25)]'
+                                  )
+                                : 'border-white/10 bg-white/[0.03] text-white/72 hover:border-white/20 hover:bg-white/[0.06]'
+                            )}
+                          >
+                            <span className="min-w-0">
+                              <span className="block font-medium text-white">{template.label}</span>
+                              <span className="mt-1 block text-[0.68rem] uppercase tracking-[0.24em] text-white/45">
+                                {template.viewLabel}
+                              </span>
                             </span>
-                          </span>
-                          <span className="shrink-0 text-xs uppercase tracking-[0.24em] text-white/45">
-                            {isActive ? 'Active' : 'Demo'}
-                          </span>
-                        </button>
-                      );
-                    })
+                            <span className="shrink-0 text-xs uppercase tracking-[0.24em] text-white/45">
+                              {isActive ? 'Active' : 'Demo'}
+                            </span>
+                          </button>
+                        );
+                      })
+                    : (
+                        <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-5 text-sm leading-6 text-white/58">
+                          No active dribbling demos are visible. Admin can restore approved
+                          examples by setting their template video status to active.
+                        </div>
+                      )
                   : config.templates.map((template, index) => (
                       <button
                         key={template}

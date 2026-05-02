@@ -10,6 +10,7 @@ from app.models.enums import AnalysisType, StorageProvider
 
 class TemplateExampleVideoRead(BaseModel):
     public_id: UUID
+    template_version: str | None = None
     title: str
     description: str | None = None
     storage_provider: StorageProvider

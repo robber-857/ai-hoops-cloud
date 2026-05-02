@@ -1,686 +1,155 @@
-# AI 篮球训练营主链路实施状态说明
+# AI 篮球训练营开发状态说明
 
-## 0. 文档链路
+最后更新：2026-05-03
 
-本文档建议和以下两份文档配合使用：
+本文档只保留当前仍然有指导价值的开发状态。早期已经完成、已经被后续实现覆盖，或与当前产品状态矛盾的历史内容已清理。下一轮具体任务见 `docs/training-camp-backend-next-iteration-task-breakdown.md`。
 
-- 目标设计文档：
-  [training-camp-backend-data-design.md](<D:\githubproject\ai-hoops-cloud\docs\training-camp-backend-data-design.md>)
-- 下一轮任务拆解清单：
-  [training-camp-backend-next-iteration-task-breakdown.md](<D:\githubproject\ai-hoops-cloud\docs\training-camp-backend-next-iteration-task-breakdown.md>)
+## 当前阶段结论
 
-三份文档的职责划分如下：
+篮球训练营系统已经具备学生端主链路、基础后台数据模型、登录角色跳转、Admin/Coach 初版页面和部分管理接口。当前主要缺口已经从“基础链路是否可用”转为“后台管理能力、教练工作台路由、模板标准导入、公告任务通知治理”。
 
-- 设计文档：回答“应该做成什么样”
-- 状态文档：回答“这轮已经做了什么，还缺什么”
-- 任务拆解文档：回答“下一轮按什么顺序继续做”
+用户已在 2026-05-03 手动验证：
 
-## 1. 当前阶段结论
+- `admin` 账号登录后可以正常跳转到 Admin 区域。
+- `coach` 账号登录后可以正常跳转到 Coach 区域。
+- `student` 账号登录后可以正常跳转到 Student/个人区域。
 
-截至 2026-04-30，训练营业务主链路已经从“后端能力准备好”推进到“前后端主使用链路已接通并完成端到端上传验证”。
+## 当前已完成能力
 
-当前已经具备：
+### 1. 账号登录与角色跳转
 
-- PostgreSQL 作为训练营业务主记录源
-- Supabase Storage 作为当前阶段的视频对象存储
-- 上传初始化、对象上传、上传完成回调的完整链路
-- 前端本地分析后提交后端保存报告的完整链路
-- 报告详情通过后端 API 读取
-- 个人中心通过 `/me/*` 后端聚合接口读取主要数据
-- 教练端第一批后端接口已经接入，可围绕班级查看学生、报告并发布任务和公告
+- 前端登录页已经按用户角色跳转到不同区域。
+- 当前角色入口：
+  - `admin` -> `/admin`
+  - `coach` -> `/coach`
+  - `student` / `user` -> `/me`
+- 这部分已经通过用户手动测试确认。
 
-当前仍处在过渡阶段：
+### 2. 学生端核心链路
 
-- 视频对象仍由前端使用 Supabase 客户端直传
-- AI 分析计算仍在前端本地完成
-- 教练端前端页面尚未开发
-- 管理员端业务接口尚未补齐
-- 还缺少系统化自动化集成测试
+学生端上传、报告、个人中心等主链路已经具备基础可用能力：
 
-## 2. 已完成内容
+- 训练视频上传记录。
+- 报告查询与详情查看。
+- 当前用户个人信息读取。
+- 报告生成的幂等性测试已经有基础覆盖。
 
-## 2.1 核心数据模型已补齐
+后续学生端重点不是重做主链路，而是接入更完整的真实训练任务、模板标准和后台异步分析。
 
-已在 `server/app/models/` 下新增或扩展训练营业务核心模型。
+### 3. Coach 初版能力
 
-### 已新增模型
+Coach 区域已有第一版页面和部分后端接口基础，包含：
 
-- [training_camp.py](<D:\githubproject\ai-hoops-cloud\server\app\models\training_camp.py>)
-- [camp_class.py](<D:\githubproject\ai-hoops-cloud\server\app\models\camp_class.py>)
-- [class_member.py](<D:\githubproject\ai-hoops-cloud\server\app\models\class_member.py>)
-- [training_template.py](<D:\githubproject\ai-hoops-cloud\server\app\models\training_template.py>)
-- [training_template_version.py](<D:\githubproject\ai-hoops-cloud\server\app\models\training_template_version.py>)
-- [template_example_video.py](<D:\githubproject\ai-hoops-cloud\server\app\models\template_example_video.py>)
-- [training_session.py](<D:\githubproject\ai-hoops-cloud\server\app\models\training_session.py>)
-- [training_task.py](<D:\githubproject\ai-hoops-cloud\server\app\models\training_task.py>)
-- [training_task_assignment.py](<D:\githubproject\ai-hoops-cloud\server\app\models\training_task_assignment.py>)
-- [announcement.py](<D:\githubproject\ai-hoops-cloud\server\app\models\announcement.py>)
-- [announcement_read.py](<D:\githubproject\ai-hoops-cloud\server\app\models\announcement_read.py>)
-- [notification.py](<D:\githubproject\ai-hoops-cloud\server\app\models\notification.py>)
-- [student_growth_snapshot.py](<D:\githubproject\ai-hoops-cloud\server\app\models\student_growth_snapshot.py>)
-- [achievement.py](<D:\githubproject\ai-hoops-cloud\server\app\models\achievement.py>)
-- [student_achievement.py](<D:\githubproject\ai-hoops-cloud\server\app\models\student_achievement.py>)
-- [student_goal.py](<D:\githubproject\ai-hoops-cloud\server\app\models\student_goal.py>)
+- 教练首页。
+- 班级概览/详情的基础数据结构。
+- 学员档案与训练记录的基础展示能力。
+- 任务、公告、通知相关的后端模型和初版页面方向。
 
-### 已扩展模型
+当前问题：
 
-- [user.py](<D:\githubproject\ai-hoops-cloud\server\app\models\user.py>)
-- [video.py](<D:\githubproject\ai-hoops-cloud\server\app\models\video.py>)
-- [upload_task.py](<D:\githubproject\ai-hoops-cloud\server\app\models\upload_task.py>)
-- [analysis_report.py](<D:\githubproject\ai-hoops-cloud\server\app\models\analysis_report.py>)
-- [__init__.py](<D:\githubproject\ai-hoops-cloud\server\app\models\__init__.py>)
+- Coach 左侧导航中的 `Classes`、`Reports`、`Tasks` 等入口前端外观存在，但点击后没有进入独立可用页面或视图。
+- 下一轮需要补齐 Coach 工作台路由或视图切换，让左侧导航成为真实工作入口。
 
-模型设计重点：
+### 4. Admin 初版能力
 
-- `training_sessions` 作为一次训练行为的业务主表
-- `upload_tasks`、`videos`、`analysis_reports` 统一挂到训练会话
-- `class_members` 支持学生、教练与班级的归属关系
-- 训练模板、模板版本、模板示例视频已有基础结构
-- 任务、公告、通知、成长、成就相关表已具备后续扩展基础
+Admin 当前已经可以进行部分训练营后台管理：
 
-## 2.2 枚举与基础语义已扩展
+- 新增和管理 camp。
+- 新增和管理 classes。
+- 管理班级成员的基础接口/页面方向。
+- 管理模板元数据的第一版页面。
 
-已扩展 [enums.py](<D:\githubproject\ai-hoops-cloud\server\app\models\enums.py>)：
+当前缺口：
 
-- `UserRole` 新增 `student`
-- `StorageProvider` 新增 `supabase`
-- `AnalysisType` 新增 `comprehensive`
+- Admin 还没有完整的“所有注册人员管理系统”。
+- Admin 还不能统一管理 coach/student 用户数据的增删改查。
+- Admin 还不能发布面向全局、camp 或 class 的公告。
+- Admin 还不能统一查看 coach 发布的 tasks 和 notifications。
 
-当前兼容策略：
+### 5. 模板与评分资产
 
-- 继续兼容旧的 `user`
-- 继续兼容旧的 `training`
-- 继续兼容旧的 `s3`
+本地模板文件是当前评分标准的核心资产，不能随意改动。
 
-后续业务上推荐逐步统一到：
+模板文件位置：
 
-- `student`
-- `comprehensive`
-- `supabase`
+- `web/src/config/templates/shooting`
+- `web/src/config/templates/dribbling`
+- `web/src/config/templates/training`
 
-## 2.3 Alembic 迁移脚本已新增并已在本地执行
+当前本地模板数量：
 
-已新增迁移脚本：
+- Shooting：2 个
+- Dribbling：5 个
+- Training：5 个
+- 合计：12 个
 
-- [20260427_0002_training_camp_core.py](<D:\githubproject\ai-hoops-cloud\server\alembic\versions\20260427_0002_training_camp_core.py>)
+当前模板文件：
 
-并同步更新了：
+- `shoot_front_form_close.json`
+- `shoot_side_form_close.json`
+- `dribble_front_narrow_crossover.json`
+- `dribble_front_onehand_oneside_height.json`
+- `dribble_front_onehand_v.json`
+- `dribble_side_narrow_crossover.json`
+- `dribble_side_onehand_oneside.json`
+- `deep_squat_reps_side.json`
+- `high_knees_in_place_side.json`
+- `pushup_hold_high_plank.json`
+- `wall_sit_half_hold.json`
+- `wall_sit_quarter_hold.json`
 
-- [alembic/env.py](<D:\githubproject\ai-hoops-cloud\server\alembic\env.py>)
+评分和计算逻辑主要位于：
 
-迁移脚本包含：
+- `web/src/lib`
 
-- 新增训练营核心业务表
-- 扩展已有枚举值
-- 给 `upload_tasks` 增加 `session_id`、`storage_provider`、`bucket_name`、`object_key`
-- 给 `analysis_reports` 增加 `session_id`、`training_template_id`
-- 对旧 `upload_tasks` 和旧 `analysis_reports` 做最小回填，避免历史内测数据导致迁移失败
+当前问题：
 
-当前状态：
+- Admin 模板管理页还没有加载这些本地 JSON 模板。
+- 后端模板注册表与前端本地评分模板之间还没有稳定的导入/同步桥接。
+- 下一轮应实现“读取本地模板 -> 同步到后端模板表 -> Admin 可查看/管理元数据”的能力，但不得修改模板 JSON 的评分标准内容。
 
-- 用户已完成本地数据库迁移
-- 本轮开发基于“数据库迁移已完成”的前提继续推进
+### 6. 视频与模板展示治理
 
-## 2.4 后端 Schema、Service 与 API 已补齐
+已经完成第一版：
 
-已新增 schema：
+- Admin 模板页可以区分公开视频和后台占位/不可见视频。
+- 学生端训练动作选择区域不会再暴露不适合作为公开视频的 dribbling 本地示例视频。
+- 后续仍需补齐真实模板示例视频上传、审核和发布流程。
 
-- [training.py](<D:\githubproject\ai-hoops-cloud\server\app\schemas\training.py>)
-- [report.py](<D:\githubproject\ai-hoops-cloud\server\app\schemas\report.py>)
-- [me.py](<D:\githubproject\ai-hoops-cloud\server\app\schemas\me.py>)
-- [template.py](<D:\githubproject\ai-hoops-cloud\server\app\schemas\template.py>)
+## 当前重要缺口
 
-已新增 service：
+### P0 / P1 缺口
 
-- [training_service.py](<D:\githubproject\ai-hoops-cloud\server\app\services\training_service.py>)
-- [report_service.py](<D:\githubproject\ai-hoops-cloud\server\app\services\report_service.py>)
-- [me_service.py](<D:\githubproject\ai-hoops-cloud\server\app\services\me_service.py>)
-- [template_service.py](<D:\githubproject\ai-hoops-cloud\server\app\services\template_service.py>)
+- Admin 用户管理系统缺失：需要能管理 coach、student 等注册用户数据。
+- Admin 公告发布系统缺失：需要能按全局、camp、class 发布公告。
+- Admin 监督视图缺失：需要能查看 coach 发布的 tasks 和 notifications。
+- Coach 左侧导航未接入真实页面/视图：`Classes`、`Reports`、`Tasks` 点击后没有明显反应。
+- Admin 模板页没有加载 `web/src/config/templates` 中已有的 12 个本地评分模板。
 
-已新增 API 路由：
+### 技术债与后续增强
 
-- [uploads.py](<D:\githubproject\ai-hoops-cloud\server\app\api\v1\uploads.py>)
-- [reports.py](<D:\githubproject\ai-hoops-cloud\server\app\api\v1\reports.py>)
-- [me.py](<D:\githubproject\ai-hoops-cloud\server\app\api\v1\me.py>)
-- [training_templates.py](<D:\githubproject\ai-hoops-cloud\server\app\api\v1\training_templates.py>)
+- 后端测试覆盖仍不足，尤其是权限、用户管理、模板同步、任务公告通知等后台能力。
+- 上传链路还需要接入 Supabase signed upload。
+- AI 分析链路仍需要从前端/同步流程逐步演进为后端异步任务。
+- 模板示例视频仍需要后台上传、可见性控制和发布审核流程。
 
-当前已具备的接口：
+## 最近验证记录
 
-- `POST /api/v1/uploads/init`
-- `POST /api/v1/uploads/complete`
-- `POST /api/v1/reports`
-- `GET /api/v1/reports/mine`
-- `GET /api/v1/reports/{report_public_id}`
-- `GET /api/v1/me/dashboard`
-- `GET /api/v1/me/reports`
-- `GET /api/v1/me/training-sessions`
-- `GET /api/v1/me/tasks`
-- `GET /api/v1/me/achievements`
-- `GET /api/v1/me/trends`
-- `GET /api/v1/training-templates`
-- `GET /api/v1/training-templates/{template_code}`
-- `GET /api/v1/coach/classes`
-- `GET /api/v1/coach/classes/{class_public_id}/students`
-- `GET /api/v1/coach/classes/{class_public_id}/reports`
-- `POST /api/v1/coach/classes/{class_public_id}/tasks`
-- `POST /api/v1/coach/classes/{class_public_id}/announcements`
+上一轮代码执行后已经验证：
 
-## 2.5 前端主链路已切到后端 API
+- `npm.cmd run lint`：通过，仅有既存 warning。
+- `npm.cmd run build`：通过。
+- `python -m compileall server\app`：通过。
+- `python -m unittest server.tests.test_report_service_idempotency`：通过。
 
-本轮已完成前端服务层和调用点迁移。
+本轮只整理开发文档，没有改动业务代码，也没有重新运行构建或单元测试。
 
-新增前端服务文件：
+## 下一阶段优先级
 
-- [uploads.ts](<D:\githubproject\ai-hoops-cloud\web\src\services\uploads.ts>)
-- [reports.ts](<D:\githubproject\ai-hoops-cloud\web\src\services\reports.ts>)
-- [me.ts](<D:\githubproject\ai-hoops-cloud\web\src\services\me.ts>)
+建议下一轮优先按以下顺序推进：
 
-已改造上传入口：
-
-- [UploadDropZone.tsx](<D:\githubproject\ai-hoops-cloud\web\src\components\Pose2D\UploadDropZone.tsx>)
-- [shooting/page.tsx](<D:\githubproject\ai-hoops-cloud\web\src\app\pose-2d\shooting\page.tsx>)
-- [dribbling/page.tsx](<D:\githubproject\ai-hoops-cloud\web\src\app\pose-2d\dribbling\page.tsx>)
-- [training/page.tsx](<D:\githubproject\ai-hoops-cloud\web\src\app\pose-2d\training\page.tsx>)
-
-上传链路现在是：
-
-1. 前端调用 `POST /api/v1/uploads/init`
-2. 后端创建 `training_session` 和 `upload_task`
-3. 后端返回 `bucket_name`、`object_key`、`session_public_id`、`upload_task_public_id`
-4. 前端按后端下发路径上传到 Supabase Storage
-5. 前端调用 `POST /api/v1/uploads/complete`
-6. 后端写入或更新 `videos`、`upload_tasks`、`training_sessions`
-
-已改造报告保存和读取：
-
-- [PoseAnalysisView.tsx](<D:\githubproject\ai-hoops-cloud\web\src\components\Pose2D\PoseAnalysisView.tsx>)
-- [report/page.tsx](<D:\githubproject\ai-hoops-cloud\web\src\app\pose-2d\report\page.tsx>)
-
-报告链路现在是：
-
-1. 前端本地完成动作分析和评分
-2. 前端调用 `POST /api/v1/reports`
-3. 后端写入 `analysis_reports`、`report_snapshots`、相关通知与成长数据
-4. 前端使用后端返回的 `report_public_id` 跳转报告页
-5. 报告页调用 `GET /api/v1/reports/{report_public_id}` 读取详情
-6. 报告页按用户选择的模板重新计算评分，并通过 `POST /api/v1/reports` 更新同一份报告
-
-本轮修正了一个关键体验问题：
-
-- 上传分析页仍会以当前动作类型的第一个模板生成默认报告
-- 用户进入报告页后，如果选择其他模板或年龄段，报告页会把当前展示的模板和分数回写后端
-- 个人中心 `Recent reports` 因此会展示用户最后在报告页确认过的模板评分，而不是固定保存上传分析页的第一个模板评分
-- 后端保存同一 `training_session` 的报告时改为幂等更新，避免重复保存导致训练任务完成次数被重复累计
-
-已改造个人中心：
-
-- [me/page.tsx](<D:\githubproject\ai-hoops-cloud\web\src\app\me\page.tsx>)
-
-个人中心现在读取：
-
-- `GET /api/v1/me/dashboard`
-- `GET /api/v1/me/reports`
-- `GET /api/v1/me/tasks`
-- `GET /api/v1/me/trends`
-
-## 2.6 阶段性权限策略已接入
-
-当前没有上完整 RBAC，但已具备“角色 + 归属关系”的阶段性访问控制方案。
-
-当前状态：
-
-- 学员接口按资源 owner 限制
-- 报告详情支持教练按班级归属访问
-- 教练端接口按 active coach member 班级归属访问
-- 管理员可后续扩展为全局访问
-
-这部分主要体现在：
-
-- [deps.py](<D:\githubproject\ai-hoops-cloud\server\app\api\deps.py>)
-- [report_service.py](<D:\githubproject\ai-hoops-cloud\server\app\services\report_service.py>)
-- [training_service.py](<D:\githubproject\ai-hoops-cloud\server\app\services\training_service.py>)
-- [coach_service.py](<D:\githubproject\ai-hoops-cloud\server\app\services\coach_service.py>)
-
-## 2.7 教练端第一批后端接口已完成
-
-本轮新增了教练端最小运营闭环接口：
-
-- `GET /api/v1/coach/classes`
-- `GET /api/v1/coach/classes/{class_public_id}/students`
-- `GET /api/v1/coach/classes/{class_public_id}/reports`
-- `POST /api/v1/coach/classes/{class_public_id}/tasks`
-- `POST /api/v1/coach/classes/{class_public_id}/announcements`
-
-实现文件：
-
-- [coach.py](<D:\githubproject\ai-hoops-cloud\server\app\api\v1\coach.py>)
-- [coach.py](<D:\githubproject\ai-hoops-cloud\server\app\schemas\coach.py>)
-- [coach_service.py](<D:\githubproject\ai-hoops-cloud\server\app\services\coach_service.py>)
-
-当前能力：
-
-- `coach` 只能访问自己作为 active coach member 的班级
-- `admin` 可访问全部班级
-- 教练可以查看自己负责的班级列表
-- 教练可以查看班级内 active student member 列表
-- 教练可以查看班级下学生报告
-- 教练发布训练任务时，会为班级内 active student member 创建 `training_task_assignment`
-- 教练可以发布班级公告
-
-前端页面尚未开发，后续可参考：
-
-- [coach-portal-function-api.md](<D:\githubproject\ai-hoops-cloud\docs\coach-portal-function-api.md>)
-
-## 2.8 当前校验结果
-
-后端基础校验已完成：
-
-- Python 模块导入检查
-- `compileall` 语法编译检查
-- SQLAlchemy `configure_mappers()` 映射检查
-- FastAPI app 路由加载检查
-- `python -m unittest server.tests.test_report_service_idempotency` 通过
-
-前端校验已完成：
-
-- `npm.cmd run lint` 通过
-- `npm.cmd run build` 通过
-
-端到端功能验证：
-
-- 用户已在本地验证上传、分析、保存报告、报告页读取链路正常
-- 浏览器网络面板可看到 `uploads/init`、Supabase 对象上传、`uploads/complete`、`reports`、报告详情读取请求均正常返回
-
-## 3. 当前没有完成的内容
-
-## 3.1 服务端 Supabase 上传签名尚未接入
-
-当前 `POST /uploads/init` 已经能够：
-
-- 创建 `training_session`
-- 创建 `upload_task`
-- 生成对象路径和上传元数据
-
-但还没有接入 Supabase 服务端 SDK 去真正生成上传签名或短期上传凭证。
-
-当前阶段仍是：
-
-- 后端统一生成 bucket 和 object_key
-- 前端使用 Supabase 客户端直传对象
-- 后端通过 `uploads/complete` 接收完成回调并落业务数据
-
-后续如果要进一步收口上传能力，需要让后端下发真实上传凭证，或者改为服务端代理上传。
-
-## 3.2 MediaPipe 后端异步分析任务尚未实现
-
-当前 `POST /reports` 是过渡方案：
-
-- 前端完成分析
-- 前端把评分、时间线和总结数据提交给后端保存
-
-尚未实现：
-
-- 上传完成后自动排队
-- 后端异步运行 MediaPipe
-- 后端自动生成分析报告
-- 异步任务状态追踪
-
-## 3.3 教练端前端和管理员端完整接口尚未开发完
-
-目前未完成的典型接口包括：
-
-- 教练端前端页面
-- 教练端任务详情、任务编辑、任务关闭、学生任务完成明细
-- 教练端公告列表、公告编辑、公告置顶、公告过期管理
-- 教练登录状态管理：教练账号登录跳转教练端，教练端页面需要有log out
-- 管理员管理训练营
-- 管理员管理班级
-- 管理员管理成员关系
-- 管理员管理模板与模板版本
-- 管理员上传、删除、修改模板示例视频
-- 管理员整体数据总览
-
-## 3.4 自动化测试尚未补齐
-
-还没做的是：
-
-- API 集成测试
-- 迁移执行测试
-- 权限边界测试
-- 训练任务与成就联动测试
-- 前端上传、报告保存、报告读取的自动化端到端测试
-
-## 3.5 前端仍保留 Supabase Storage 客户端依赖
-
-这不是当前阶段的错误，而是过渡方案的一部分。
-
-当前前端不再直接写 Supabase `analysis_reports`，但仍会：
-
-- 使用 Supabase 客户端上传视频对象
-- 使用后端下发的 bucket 和 object_key
-
-后续如果实现服务端上传签名或服务端代理上传，再进一步减少前端 Supabase Storage 依赖。
-
-## 4. 建议下一步开发顺序
-
-下一轮建议按以下顺序推进：
-
-1. 补服务端 Supabase 上传签名或上传凭证方案
-2. 开发教练端第一版前端页面
-3. 补管理员端第一批接口
-4. 补自动化集成测试
-5. 设计并推进后端异步 AI 分析链路
-
-## 5. 过时信息修正记录
-
-以下旧判断已经过时：
-
-- “前端尚未切换到新的后端 API”已经过时。上传、报告保存、报告读取、个人中心主链路已经接入后端 API。
-- “没有执行真实数据库迁移”已经过时。用户已完成本地迁移。
-- “没有清理或改造前端已有 Supabase 报告表依赖”已经过时。前端不再直接读写 Supabase `analysis_reports`。
-
-仍然成立的限制：
-
-- 服务端 Supabase 上传签名尚未实现
-- 后端异步 AI 分析尚未实现
-- 教练端前端页面尚未实现
-- 管理员端接口尚未补齐
-- 自动化集成测试尚未补齐
-# 2026-05-02 最新状态更新
-
-> 本节为最新状态增量记录。若本文后续旧段落仍写有“教练端前端页面尚未实现”等判断，以本节为准。
-
-## 本轮新增完成内容
-
-本轮已完成教练端第一版前端 MVP，并把已完成的后端教练接口接入到可使用的产品页面。
-
-### 教练端前端页面已完成第一版
-
-新增页面：
-
-- `web/src/app/coach/page.tsx`
-- `web/src/app/coach/classes/[classPublicId]/page.tsx`
-- `web/src/app/coach/layout.tsx`
-
-当前能力：
-
-- coach/admin 登录后可以进入 `/coach`
-- coach/admin 可以查看自己可访问的班级列表
-- coach/admin 可以进入 `/coach/classes/{classPublicId}` 查看班级详情
-- 班级详情页可以查看班级学生列表
-- 班级详情页可以查看近期训练报告列表
-- 近期报告可以跳转到现有报告详情页：`/pose-2d/report?id={report_public_id}`
-- 班级详情页可以发布训练任务
-- 班级详情页可以发布班级公告
-- 非 coach/admin 用户访问教练端时会显示无权限状态
-
-### 教练端前端服务层已补齐
-
-新增服务文件：
-
-- `web/src/services/coach.ts`
-
-已接入接口：
-
-- `GET /api/v1/coach/classes`
-- `GET /api/v1/coach/classes/{class_public_id}/students`
-- `GET /api/v1/coach/classes/{class_public_id}/reports`
-- `POST /api/v1/coach/classes/{class_public_id}/tasks`
-- `POST /api/v1/coach/classes/{class_public_id}/announcements`
-
-### 教练端视觉与交互框架已落地
-
-新增组件目录：
-
-- `web/src/components/coach/`
-
-主要组件：
-
-- `CoachShell`
-- `CoachClassList`
-- `CoachClassSummary`
-- `CoachStudentTable`
-- `CoachReportTable`
-- `CreateTaskPanel`
-- `CreateAnnouncementPanel`
-- `coachUtils`
-
-视觉与交互完成情况：
-
-- 深色科技风教练工作台
-- 全局底层 3D Canvas
-- 低多边形粒子流与线框篮球
-- 鼠标视差背景
-- 毛玻璃侧边栏和顶部栏
-- Framer Motion 侧边栏高亮与 Tabs 指示条
-- 班级卡片 3D hover tilt
-- HUD 风格班级概览指标
-- 高密度学生表格与报告表格
-- 移动端详情页已修复横向溢出
-
-新增依赖：
-
-- `framer-motion`
-
-### 验证结果
-
-前端验证：
-
-- `npm.cmd run lint` 通过，当前仅保留既有 warning
-- `npm.cmd run build` 通过
-- 使用 Playwright mock 教练端 API 做桌面与移动端视觉验证
-- 3D Canvas 已确认非空渲染
-- 桌面与移动端页面无 console error/warning
-- 移动端详情页复测 `scrollWidth = viewport`
-
-## 当前仍未完成内容
-
-以下限制仍然成立：
-
-- 服务端 Supabase 上传签名或短期上传凭证尚未实现
-- 后端异步 AI 分析任务链路尚未实现
-- 管理员端接口与前端尚未补齐
-- 教练端任务列表、任务详情、任务编辑、任务关闭、学生任务完成明细尚未实现
-- 教练端公告列表、公告编辑、公告置顶、公告过期管理尚未实现
-- 教练端学生训练档案详情页尚未实现
-- 自动化集成测试仍需补齐
-
-## 下一步建议
-
-下一轮建议优先级更新为：
-
-1. 补服务端 Supabase 上传签名或上传凭证方案
-2. 补教练端后续运营接口：任务列表/详情/编辑/关闭、公告列表/编辑/置顶/过期、学生档案
-3. 补管理员端第一批接口与基础前端
-4. 补后端 API 集成测试与权限边界测试
-5. 设计并推进后端异步 AI 分析链路
-
-# 2026-05-02 教练端后续运营与管理员端第一版更新
-
-本轮优先处理教练端和管理员端，已完成以下增量：
-
-## 教练端后续运营能力
-
-后端新增：
-
-- `GET /api/v1/coach/dashboard`
-- `GET /api/v1/coach/classes/{class_public_id}/tasks`
-- `GET /api/v1/coach/classes/{class_public_id}/tasks/{task_public_id}`
-- `PATCH /api/v1/coach/classes/{class_public_id}/tasks/{task_public_id}`
-- `GET /api/v1/coach/classes/{class_public_id}/announcements`
-- `PATCH /api/v1/coach/classes/{class_public_id}/announcements/{announcement_public_id}`
-- `GET /api/v1/coach/students/{student_public_id}/profile`
-- `GET /api/v1/coach/students/{student_public_id}/reports`
-
-前端新增或扩展：
-
-- `/coach` 接入跨班级 dashboard 聚合
-- `/coach/classes/{classPublicId}` 增加任务列表、任务关闭/重新发布、任务 assignment 明细查看
-- `/coach/classes/{classPublicId}` 增加公告列表、置顶/取消置顶、归档
-- `/coach/students/{studentPublicId}` 增加学生训练档案页和报告历史
-
-## 管理员端第一批能力
-
-后端新增：
-
-- `GET /api/v1/admin/camps`
-- `POST /api/v1/admin/camps`
-- `GET /api/v1/admin/classes`
-- `POST /api/v1/admin/classes`
-- `PATCH /api/v1/admin/classes/{class_public_id}`
-- `GET /api/v1/admin/classes/{class_public_id}/members`
-- `POST /api/v1/admin/classes/{class_public_id}/members`
-- `DELETE /api/v1/admin/classes/{class_public_id}/members/{member_public_id}`
-- `GET /api/v1/admin/training-templates`
-- `POST /api/v1/admin/training-templates`
-- `POST /api/v1/admin/training-templates/{template_public_id}/versions`
-
-前端新增：
-
-- `/admin` 管理概览
-- `/admin/camps` 训练营创建与列表
-- `/admin/classes` 班级创建、列表、状态维护
-- `/admin/classes/{classPublicId}/members` 班级成员列表、添加、软移除
-- `/admin/templates` 模板创建与模板版本创建
-
-验证：
-
-- `python -m compileall server/app` 通过
-- `npm.cmd run lint` 通过，仅保留既有 warning
-- `npm.cmd run build` 通过
-
-仍未完成：
-
-- 服务端 Supabase 上传签名或短期上传凭证
-- 后端异步 AI 分析任务链路
-- 管理员端更完整的编辑体验，例如训练营编辑、模板编辑、模板示例视频维护
-- 教练端任务完整编辑表单、公告完整编辑表单、任务 assignment 的筛选/批量管理
-- 后端 API 集成测试与权限边界测试仍需补齐
-
-## 本轮执行总结
-
-本轮的核心目标是先把教练端和管理员端从“只能做 MVP 操作”推进到“可以开始承担训练营运营后台”的状态。
-
-本轮实际完成：
-
-- 教练端补齐了任务、公告、学生档案相关的第一批后续运营接口。
-- 教练端班级详情页从“学生/报告/发布表单”扩展为“学生、报告、任务、公告”四类运营视图。
-- 教练端任务现在可以查看 assignment 完成情况，并支持关闭/重新发布。
-- 教练端公告现在可以查看列表，并支持置顶/取消置顶、归档。
-- 教练端新增学生训练档案页，支持查看学生基础信息、所属班级、任务概览和报告历史。
-- 管理员端新增第一批后端接口，覆盖训练营、班级、成员关系、训练模板和模板版本。
-- 管理员端新增基础前端页面，覆盖管理概览、训练营列表/创建、班级列表/创建/状态维护、班级成员添加/软移除、模板和模板版本创建。
-- 两份开发文档已记录本轮新增接口、页面和剩余任务。
-
-本轮未完成或只完成第一版的内容：
-
-- 管理员端仍缺更完整的编辑能力：训练营编辑、模板编辑、模板示例视频维护。
-- 教练端任务/公告仍缺完整编辑表单、筛选、批量管理。
-- 教练端和管理员端登录后的角色识别与自动跳转还没有完善。
-- 教练端和管理员端各自主页面还没有专门的 logout 入口。
-- 新增 coach/admin 接口还没有系统化集成测试和权限边界测试。
-- 服务端 Supabase 上传签名或短期上传凭证仍未实现。
-- 后端异步 AI 分析任务链路仍未实现。
-
-## 下一轮目标锁定
-
-下一轮优先围绕后台运营体验继续补齐，目标如下：
-
-1. 管理端更完整的编辑能力
-   - 训练营编辑：支持修改名称、编码、赛季、状态、日期、描述。
-   - 模板编辑：支持修改模板基础信息、状态、当前版本。
-   - 模板示例视频维护：支持新增、查看、修改、下架或删除模板示例视频元数据。
-
-2. 教练端任务/公告完整管理
-   - 任务完整编辑表单：标题、描述、动作类型、模板、目标配置、发布时间、开始时间、截止时间、状态。
-   - 公告完整编辑表单：标题、内容、置顶、发布时间、过期时间、状态。
-   - 任务/公告列表筛选：状态、类型、时间、关键词。
-   - 批量管理：批量关闭任务、批量归档公告、批量置顶/取消置顶公告。
-
-3. 角色登录跳转与退出登录
-   - 登录成功后按角色跳转：admin 到 `/admin`，coach 到 `/coach`，student/user 到 `/me` 或学生端默认页。
-   - 非 admin 用户访问 `/admin` 时保持清晰无权限提示或跳回合适入口。
-   - 非 coach/admin 用户访问 `/coach` 时保持清晰无权限提示或跳回合适入口。
-   - 教练端和管理端主页面增加 logout 入口，并复用现有退出登录逻辑清理会话。
-
-4. 回归验证
-   - 补新增管理端和教练端关键接口的后端集成测试。
-   - 补角色权限边界测试：admin、coach、student/user 分别访问后台接口的行为。
-   - 前端至少跑通 `npm.cmd run lint` 和 `npm.cmd run build`。
-
-# 2026-05-02 教练端与管理端完善执行后更新
-
-本轮继续围绕“教练端与管理端体验闭环”推进，服务端上传签名和后端异步 AI 分析仍按上一轮约定保留为后续技术任务。
-
-## 本轮新增完成内容
-
-### 管理端完整编辑能力第一版
-
-后端新增或扩展：
-
-- `PATCH /api/v1/admin/camps/{camp_public_id}`
-- `PATCH /api/v1/admin/training-templates/{template_public_id}`
-- `GET /api/v1/admin/training-templates/{template_public_id}/versions`
-- `PATCH /api/v1/admin/training-templates/{template_public_id}/versions/{version_public_id}`
-- `GET /api/v1/admin/training-templates/{template_public_id}/example-videos`
-- `POST /api/v1/admin/training-templates/{template_public_id}/example-videos`
-- `PATCH /api/v1/admin/training-templates/{template_public_id}/example-videos/{video_public_id}`
-- `DELETE /api/v1/admin/training-templates/{template_public_id}/example-videos/{video_public_id}`
-
-前端新增或扩展：
-
-- `/admin/camps` 增加训练营编辑面板，支持名称、编码、赛季、状态、日期和描述维护。
-- `/admin/templates` 增加模板基础信息编辑。
-- `/admin/templates` 增加模板版本列表、状态切换和默认版本设置。
-- `/admin/templates` 增加模板示例视频元数据新增、编辑和删除。
-
-### 教练端任务和公告完整管理第一版
-
-后端扩展：
-
-- `GET /api/v1/coach/classes/{class_public_id}/tasks` 支持 `status`、`analysis_type`、`keyword`、`from_date`、`to_date` query。
-- `GET /api/v1/coach/classes/{class_public_id}/announcements` 支持 `status`、`is_pinned`、`keyword`、`from_date`、`to_date` query。
-- `POST /api/v1/coach/classes/{class_public_id}/tasks/bulk-update`
-- `POST /api/v1/coach/classes/{class_public_id}/announcements/bulk-update`
-
-前端扩展：
-
-- `/coach/classes/{classPublicId}` 的任务列表增加状态、动作类型、关键词、截止时间筛选。
-- 任务列表增加批量选择和批量关闭。
-- 任务列表增加完整编辑表单，支持标题、描述、动作类型、模板、目标配置、发布时间、开始时间、截止时间和状态。
-- 公告列表增加状态、置顶状态、关键词、发布时间筛选。
-- 公告列表增加批量归档、批量置顶和批量取消置顶。
-- 公告列表增加完整编辑表单，支持标题、内容、置顶、发布时间、过期时间和状态。
-
-### 角色登录跳转与退出登录
-
-前端新增：
-
-- 登录成功后按角色默认跳转：`admin -> /admin`，`coach -> /coach`，`student/user -> /me`。
-- 登录页 `next` 参数增加角色可访问性校验，避免 coach 误入 `/admin`，避免普通用户误入 `/admin` 或 `/coach`。
-- `AdminShell` 增加 logout 入口。
-- `CoachShell` 增加 logout 入口。
-- logout 复用现有 `LogoutButton` 和 `authService.logout`，退出后清理本地 auth store 并回到登录页。
-
-## 验证结果
-
-- `python -m compileall server/app` 通过。
-- `npm.cmd run lint` 通过，仅保留既有 warning。
-- `npm.cmd run build` 通过。第一次在沙箱内 TypeScript 阶段遇到 `spawn EPERM`，放开构建子进程权限后通过。
-- `python -m unittest server.tests.test_report_service_idempotency` 通过。当前本地 `server/.venv` 启动器指向的 Python 不存在，实际使用 bundled Python 加 `server/.venv/Lib/site-packages` 跑通。
-
-## 当前仍未完成内容
-
-- 服务端 Supabase 上传签名或短期上传凭证仍未实现。
-- 后端异步 AI 分析任务链路仍未实现。
-- coach/admin 新增接口还缺系统化 API 集成测试与权限边界测试。
-- 管理端示例视频目前维护的是元数据，真实视频上传/签名仍依赖后续上传策略任务。
-- 管理端模板版本编辑目前完成状态和默认版本维护，复杂 JSON 规则的可视化编辑仍可后续增强。
-- 教练端任务和公告批量能力已覆盖状态类操作，assignment 筛选和批量管理仍未展开。
-
-## 下一轮建议
-
-1. 优先补 coach/admin 新增接口的集成测试和权限边界测试。
-2. 继续推进服务端 Supabase 上传签名或短期上传凭证方案。
-3. 进入后端异步 AI 分析任务模型和最小 worker 链路设计。
-4. 视运营需要增强模板版本 JSON 可视化编辑、任务 assignment 筛选与批量管理。
+1. Admin 用户管理系统：先做 coach/student 用户列表、筛选、详情、创建、编辑、禁用/恢复。
+2. Admin 模板同步：只读取并导入 `web/src/config/templates` 中的本地模板，不改模板 JSON 和评分逻辑。
+3. Coach 工作台路由：让 `Classes`、`Reports`、`Tasks` 等左侧导航进入真实页面或稳定视图。
+4. Admin 公告、任务、通知监督：Admin 可以发布公告，也可以查看 coach 发布的任务和通知。
+5. 增加后端测试和必要的前端构建验证。

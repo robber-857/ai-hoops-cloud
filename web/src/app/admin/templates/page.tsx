@@ -1,7 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, Loader2, Pencil, Plus, Save, Trash2, Video } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  Loader2,
+  Pencil,
+  Plus,
+  Save,
+  Trash2,
+  Video,
+} from "lucide-react";
 
 import {
   AdminForbiddenSurface,
@@ -48,7 +59,7 @@ function statusTone(status: string) {
   if (status === "active" || status === "published") {
     return "border-[#d8ff5d]/24 bg-[#d8ff5d]/10 text-[#e8ff9a]";
   }
-  if (status === "archived" || status === "deleted") {
+  if (status === "archived" || status === "deleted" || status === "hidden") {
     return "border-white/10 bg-white/[0.04] text-white/48";
   }
   return "border-[#65f7ff]/24 bg-[#65f7ff]/10 text-[#dffbff]";
@@ -387,6 +398,33 @@ export default function AdminTemplatesPage() {
     }
   };
 
+  const updateExampleVideoStatus = async (
+    videoItem: AdminTemplateExampleVideoRead,
+    status: string,
+  ) => {
+    if (!selectedTemplateId) {
+      return;
+    }
+    setError(null);
+    setMessage(null);
+    try {
+      const updatedVideo = await adminService.updateTemplateExampleVideo(
+        selectedTemplateId,
+        videoItem.public_id,
+        { status },
+      );
+      setMessage(`${updatedVideo.title} is now ${updatedVideo.status}.`);
+      if (editingVideoId === videoItem.public_id) {
+        setVideoStatus(updatedVideo.status);
+      }
+      await loadSelectedDetails(selectedTemplateId);
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error ? submitError.message : "Unable to update example video status.",
+      );
+    }
+  };
+
   if (!hasInitialized || isInitializing || !user) {
     return <AdminLoadingSurface />;
   }
@@ -660,6 +698,23 @@ export default function AdminTemplatesPage() {
                             <div className="flex justify-end gap-2">
                               <button
                                 type="button"
+                                onClick={() =>
+                                  updateExampleVideoStatus(
+                                    videoItem,
+                                    videoItem.status === "active" ? "hidden" : "active",
+                                  )
+                                }
+                                className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.045] px-3 text-xs font-semibold text-white/72 transition hover:border-[#d8ff5d]/28 hover:bg-[#d8ff5d]/10"
+                              >
+                                {videoItem.status === "active" ? (
+                                  <EyeOff className="h-4 w-4" />
+                                ) : (
+                                  <Eye className="h-4 w-4" />
+                                )}
+                                {videoItem.status === "active" ? "Hide" : "Show"}
+                              </button>
+                              <button
+                                type="button"
                                 onClick={() => startEditExample(videoItem)}
                                 className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[#65f7ff]/24 bg-[#65f7ff]/10 px-3 text-xs font-semibold text-[#dffbff] transition hover:bg-[#65f7ff]/16"
                               >
@@ -706,6 +761,7 @@ export default function AdminTemplatesPage() {
                       <span className={labelClass}>Status</span>
                       <select className={fieldClass} value={videoStatus} onChange={(event) => setVideoStatus(event.target.value)}>
                         <option value="active">active</option>
+                        <option value="hidden">hidden</option>
                         <option value="draft">draft</option>
                         <option value="archived">archived</option>
                       </select>

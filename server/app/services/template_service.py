@@ -13,6 +13,10 @@ from app.schemas.template import (
 
 
 def _template_read(template: TrainingTemplate) -> TrainingTemplateRead:
+    active_example_videos = [
+        video for video in template.example_videos if video.status == "active"
+    ]
+
     return TrainingTemplateRead(
         public_id=template.public_id,
         template_code=template.template_code,
@@ -40,6 +44,7 @@ def _template_read(template: TrainingTemplate) -> TrainingTemplateRead:
         example_videos=[
             TemplateExampleVideoRead(
                 public_id=video.public_id,
+                template_version=video.template_version,
                 title=video.title,
                 description=video.description,
                 storage_provider=video.storage_provider,
@@ -52,7 +57,7 @@ def _template_read(template: TrainingTemplate) -> TrainingTemplateRead:
                 sort_order=video.sort_order,
                 status=video.status,
             )
-            for video in sorted(template.example_videos, key=lambda item: item.sort_order)
+            for video in sorted(active_example_videos, key=lambda item: item.sort_order)
         ],
     )
 
