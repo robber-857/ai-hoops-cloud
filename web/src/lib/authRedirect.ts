@@ -69,18 +69,18 @@ export function getDefaultPathForRole(role: string) {
   return routes.user.me;
 }
 
-function isCrossRoleWorkspaceRoot(role: AuthRole, path: string) {
+function isCrossRoleWorkspacePath(role: AuthRole, path: string) {
   const pathname = getPathname(path);
 
-  if (
-    pathname !== routes.admin.home &&
-    pathname !== routes.coach.home &&
-    pathname !== routes.user.me
-  ) {
+  const workspaceRoot = [routes.admin.home, routes.coach.home, routes.user.me].find((root) =>
+    isPathWithin(pathname, root),
+  );
+
+  if (!workspaceRoot) {
     return false;
   }
 
-  return pathname !== getDefaultPathForRole(role);
+  return workspaceRoot !== getDefaultPathForRole(role);
 }
 
 export function resolveLoginRedirect(role: string, nextPath: string | null) {
@@ -90,7 +90,7 @@ export function resolveLoginRedirect(role: string, nextPath: string | null) {
     isSafeLocalPath(nextPath) &&
     nextPath &&
     canRoleOpenPath(normalizedRole, nextPath) &&
-    !isCrossRoleWorkspaceRoot(normalizedRole, nextPath)
+    !isCrossRoleWorkspacePath(normalizedRole, nextPath)
   ) {
     return nextPath;
   }

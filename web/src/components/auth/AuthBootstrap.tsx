@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 
+import { getAuthAccessToken } from "@/lib/authToken";
 import { authService } from "@/services/auth";
 import { useAuthStore } from "@/store/authStore";
 
@@ -13,19 +14,20 @@ export function AuthBootstrap() {
 
   useEffect(() => {
     let isActive = true;
+    const requestAccessToken = getAuthAccessToken();
 
     startInitialization();
 
     void authService
       .getCurrentUser()
       .then((user) => {
-        if (!isActive) {
+        if (!isActive || getAuthAccessToken() !== requestAccessToken) {
           return;
         }
         setUser(user);
       })
       .catch(() => {
-        if (!isActive) {
+        if (!isActive || getAuthAccessToken() !== requestAccessToken) {
           return;
         }
         clearSession();
