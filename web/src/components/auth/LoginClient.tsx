@@ -213,7 +213,7 @@ export function LoginClient() {
                       <input
                         id="username"
                         className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/26"
-                        placeholder="elton"
+                        placeholder="username"
                         value={passwordForm.username}
                         onChange={(event) =>
                           setPasswordForm((current) => ({
@@ -271,7 +271,7 @@ export function LoginClient() {
                       <input
                         id="phone_number"
                         className="w-full bg-transparent text-sm text-white outline-none shadow-none placeholder:text-white/26"
-                        placeholder="0413756205"
+                        placeholder="04xxxxxxxx"
                         value={phoneForm.phone_number}
                         onChange={(event) =>
                           setPhoneForm((current) => ({
@@ -334,7 +334,7 @@ export function LoginClient() {
                         id="email"
                         type="email"
                         className="w-full bg-transparent text-sm text-white outline-none shadow-none placeholder:text-white/26"
-                        placeholder="athlete@performance.lab"
+                        placeholder="xx@gmail.com"
                         value={emailForm.email}
                         onChange={(event) =>
                           setEmailForm((current) => ({

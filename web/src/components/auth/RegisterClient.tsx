@@ -180,7 +180,7 @@ export function RegisterClient() {
                     <input
                       id="username"
                       className="w-full rounded-xl border border-white/10 bg-[#000000] px-4 py-3 text-white placeholder:text-neutral-600 transition focus:border-[#ff9f4a] focus:outline-none focus:ring-1 focus:ring-[#ff9f4a]"
-                      placeholder="elton"
+                      placeholder="username"
                       value={form.username}
                       onChange={(event) =>
                         setForm((current) => ({ ...current, username: event.target.value }))
@@ -192,7 +192,7 @@ export function RegisterClient() {
                     <input
                       id="phone_number"
                       className="w-full rounded-xl border border-white/10 bg-[#000000] px-4 py-3 text-white placeholder:text-neutral-600 transition focus:border-[#ff9f4a] focus:outline-none focus:ring-1 focus:ring-[#ff9f4a]"
-                      placeholder="0413756205"
+                      placeholder="04xxxxxxxx"
                       value={form.phone_number}
                       onChange={(event) =>
                         setForm((current) => ({ ...current, phone_number: event.target.value }))
@@ -208,7 +208,7 @@ export function RegisterClient() {
                     type="email"
                     required
                     className="w-full rounded-xl border border-white/10 bg-[#000000] px-4 py-3 text-white placeholder:text-neutral-600 transition focus:border-[#ff9f4a] focus:outline-none focus:ring-1 focus:ring-[#ff9f4a]"
-                    placeholder="athlete@performance.lab"
+                    placeholder="xx@gmail.com"
                     value={form.email}
                     onChange={(event) =>
                       setForm((current) => ({ ...current, email: event.target.value }))
