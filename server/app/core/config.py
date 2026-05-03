@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     template_video_bucket: str = Field(default="template-videos", alias="TEMPLATE_VIDEO_BUCKET")
 
     model_config = SettingsConfigDict(
-        env_file=(".env.local", ".env"),
+        env_file=(".env", ".env.production", ".env.local"),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",

@@ -26,9 +26,10 @@ class DeliveryService:
         self._send_phone_code(target=target, scene=scene, code=code)
 
     def _send_email_code(self, *, target: str, scene: VerificationScene, code: str) -> None:
-        if not settings.smtp_password:
+        if not self._is_email_delivery_configured():
             if settings.is_production:
-                raise RuntimeError("SMTP credentials are not configured.")
+                logger.error("SMTP credentials are missing for production email delivery.")
+                raise RuntimeError("Email delivery is not configured. Please contact support.")
 
             logger.warning(
                 "SMTP credentials missing. Verification code for %s (%s): %s",
@@ -62,6 +63,17 @@ class DeliveryService:
                 smtp.starttls()
             smtp.login(settings.smtp_username, settings.smtp_password)
             smtp.send_message(message)
+
+    def _is_email_delivery_configured(self) -> bool:
+        return all(
+            [
+                settings.smtp_host,
+                settings.smtp_port,
+                settings.smtp_username,
+                settings.smtp_password,
+                settings.smtp_from_email,
+            ]
+        )
 
     def _send_phone_code(self, *, target: str, scene: VerificationScene, code: str) -> None:
         if settings.is_production:

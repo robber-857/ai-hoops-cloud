@@ -21,6 +21,7 @@ Required frontend variables:
 - Production uses Render service Environment Variables.
 - `server/.env.example` documents local values.
 - `server/.env.production.example` documents the production values that belong in Render.
+- `server/.env.production` is also supported for production-like local runs or Render Secret File usage, but it must not be committed.
 
 Required backend variables:
 
@@ -34,7 +35,18 @@ Required backend variables:
 - `JWT_ALGORITHM`
 - `ACCESS_TOKEN_EXPIRE_MINUTES`
 - `REFRESH_TOKEN_EXPIRE_DAYS`
+- `SESSION_COOKIE_NAME`
+- `SESSION_COOKIE_SECURE`
+- `SESSION_COOKIE_SAMESITE`
+- `SESSION_COOKIE_DOMAIN`
 - `CORS_ORIGINS`
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USERNAME`
+- `SMTP_PASSWORD`
+- `SMTP_FROM_EMAIL`
+- `SMTP_FROM_NAME`
+- `SMTP_STARTTLS`
 - `UPLOAD_VIDEO_BUCKET`
 - `TEMPLATE_VIDEO_BUCKET`
 
@@ -77,10 +89,23 @@ JWT_REFRESH_SECRET_KEY=replace-with-another-long-random-secret
 JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 REFRESH_TOKEN_EXPIRE_DAYS=7
+SESSION_COOKIE_NAME=ai-hoops-session
+SESSION_COOKIE_SECURE=true
+SESSION_COOKIE_SAMESITE=none
+SESSION_COOKIE_DOMAIN=
 CORS_ORIGINS=["https://ai-hoops-cloud.vercel.app","https://your-project-name.vercel.app"]
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your-sender@gmail.com
+SMTP_PASSWORD=your-email-provider-app-password
+SMTP_FROM_EMAIL=your-sender@gmail.com
+SMTP_FROM_NAME=AI Hoops Cloud
+SMTP_STARTTLS=true
 UPLOAD_VIDEO_BUCKET=user-videos
 TEMPLATE_VIDEO_BUCKET=template-videos
 ```
+
+Alternatively, create a Render Secret File at `server/.env.production` with the same values. Do not commit `server/.env.production`; the repository `.gitignore` already excludes it because it can contain SMTP and database secrets.
 
 After the first backend deploy, run the database migration. Local development migration has already been completed as of 2026-04-30, but each new production database still needs this step:
 
