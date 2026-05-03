@@ -185,6 +185,133 @@ class AdminUpdateUserRequest(BaseModel):
     class_public_ids: list[UUID] | None = None
 
 
+class AdminAnnouncementRead(BaseModel):
+    public_id: UUID
+    publisher_public_id: UUID
+    publisher_name: str
+    scope_type: str
+    target_role: UserRole | None = None
+    camp_public_id: UUID | None = None
+    camp_name: str | None = None
+    class_public_id: UUID | None = None
+    class_name: str | None = None
+    title: str
+    content: str
+    status: str
+    is_pinned: bool
+    publish_at: datetime | None = None
+    expire_at: datetime | None = None
+    notification_count: int
+    read_count: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class AdminAnnouncementsResponse(BaseModel):
+    items: list[AdminAnnouncementRead]
+
+
+class AdminCreateAnnouncementRequest(BaseModel):
+    scope_type: str = Field(default="global", min_length=1, max_length=20)
+    target_role: UserRole | None = None
+    camp_public_id: UUID | None = None
+    class_public_id: UUID | None = None
+    title: str = Field(min_length=1, max_length=120)
+    content: str = Field(min_length=1)
+    status: str = Field(default="published", max_length=20)
+    is_pinned: bool = False
+    publish_at: datetime | None = None
+    expire_at: datetime | None = None
+    notify_recipients: bool = True
+
+
+class AdminUpdateAnnouncementRequest(BaseModel):
+    scope_type: str | None = Field(default=None, min_length=1, max_length=20)
+    target_role: UserRole | None = None
+    camp_public_id: UUID | None = None
+    class_public_id: UUID | None = None
+    title: str | None = Field(default=None, min_length=1, max_length=120)
+    content: str | None = Field(default=None, min_length=1)
+    status: str | None = Field(default=None, max_length=20)
+    is_pinned: bool | None = None
+    publish_at: datetime | None = None
+    expire_at: datetime | None = None
+    notify_recipients: bool = True
+
+
+class AdminTaskAssignmentRead(BaseModel):
+    public_id: UUID
+    student_public_id: UUID
+    student_name: str
+    status: str
+    progress_percent: float | None = None
+    completed_sessions: int
+    best_score: float | None = None
+    latest_report_public_id: UUID | None = None
+    completed_at: datetime | None = None
+    last_submission_at: datetime | None = None
+    created_at: datetime
+
+
+class AdminTaskRead(BaseModel):
+    public_id: UUID
+    camp_public_id: UUID | None = None
+    camp_name: str | None = None
+    class_public_id: UUID
+    class_name: str
+    coach_public_id: UUID
+    coach_name: str
+    title: str
+    description: str | None = None
+    analysis_type: AnalysisType | None = None
+    template_code: str | None = None
+    target_config: dict | None = None
+    status: str
+    publish_at: datetime | None = None
+    start_at: datetime | None = None
+    due_at: datetime | None = None
+    assignment_count: int
+    completed_assignment_count: int
+    assignment_status_counts: dict[str, int] = Field(default_factory=dict)
+    created_at: datetime
+    updated_at: datetime
+
+
+class AdminTaskDetailRead(AdminTaskRead):
+    assignments: list[AdminTaskAssignmentRead] = Field(default_factory=list)
+
+
+class AdminTasksResponse(BaseModel):
+    items: list[AdminTaskRead]
+
+
+class AdminUpdateTaskRequest(BaseModel):
+    status: str | None = Field(default=None, max_length=20)
+    publish_at: datetime | None = None
+    start_at: datetime | None = None
+    due_at: datetime | None = None
+
+
+class AdminNotificationRead(BaseModel):
+    public_id: UUID
+    user_public_id: UUID
+    user_name: str
+    user_role: UserRole
+    type: str
+    title: str
+    content: str | None = None
+    business_type: str | None = None
+    business_id: int | None = None
+    business_public_id: UUID | None = None
+    is_read: bool
+    read_at: datetime | None = None
+    created_at: datetime
+
+
+class AdminNotificationsResponse(BaseModel):
+    items: list[AdminNotificationRead]
+
+
 class AdminTrainingTemplateVersionRead(BaseModel):
     public_id: UUID
     version: str

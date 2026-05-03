@@ -2,7 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, Boxes, BookOpenCheck, Loader2, UsersRound } from "lucide-react";
+import {
+  AlertTriangle,
+  Bell,
+  Boxes,
+  BookOpenCheck,
+  ClipboardList,
+  Loader2,
+  Megaphone,
+  UsersRound,
+} from "lucide-react";
 
 import {
   AdminForbiddenSurface,
@@ -170,6 +179,24 @@ export default function AdminHomePage() {
             icon: BookOpenCheck,
             title: "Training templates",
             detail: `${templates.length} templates / ${totals.activeTemplates} active`,
+          },
+          {
+            href: routes.admin.announcements,
+            icon: Megaphone,
+            title: "Announcements",
+            detail: "Global, camp, class, and role broadcasts",
+          },
+          {
+            href: routes.admin.tasks,
+            icon: ClipboardList,
+            title: "Task supervision",
+            detail: "Coach task progress and status oversight",
+          },
+          {
+            href: routes.admin.notifications,
+            icon: Bell,
+            title: "Notifications",
+            detail: "System event and recipient monitoring",
           },
         ].map((item) => {
           const Icon = item.icon;

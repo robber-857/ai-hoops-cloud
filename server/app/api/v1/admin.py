@@ -6,12 +6,15 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, get_db
 from app.models.user import User
 from app.schemas.admin import (
+    AdminAnnouncementRead,
+    AdminAnnouncementsResponse,
     AdminCampRead,
     AdminCampsResponse,
     AdminClassMemberRead,
     AdminClassMembersResponse,
     AdminClassRead,
     AdminClassesResponse,
+    AdminCreateAnnouncementRequest,
     AdminCreateCampRequest,
     AdminCreateClassMemberRequest,
     AdminCreateClassRequest,
@@ -19,16 +22,22 @@ from app.schemas.admin import (
     AdminCreateTrainingTemplateRequest,
     AdminCreateTrainingTemplateVersionRequest,
     AdminCreateUserRequest,
+    AdminNotificationRead,
+    AdminNotificationsResponse,
     AdminLocalTemplateSyncResponse,
+    AdminTaskDetailRead,
+    AdminTasksResponse,
     AdminTrainingTemplateRead,
     AdminTrainingTemplatesResponse,
     AdminTrainingTemplateVersionRead,
     AdminTrainingTemplateVersionsResponse,
+    AdminUpdateAnnouncementRequest,
     AdminUpdateUserRequest,
     AdminUpdateClassRequest,
     AdminTemplateExampleVideoRead,
     AdminTemplateExampleVideosResponse,
     AdminUpdateCampRequest,
+    AdminUpdateTaskRequest,
     AdminUpdateTemplateExampleVideoRequest,
     AdminUpdateTrainingTemplateRequest,
     AdminUpdateTrainingTemplateVersionRequest,
@@ -36,7 +45,7 @@ from app.schemas.admin import (
     AdminUsersResponse,
 )
 from app.services.admin_service import AdminService
-from app.models.enums import UserRole, UserStatus
+from app.models.enums import AnalysisType, UserRole, UserStatus
 
 router = APIRouter()
 
@@ -111,6 +120,178 @@ def disable_user(
     service = AdminService(db)
     service.disable_user(current_user, user_public_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/announcements",
+    response_model=AdminAnnouncementsResponse,
+    status_code=status.HTTP_200_OK,
+)
+def list_announcements(
+    scope_type: str | None = Query(default=None),
+    status_filter: str | None = Query(default=None, alias="status"),
+    target_role: UserRole | None = Query(default=None),
+    camp_public_id: UUID | None = Query(default=None),
+    class_public_id: UUID | None = Query(default=None),
+    keyword: str | None = Query(default=None, max_length=100),
+    limit: int = Query(default=100, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AdminAnnouncementsResponse:
+    service = AdminService(db)
+    return AdminAnnouncementsResponse(
+        items=service.list_announcements(
+            current_user,
+            scope_type=scope_type,
+            announcement_status=status_filter,
+            target_role=target_role,
+            camp_public_id=camp_public_id,
+            class_public_id=class_public_id,
+            keyword=keyword,
+            limit=limit,
+        )
+    )
+
+
+@router.post(
+    "/announcements",
+    response_model=AdminAnnouncementRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_announcement(
+    payload: AdminCreateAnnouncementRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AdminAnnouncementRead:
+    service = AdminService(db)
+    return service.create_announcement(current_user, payload)
+
+
+@router.patch(
+    "/announcements/{announcement_public_id}",
+    response_model=AdminAnnouncementRead,
+    status_code=status.HTTP_200_OK,
+)
+def update_announcement(
+    announcement_public_id: UUID,
+    payload: AdminUpdateAnnouncementRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AdminAnnouncementRead:
+    service = AdminService(db)
+    return service.update_announcement(current_user, announcement_public_id, payload)
+
+
+@router.delete("/announcements/{announcement_public_id}", status_code=status.HTTP_204_NO_CONTENT)
+def archive_announcement(
+    announcement_public_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    service = AdminService(db)
+    service.archive_announcement(current_user, announcement_public_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/tasks", response_model=AdminTasksResponse, status_code=status.HTTP_200_OK)
+def list_tasks(
+    coach_public_id: UUID | None = Query(default=None),
+    camp_public_id: UUID | None = Query(default=None),
+    class_public_id: UUID | None = Query(default=None),
+    status_filter: str | None = Query(default=None, alias="status"),
+    analysis_type: AnalysisType | None = Query(default=None),
+    keyword: str | None = Query(default=None, max_length=100),
+    limit: int = Query(default=100, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AdminTasksResponse:
+    service = AdminService(db)
+    return AdminTasksResponse(
+        items=service.list_tasks(
+            current_user,
+            coach_public_id=coach_public_id,
+            camp_public_id=camp_public_id,
+            class_public_id=class_public_id,
+            task_status=status_filter,
+            analysis_type=analysis_type,
+            keyword=keyword,
+            limit=limit,
+        )
+    )
+
+
+@router.get(
+    "/tasks/{task_public_id}",
+    response_model=AdminTaskDetailRead,
+    status_code=status.HTTP_200_OK,
+)
+def get_task_detail(
+    task_public_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AdminTaskDetailRead:
+    service = AdminService(db)
+    return service.get_task_detail(current_user, task_public_id)
+
+
+@router.patch(
+    "/tasks/{task_public_id}",
+    response_model=AdminTaskDetailRead,
+    status_code=status.HTTP_200_OK,
+)
+def update_task(
+    task_public_id: UUID,
+    payload: AdminUpdateTaskRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AdminTaskDetailRead:
+    service = AdminService(db)
+    return service.update_task(current_user, task_public_id, payload)
+
+
+@router.get(
+    "/notifications",
+    response_model=AdminNotificationsResponse,
+    status_code=status.HTTP_200_OK,
+)
+def list_notifications(
+    notification_type: str | None = Query(default=None, alias="type"),
+    business_type: str | None = Query(default=None),
+    user_public_id: UUID | None = Query(default=None),
+    user_role: UserRole | None = Query(default=None),
+    is_read: bool | None = Query(default=None),
+    keyword: str | None = Query(default=None, max_length=100),
+    limit: int = Query(default=100, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AdminNotificationsResponse:
+    service = AdminService(db)
+    return AdminNotificationsResponse(
+        items=service.list_notifications(
+            current_user,
+            notification_type=notification_type,
+            business_type=business_type,
+            user_public_id=user_public_id,
+            user_role=user_role,
+            is_read=is_read,
+            keyword=keyword,
+            limit=limit,
+        )
+    )
+
+
+@router.get(
+    "/notifications/{notification_public_id}",
+    response_model=AdminNotificationRead,
+    status_code=status.HTTP_200_OK,
+)
+def get_notification_detail(
+    notification_public_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AdminNotificationRead:
+    service = AdminService(db)
+    return service.get_notification_detail(current_user, notification_public_id)
 
 
 @router.get("/camps", response_model=AdminCampsResponse, status_code=status.HTTP_200_OK)

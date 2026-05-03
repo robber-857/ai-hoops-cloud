@@ -143,6 +143,111 @@ export type AdminCreateUserPayload = {
 
 export type AdminUpdateUserPayload = Partial<AdminCreateUserPayload>;
 
+export type AdminAnnouncementScopeType = "global" | "camp" | "class" | "role";
+
+export type AdminAnnouncementRead = {
+  public_id: string;
+  publisher_public_id: string;
+  publisher_name: string;
+  scope_type: AdminAnnouncementScopeType;
+  target_role: AdminUserRole | null;
+  camp_public_id: string | null;
+  camp_name: string | null;
+  class_public_id: string | null;
+  class_name: string | null;
+  title: string;
+  content: string;
+  status: string;
+  is_pinned: boolean;
+  publish_at: string | null;
+  expire_at: string | null;
+  notification_count: number;
+  read_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdminCreateAnnouncementPayload = {
+  scope_type: AdminAnnouncementScopeType;
+  target_role?: AdminUserRole | null;
+  camp_public_id?: string | null;
+  class_public_id?: string | null;
+  title: string;
+  content: string;
+  status?: string;
+  is_pinned?: boolean;
+  publish_at?: string | null;
+  expire_at?: string | null;
+  notify_recipients?: boolean;
+};
+
+export type AdminUpdateAnnouncementPayload = Partial<AdminCreateAnnouncementPayload>;
+
+export type AdminTaskAssignmentRead = {
+  public_id: string;
+  student_public_id: string;
+  student_name: string;
+  status: string;
+  progress_percent: number | null;
+  completed_sessions: number;
+  best_score: number | null;
+  latest_report_public_id: string | null;
+  completed_at: string | null;
+  last_submission_at: string | null;
+  created_at: string;
+};
+
+export type AdminTaskRead = {
+  public_id: string;
+  camp_public_id: string | null;
+  camp_name: string | null;
+  class_public_id: string;
+  class_name: string;
+  coach_public_id: string;
+  coach_name: string;
+  title: string;
+  description: string | null;
+  analysis_type: ReportAnalysisType | null;
+  template_code: string | null;
+  target_config: Record<string, unknown> | null;
+  status: string;
+  publish_at: string | null;
+  start_at: string | null;
+  due_at: string | null;
+  assignment_count: number;
+  completed_assignment_count: number;
+  assignment_status_counts: Record<string, number>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdminTaskDetailRead = AdminTaskRead & {
+  assignments: AdminTaskAssignmentRead[];
+};
+
+export type AdminUpdateTaskPayload = {
+  status?: string | null;
+  publish_at?: string | null;
+  start_at?: string | null;
+  due_at?: string | null;
+};
+
+export type AdminNotificationRead = {
+  public_id: string;
+  user_public_id: string;
+  user_name: string;
+  user_role: AdminUserRole;
+  type: string;
+  title: string;
+  content: string | null;
+  business_type: string | null;
+  business_id: number | null;
+  business_public_id: string | null;
+  is_read: boolean;
+  read_at: string | null;
+  created_at: string;
+};
+
 export type AdminTrainingTemplateRead = {
   public_id: string;
   template_code: string;
@@ -252,6 +357,18 @@ type ItemsResponse<TItem> = {
   items: TItem[];
 };
 
+function buildQuery(filters: Record<string, unknown>) {
+  const searchParams = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") {
+      return;
+    }
+    searchParams.set(key, String(value));
+  });
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
+}
+
 export const adminService = {
   listUsers(filters: {
     role?: AdminUserRole | "";
@@ -296,6 +413,96 @@ export const adminService = {
   disableUser(userPublicId: string) {
     return apiRequest<null>(`/admin/users/${userPublicId}`, {
       method: "DELETE",
+    });
+  },
+
+  listAnnouncements(filters: {
+    scope_type?: AdminAnnouncementScopeType | "";
+    status?: string;
+    target_role?: AdminUserRole | "";
+    camp_public_id?: string;
+    class_public_id?: string;
+    keyword?: string;
+    limit?: number;
+  } = {}) {
+    return apiRequest<ItemsResponse<AdminAnnouncementRead>>(
+      `/admin/announcements${buildQuery(filters)}`,
+      {
+        method: "GET",
+      },
+    );
+  },
+
+  createAnnouncement(payload: AdminCreateAnnouncementPayload) {
+    return apiRequest<AdminAnnouncementRead>("/admin/announcements", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  updateAnnouncement(
+    announcementPublicId: string,
+    payload: AdminUpdateAnnouncementPayload,
+  ) {
+    return apiRequest<AdminAnnouncementRead>(`/admin/announcements/${announcementPublicId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  archiveAnnouncement(announcementPublicId: string) {
+    return apiRequest<null>(`/admin/announcements/${announcementPublicId}`, {
+      method: "DELETE",
+    });
+  },
+
+  listTasks(filters: {
+    coach_public_id?: string;
+    camp_public_id?: string;
+    class_public_id?: string;
+    status?: string;
+    analysis_type?: ReportAnalysisType | "";
+    keyword?: string;
+    limit?: number;
+  } = {}) {
+    return apiRequest<ItemsResponse<AdminTaskRead>>(`/admin/tasks${buildQuery(filters)}`, {
+      method: "GET",
+    });
+  },
+
+  getTask(taskPublicId: string) {
+    return apiRequest<AdminTaskDetailRead>(`/admin/tasks/${taskPublicId}`, {
+      method: "GET",
+    });
+  },
+
+  updateTask(taskPublicId: string, payload: AdminUpdateTaskPayload) {
+    return apiRequest<AdminTaskDetailRead>(`/admin/tasks/${taskPublicId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  listNotifications(filters: {
+    type?: string;
+    business_type?: string;
+    user_public_id?: string;
+    user_role?: AdminUserRole | "";
+    is_read?: boolean | "";
+    keyword?: string;
+    limit?: number;
+  } = {}) {
+    return apiRequest<ItemsResponse<AdminNotificationRead>>(
+      `/admin/notifications${buildQuery(filters)}`,
+      {
+        method: "GET",
+      },
+    );
+  },
+
+  getNotification(notificationPublicId: string) {
+    return apiRequest<AdminNotificationRead>(`/admin/notifications/${notificationPublicId}`, {
+      method: "GET",
     });
   },
 

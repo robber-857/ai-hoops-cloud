@@ -13,6 +13,7 @@ from app.models.announcement import Announcement
 from app.models.camp_class import CampClass
 from app.models.class_member import ClassMember
 from app.models.enums import ReportStatus, UserRole
+from app.models.notification import Notification
 from app.models.training_session import TrainingSession
 from app.models.training_task import TrainingTask
 from app.models.training_task_assignment import TrainingTaskAssignment
@@ -249,6 +250,15 @@ class CoachService:
                 )
             )
 
+        self._create_notifications(
+            [member.user_id for member in student_members],
+            notification_type="task",
+            title=f"New training task: {task.title}",
+            content=task.description,
+            business_type="training_task",
+            business_id=task.id,
+        )
+
         self.db.commit()
         self.db.refresh(task)
         return _task_read(task, class_row.public_id, {"pending": len(student_members)})
@@ -275,6 +285,23 @@ class CoachService:
             expire_at=payload.expire_at,
         )
         self.db.add(announcement)
+        self.db.flush()
+
+        class_members = self.db.scalars(
+            select(ClassMember).where(
+                ClassMember.class_id == class_row.id,
+                ClassMember.status == "active",
+            )
+        ).all()
+        self._create_notifications(
+            [member.user_id for member in class_members if member.user_id != current_user.id],
+            notification_type="announcement",
+            title=announcement.title,
+            content=announcement.content,
+            business_type="announcement",
+            business_id=announcement.id,
+        )
+
         self.db.commit()
         self.db.refresh(announcement)
         return _announcement_read(announcement, class_row.public_id)
@@ -659,6 +686,31 @@ class CoachService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Coach access is required.",
             )
+
+    def _create_notifications(
+        self,
+        user_ids: list[int],
+        *,
+        notification_type: str,
+        title: str,
+        content: str | None,
+        business_type: str,
+        business_id: int,
+    ) -> int:
+        unique_user_ids = list(dict.fromkeys(user_ids))
+        for user_id in unique_user_ids:
+            self.db.add(
+                Notification(
+                    user_id=user_id,
+                    type=notification_type,
+                    title=title,
+                    content=content,
+                    business_type=business_type,
+                    business_id=business_id,
+                    is_read=False,
+                )
+            )
+        return len(unique_user_ids)
 
     def _list_accessible_class_rows(self, current_user: User) -> list[CampClass]:
         self._ensure_coach_access(current_user)

@@ -12,18 +12,24 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.security import hash_password
 from app.models.analysis_report import AnalysisReport
+from app.models.announcement import Announcement
+from app.models.announcement_read import AnnouncementRead
 from app.models.camp_class import CampClass
 from app.models.class_member import ClassMember
 from app.models.enums import AnalysisType, UserRole, UserStatus
+from app.models.notification import Notification
 from app.models.template_example_video import TemplateExampleVideo
 from app.models.training_camp import TrainingCamp
 from app.models.training_session import TrainingSession
+from app.models.training_task import TrainingTask
 from app.models.training_task_assignment import TrainingTaskAssignment
 from app.models.training_template import TrainingTemplate
 from app.models.training_template_version import TrainingTemplateVersion
 from app.models.user import User
 from app.schemas.admin import (
     AdminCampRead,
+    AdminAnnouncementRead,
+    AdminCreateAnnouncementRequest,
     AdminClassMemberRead,
     AdminClassRead,
     AdminCreateCampRequest,
@@ -33,13 +39,19 @@ from app.schemas.admin import (
     AdminCreateTrainingTemplateRequest,
     AdminCreateTrainingTemplateVersionRequest,
     AdminCreateUserRequest,
+    AdminNotificationRead,
     AdminLocalTemplateSyncItem,
     AdminLocalTemplateSyncResponse,
+    AdminTaskAssignmentRead,
+    AdminTaskDetailRead,
+    AdminTaskRead,
     AdminTrainingTemplateRead,
     AdminTrainingTemplateVersionRead,
+    AdminUpdateAnnouncementRequest,
     AdminUpdateClassRequest,
     AdminTemplateExampleVideoRead,
     AdminUpdateCampRequest,
+    AdminUpdateTaskRequest,
     AdminUpdateTemplateExampleVideoRequest,
     AdminUpdateTrainingTemplateRequest,
     AdminUpdateTrainingTemplateVersionRequest,
@@ -234,6 +246,118 @@ def _numeric_to_float(value) -> float | None:
     return float(value)
 
 
+def _display_name(user: User) -> str:
+    return user.nickname or user.username
+
+
+def _user_role_from_value(value: str | None) -> UserRole | None:
+    if value is None:
+        return None
+    try:
+        return UserRole(value)
+    except ValueError:
+        return None
+
+
+def _announcement_read(
+    announcement: Announcement,
+    *,
+    notification_count: int = 0,
+    read_count: int = 0,
+) -> AdminAnnouncementRead:
+    return AdminAnnouncementRead(
+        public_id=announcement.public_id,
+        publisher_public_id=announcement.publisher.public_id,
+        publisher_name=_display_name(announcement.publisher),
+        scope_type=announcement.scope_type,
+        target_role=_user_role_from_value(announcement.target_role),
+        camp_public_id=announcement.camp.public_id if announcement.camp else None,
+        camp_name=announcement.camp.name if announcement.camp else None,
+        class_public_id=announcement.camp_class.public_id if announcement.camp_class else None,
+        class_name=announcement.camp_class.name if announcement.camp_class else None,
+        title=announcement.title,
+        content=announcement.content,
+        status=announcement.status,
+        is_pinned=announcement.is_pinned,
+        publish_at=announcement.publish_at,
+        expire_at=announcement.expire_at,
+        notification_count=notification_count,
+        read_count=read_count,
+        created_at=announcement.created_at,
+        updated_at=announcement.updated_at,
+    )
+
+
+def _task_read(
+    task: TrainingTask,
+    *,
+    assignment_status_counts: dict[str, int] | None = None,
+) -> AdminTaskRead:
+    status_counts = assignment_status_counts or {}
+    assignment_count = sum(status_counts.values())
+    return AdminTaskRead(
+        public_id=task.public_id,
+        camp_public_id=task.camp.public_id if task.camp else None,
+        camp_name=task.camp.name if task.camp else None,
+        class_public_id=task.camp_class.public_id,
+        class_name=task.camp_class.name,
+        coach_public_id=task.created_by.public_id,
+        coach_name=_display_name(task.created_by),
+        title=task.title,
+        description=task.description,
+        analysis_type=task.analysis_type,
+        template_code=task.template_code,
+        target_config=task.target_config,
+        status=task.status,
+        publish_at=task.publish_at,
+        start_at=task.start_at,
+        due_at=task.due_at,
+        assignment_count=assignment_count,
+        completed_assignment_count=status_counts.get("completed", 0),
+        assignment_status_counts=status_counts,
+        created_at=task.created_at,
+        updated_at=task.updated_at,
+    )
+
+
+def _task_assignment_read(assignment: TrainingTaskAssignment) -> AdminTaskAssignmentRead:
+    return AdminTaskAssignmentRead(
+        public_id=assignment.public_id,
+        student_public_id=assignment.student.public_id,
+        student_name=_display_name(assignment.student),
+        status=assignment.status,
+        progress_percent=_numeric_to_float(assignment.progress_percent),
+        completed_sessions=int(assignment.completed_sessions or 0),
+        best_score=_numeric_to_float(assignment.best_score),
+        latest_report_public_id=assignment.latest_report.public_id if assignment.latest_report else None,
+        completed_at=assignment.completed_at,
+        last_submission_at=assignment.last_submission_at,
+        created_at=assignment.created_at,
+    )
+
+
+def _notification_read(
+    notification: Notification,
+    *,
+    business_public_id: UUID | None = None,
+) -> AdminNotificationRead:
+    return AdminNotificationRead(
+        public_id=notification.public_id,
+        user_public_id=notification.user.public_id,
+        user_name=_display_name(notification.user),
+        user_role=notification.user.role,
+        type=notification.type,
+        title=notification.title,
+        content=notification.content,
+        business_type=notification.business_type,
+        business_id=notification.business_id,
+        business_public_id=business_public_id,
+        is_read=notification.is_read,
+        read_at=notification.read_at,
+        created_at=notification.created_at,
+    )
+
+
 class AdminService:
     def __init__(self, db: Session) -> None:
         self.db = db
@@ -403,6 +527,322 @@ class AdminService:
         user.deleted_at = datetime.now(timezone.utc)
         self.db.add(user)
         self.db.commit()
+
+    def list_announcements(
+        self,
+        current_user: User,
+        *,
+        scope_type: str | None = None,
+        announcement_status: str | None = None,
+        target_role: UserRole | None = None,
+        camp_public_id: UUID | None = None,
+        class_public_id: UUID | None = None,
+        keyword: str | None = None,
+        limit: int = 100,
+    ) -> list[AdminAnnouncementRead]:
+        _ensure_admin_access(current_user)
+        stmt = (
+            select(Announcement)
+            .options(
+                selectinload(Announcement.publisher),
+                selectinload(Announcement.camp),
+                selectinload(Announcement.camp_class),
+            )
+            .order_by(
+                Announcement.is_pinned.desc(),
+                Announcement.publish_at.desc(),
+                Announcement.created_at.desc(),
+            )
+        )
+
+        if scope_type:
+            stmt = stmt.where(Announcement.scope_type == scope_type)
+        if announcement_status:
+            stmt = stmt.where(Announcement.status == announcement_status)
+        if target_role:
+            stmt = stmt.where(Announcement.target_role == target_role.value)
+        if camp_public_id:
+            camp = self._get_camp_by_public_id(camp_public_id)
+            stmt = stmt.where(Announcement.camp_id == camp.id)
+        if class_public_id:
+            class_row = self._get_class_by_public_id(class_public_id)
+            stmt = stmt.where(Announcement.class_id == class_row.id)
+        if keyword and keyword.strip():
+            pattern = f"%{keyword.strip()}%"
+            stmt = stmt.where(or_(Announcement.title.ilike(pattern), Announcement.content.ilike(pattern)))
+
+        announcements = self.db.scalars(stmt.limit(min(max(limit, 1), 100))).all()
+        counts = self._announcement_counts([announcement.id for announcement in announcements])
+        return [
+            _announcement_read(
+                announcement,
+                notification_count=counts.get(announcement.id, {}).get("notification_count", 0),
+                read_count=counts.get(announcement.id, {}).get("read_count", 0),
+            )
+            for announcement in announcements
+        ]
+
+    def create_announcement(
+        self,
+        current_user: User,
+        payload: AdminCreateAnnouncementRequest,
+    ) -> AdminAnnouncementRead:
+        _ensure_admin_access(current_user)
+        scope_type, target_role, camp, class_row = self._resolve_announcement_scope(
+            payload.scope_type,
+            target_role=payload.target_role,
+            camp_public_id=payload.camp_public_id,
+            class_public_id=payload.class_public_id,
+        )
+        now = datetime.now(timezone.utc)
+        publish_at = payload.publish_at or (now if payload.status == "published" else None)
+
+        announcement = Announcement(
+            publisher_user_id=current_user.id,
+            scope_type=scope_type,
+            target_role=target_role.value if target_role else None,
+            camp_id=camp.id if camp else None,
+            class_id=class_row.id if class_row else None,
+            title=payload.title,
+            content=payload.content,
+            status=payload.status,
+            is_pinned=payload.is_pinned,
+            publish_at=publish_at,
+            expire_at=payload.expire_at,
+        )
+        self.db.add(announcement)
+        self.db.flush()
+
+        notification_count = 0
+        if payload.notify_recipients and announcement.status == "published":
+            notification_count = self._notify_announcement_recipients(announcement)
+
+        self.db.commit()
+        announcement = self._get_announcement_by_public_id(announcement.public_id)
+        return _announcement_read(announcement, notification_count=notification_count, read_count=0)
+
+    def update_announcement(
+        self,
+        current_user: User,
+        announcement_public_id: UUID,
+        payload: AdminUpdateAnnouncementRequest,
+    ) -> AdminAnnouncementRead:
+        _ensure_admin_access(current_user)
+        announcement = self._get_announcement_by_public_id(announcement_public_id)
+        fields_set = payload.model_fields_set
+        old_status = announcement.status
+
+        if {"scope_type", "target_role", "camp_public_id", "class_public_id"} & fields_set:
+            scope_type = payload.scope_type if "scope_type" in fields_set and payload.scope_type else announcement.scope_type
+            target_role = payload.target_role if "target_role" in fields_set else _user_role_from_value(announcement.target_role)
+            camp_public_id = (
+                payload.camp_public_id
+                if "camp_public_id" in fields_set
+                else announcement.camp.public_id if announcement.camp else None
+            )
+            class_public_id = (
+                payload.class_public_id
+                if "class_public_id" in fields_set
+                else announcement.camp_class.public_id if announcement.camp_class else None
+            )
+            resolved_scope_type, resolved_role, camp, class_row = self._resolve_announcement_scope(
+                scope_type,
+                target_role=target_role,
+                camp_public_id=camp_public_id,
+                class_public_id=class_public_id,
+            )
+            announcement.scope_type = resolved_scope_type
+            announcement.target_role = resolved_role.value if resolved_role else None
+            announcement.camp_id = camp.id if camp else None
+            announcement.class_id = class_row.id if class_row else None
+
+        if "title" in fields_set and payload.title is not None:
+            announcement.title = payload.title
+        if "content" in fields_set and payload.content is not None:
+            announcement.content = payload.content
+        if "status" in fields_set and payload.status is not None:
+            announcement.status = payload.status
+            if payload.status == "published" and announcement.publish_at is None:
+                announcement.publish_at = datetime.now(timezone.utc)
+        if "is_pinned" in fields_set and payload.is_pinned is not None:
+            announcement.is_pinned = payload.is_pinned
+        if "publish_at" in fields_set:
+            announcement.publish_at = payload.publish_at
+        if "expire_at" in fields_set:
+            announcement.expire_at = payload.expire_at
+
+        self.db.add(announcement)
+        self.db.flush()
+
+        if (
+            payload.notify_recipients
+            and old_status != "published"
+            and announcement.status == "published"
+        ):
+            self._notify_announcement_recipients(announcement)
+
+        self.db.commit()
+        announcement = self._get_announcement_by_public_id(announcement_public_id)
+        counts = self._announcement_counts([announcement.id])
+        return _announcement_read(
+            announcement,
+            notification_count=counts.get(announcement.id, {}).get("notification_count", 0),
+            read_count=counts.get(announcement.id, {}).get("read_count", 0),
+        )
+
+    def archive_announcement(self, current_user: User, announcement_public_id: UUID) -> None:
+        _ensure_admin_access(current_user)
+        announcement = self._get_announcement_by_public_id(announcement_public_id)
+        announcement.status = "archived"
+        self.db.add(announcement)
+        self.db.commit()
+
+    def list_tasks(
+        self,
+        current_user: User,
+        *,
+        coach_public_id: UUID | None = None,
+        camp_public_id: UUID | None = None,
+        class_public_id: UUID | None = None,
+        task_status: str | None = None,
+        analysis_type: AnalysisType | None = None,
+        keyword: str | None = None,
+        limit: int = 100,
+    ) -> list[AdminTaskRead]:
+        _ensure_admin_access(current_user)
+        stmt = (
+            select(TrainingTask)
+            .options(
+                selectinload(TrainingTask.camp),
+                selectinload(TrainingTask.camp_class),
+                selectinload(TrainingTask.created_by),
+            )
+            .order_by(TrainingTask.created_at.desc())
+        )
+
+        if coach_public_id:
+            coach = self._get_user_by_public_id(coach_public_id)
+            stmt = stmt.where(TrainingTask.created_by_user_id == coach.id)
+        if camp_public_id:
+            camp = self._get_camp_by_public_id(camp_public_id)
+            stmt = stmt.where(TrainingTask.camp_id == camp.id)
+        if class_public_id:
+            class_row = self._get_class_by_public_id(class_public_id)
+            stmt = stmt.where(TrainingTask.class_id == class_row.id)
+        if task_status:
+            stmt = stmt.where(TrainingTask.status == task_status)
+        if analysis_type:
+            stmt = stmt.where(TrainingTask.analysis_type == analysis_type)
+        if keyword and keyword.strip():
+            pattern = f"%{keyword.strip()}%"
+            stmt = stmt.where(
+                or_(
+                    TrainingTask.title.ilike(pattern),
+                    TrainingTask.description.ilike(pattern),
+                    TrainingTask.template_code.ilike(pattern),
+                )
+            )
+
+        tasks = self.db.scalars(stmt.limit(min(max(limit, 1), 100))).all()
+        counts = self._assignment_status_counts_by_task([task.id for task in tasks])
+        return [_task_read(task, assignment_status_counts=counts.get(task.id, {})) for task in tasks]
+
+    def get_task_detail(self, current_user: User, task_public_id: UUID) -> AdminTaskDetailRead:
+        _ensure_admin_access(current_user)
+        task = self._get_task_by_public_id(task_public_id)
+        assignments = self._list_task_assignments(task.id)
+        status_counts: dict[str, int] = {}
+        for assignment in assignments:
+            status_counts[assignment.status] = status_counts.get(assignment.status, 0) + 1
+        return AdminTaskDetailRead(
+            **_task_read(task, assignment_status_counts=status_counts).model_dump(),
+            assignments=[_task_assignment_read(assignment) for assignment in assignments],
+        )
+
+    def update_task(
+        self,
+        current_user: User,
+        task_public_id: UUID,
+        payload: AdminUpdateTaskRequest,
+    ) -> AdminTaskDetailRead:
+        _ensure_admin_access(current_user)
+        task = self._get_task_by_public_id(task_public_id)
+        fields_set = payload.model_fields_set
+
+        if "status" in fields_set and payload.status is not None:
+            task.status = payload.status
+        if "publish_at" in fields_set:
+            task.publish_at = payload.publish_at
+        if "start_at" in fields_set:
+            task.start_at = payload.start_at
+        if "due_at" in fields_set:
+            task.due_at = payload.due_at
+
+        self.db.add(task)
+        self.db.commit()
+        return self.get_task_detail(current_user, task_public_id)
+
+    def list_notifications(
+        self,
+        current_user: User,
+        *,
+        notification_type: str | None = None,
+        business_type: str | None = None,
+        user_public_id: UUID | None = None,
+        user_role: UserRole | None = None,
+        is_read: bool | None = None,
+        keyword: str | None = None,
+        limit: int = 100,
+    ) -> list[AdminNotificationRead]:
+        _ensure_admin_access(current_user)
+        stmt = (
+            select(Notification)
+            .join(User, Notification.user_id == User.id)
+            .options(selectinload(Notification.user))
+            .order_by(Notification.created_at.desc())
+        )
+
+        if notification_type:
+            stmt = stmt.where(Notification.type == notification_type)
+        if business_type:
+            stmt = stmt.where(Notification.business_type == business_type)
+        if user_public_id:
+            user = self._get_user_by_public_id(user_public_id)
+            stmt = stmt.where(Notification.user_id == user.id)
+        if user_role:
+            stmt = stmt.where(User.role == user_role)
+        if is_read is not None:
+            stmt = stmt.where(Notification.is_read == is_read)
+        if keyword and keyword.strip():
+            pattern = f"%{keyword.strip()}%"
+            stmt = stmt.where(or_(Notification.title.ilike(pattern), Notification.content.ilike(pattern)))
+
+        notifications = self.db.scalars(stmt.limit(min(max(limit, 1), 100))).all()
+        business_public_ids = self._notification_business_public_ids(notifications)
+        return [
+            _notification_read(
+                notification,
+                business_public_id=business_public_ids.get(
+                    (notification.business_type or "", notification.business_id or 0)
+                ),
+            )
+            for notification in notifications
+        ]
+
+    def get_notification_detail(
+        self,
+        current_user: User,
+        notification_public_id: UUID,
+    ) -> AdminNotificationRead:
+        _ensure_admin_access(current_user)
+        notification = self._get_notification_by_public_id(notification_public_id)
+        business_public_ids = self._notification_business_public_ids([notification])
+        return _notification_read(
+            notification,
+            business_public_id=business_public_ids.get(
+                (notification.business_type or "", notification.business_id or 0)
+            ),
+        )
 
     def list_camps(self, current_user: User) -> list[AdminCampRead]:
         _ensure_admin_access(current_user)
@@ -1318,6 +1758,255 @@ class AdminService:
             and version.is_default
             and version.status == "active"
         )
+
+    def _resolve_announcement_scope(
+        self,
+        scope_type: str,
+        *,
+        target_role: UserRole | None = None,
+        camp_public_id: UUID | None = None,
+        class_public_id: UUID | None = None,
+    ) -> tuple[str, UserRole | None, TrainingCamp | None, CampClass | None]:
+        normalized_scope = scope_type.strip().lower()
+        if normalized_scope not in {"global", "camp", "class", "role"}:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Announcement scope must be global, camp, class, or role.",
+            )
+
+        if normalized_scope == "global":
+            return normalized_scope, None, None, None
+
+        if normalized_scope == "role":
+            if target_role not in {UserRole.coach, UserRole.student}:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Role announcements must target coach or student.",
+                )
+            return normalized_scope, target_role, None, None
+
+        if normalized_scope == "camp":
+            if not camp_public_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="camp_public_id is required for camp announcements.",
+                )
+            return normalized_scope, None, self._get_camp_by_public_id(camp_public_id), None
+
+        if not class_public_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="class_public_id is required for class announcements.",
+            )
+        class_row = self._get_class_by_public_id(class_public_id)
+        if camp_public_id and class_row.camp.public_id != camp_public_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="class_public_id does not belong to camp_public_id.",
+            )
+        return normalized_scope, None, class_row.camp, class_row
+
+    def _notify_announcement_recipients(self, announcement: Announcement) -> int:
+        user_ids = self._announcement_recipient_user_ids(announcement)
+        return self._create_notifications(
+            user_ids,
+            notification_type="announcement",
+            title=announcement.title,
+            content=announcement.content,
+            business_type="announcement",
+            business_id=announcement.id,
+        )
+
+    def _announcement_recipient_user_ids(self, announcement: Announcement) -> list[int]:
+        active_user_condition = User.status == UserStatus.active
+        if announcement.scope_type == "global":
+            return list(self.db.scalars(select(User.id).where(active_user_condition)).all())
+
+        if announcement.scope_type == "role" and announcement.target_role:
+            return list(
+                self.db.scalars(
+                    select(User.id).where(
+                        active_user_condition,
+                        User.role == UserRole(announcement.target_role),
+                    )
+                ).all()
+            )
+
+        if announcement.scope_type == "camp" and announcement.camp_id:
+            stmt = (
+                select(User.id)
+                .join(ClassMember, ClassMember.user_id == User.id)
+                .join(CampClass, ClassMember.class_id == CampClass.id)
+                .where(
+                    active_user_condition,
+                    ClassMember.status == "active",
+                    CampClass.camp_id == announcement.camp_id,
+                )
+                .distinct()
+            )
+            return list(self.db.scalars(stmt).all())
+
+        if announcement.scope_type == "class" and announcement.class_id:
+            stmt = (
+                select(User.id)
+                .join(ClassMember, ClassMember.user_id == User.id)
+                .where(
+                    active_user_condition,
+                    ClassMember.status == "active",
+                    ClassMember.class_id == announcement.class_id,
+                )
+                .distinct()
+            )
+            return list(self.db.scalars(stmt).all())
+
+        return []
+
+    def _create_notifications(
+        self,
+        user_ids: list[int],
+        *,
+        notification_type: str,
+        title: str,
+        content: str | None,
+        business_type: str,
+        business_id: int,
+    ) -> int:
+        unique_user_ids = list(dict.fromkeys(user_ids))
+        for user_id in unique_user_ids:
+            self.db.add(
+                Notification(
+                    user_id=user_id,
+                    type=notification_type,
+                    title=title,
+                    content=content,
+                    business_type=business_type,
+                    business_id=business_id,
+                    is_read=False,
+                )
+            )
+        return len(unique_user_ids)
+
+    def _announcement_counts(self, announcement_ids: list[int]) -> dict[int, dict[str, int]]:
+        if not announcement_ids:
+            return {}
+
+        counts: dict[int, dict[str, int]] = {announcement_id: {} for announcement_id in announcement_ids}
+        read_rows = self.db.execute(
+            select(AnnouncementRead.announcement_id, func.count(AnnouncementRead.id))
+            .where(AnnouncementRead.announcement_id.in_(announcement_ids))
+            .group_by(AnnouncementRead.announcement_id)
+        ).all()
+        for announcement_id, read_count in read_rows:
+            counts.setdefault(announcement_id, {})["read_count"] = int(read_count)
+
+        notification_rows = self.db.execute(
+            select(Notification.business_id, func.count(Notification.id))
+            .where(
+                Notification.business_type == "announcement",
+                Notification.business_id.in_(announcement_ids),
+            )
+            .group_by(Notification.business_id)
+        ).all()
+        for announcement_id, notification_count in notification_rows:
+            counts.setdefault(announcement_id, {})["notification_count"] = int(notification_count)
+
+        return counts
+
+    def _assignment_status_counts_by_task(self, task_ids: list[int]) -> dict[int, dict[str, int]]:
+        if not task_ids:
+            return {}
+
+        rows = self.db.execute(
+            select(
+                TrainingTaskAssignment.task_id,
+                TrainingTaskAssignment.status,
+                func.count(TrainingTaskAssignment.id),
+            )
+            .where(TrainingTaskAssignment.task_id.in_(task_ids))
+            .group_by(TrainingTaskAssignment.task_id, TrainingTaskAssignment.status)
+        ).all()
+
+        counts: dict[int, dict[str, int]] = {}
+        for task_id, assignment_status, count in rows:
+            counts.setdefault(task_id, {})[assignment_status] = int(count)
+        return counts
+
+    def _notification_business_public_ids(
+        self,
+        notifications: list[Notification],
+    ) -> dict[tuple[str, int], UUID]:
+        business_ids_by_type: dict[str, set[int]] = {}
+        for notification in notifications:
+            if notification.business_type and notification.business_id:
+                business_ids_by_type.setdefault(notification.business_type, set()).add(notification.business_id)
+
+        public_ids: dict[tuple[str, int], UUID] = {}
+        announcement_ids = business_ids_by_type.get("announcement", set())
+        if announcement_ids:
+            rows = self.db.execute(
+                select(Announcement.id, Announcement.public_id).where(Announcement.id.in_(announcement_ids))
+            ).all()
+            public_ids.update({("announcement", row_id): public_id for row_id, public_id in rows})
+
+        task_ids = business_ids_by_type.get("training_task", set()) | business_ids_by_type.get("task", set())
+        if task_ids:
+            rows = self.db.execute(
+                select(TrainingTask.id, TrainingTask.public_id).where(TrainingTask.id.in_(task_ids))
+            ).all()
+            for row_id, public_id in rows:
+                public_ids[("training_task", row_id)] = public_id
+                public_ids[("task", row_id)] = public_id
+
+        return public_ids
+
+    def _get_announcement_by_public_id(self, announcement_public_id: UUID) -> Announcement:
+        announcement = self.db.scalar(
+            select(Announcement)
+            .options(
+                selectinload(Announcement.publisher),
+                selectinload(Announcement.camp),
+                selectinload(Announcement.camp_class).selectinload(CampClass.camp),
+            )
+            .where(Announcement.public_id == announcement_public_id)
+        )
+        if not announcement:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Announcement not found.")
+        return announcement
+
+    def _get_task_by_public_id(self, task_public_id: UUID) -> TrainingTask:
+        task = self.db.scalar(
+            select(TrainingTask)
+            .options(
+                selectinload(TrainingTask.camp),
+                selectinload(TrainingTask.camp_class),
+                selectinload(TrainingTask.created_by),
+            )
+            .where(TrainingTask.public_id == task_public_id)
+        )
+        if not task:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found.")
+        return task
+
+    def _list_task_assignments(self, task_id: int) -> list[TrainingTaskAssignment]:
+        return self.db.scalars(
+            select(TrainingTaskAssignment)
+            .options(
+                selectinload(TrainingTaskAssignment.student),
+                selectinload(TrainingTaskAssignment.latest_report),
+            )
+            .where(TrainingTaskAssignment.task_id == task_id)
+            .order_by(TrainingTaskAssignment.created_at.desc())
+        ).all()
+
+    def _get_notification_by_public_id(self, notification_public_id: UUID) -> Notification:
+        notification = self.db.scalar(
+            select(Notification)
+            .options(selectinload(Notification.user))
+            .where(Notification.public_id == notification_public_id)
+        )
+        if not notification:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found.")
+        return notification
 
     def _get_camp_by_public_id(self, camp_public_id: UUID) -> TrainingCamp:
         camp = self.db.scalar(select(TrainingCamp).where(TrainingCamp.public_id == camp_public_id))

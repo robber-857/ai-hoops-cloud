@@ -4,10 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   AlertTriangle,
+  Bell,
   BookOpenCheck,
   Boxes,
   ChevronRight,
+  ClipboardList,
   LayoutDashboard,
+  Megaphone,
   ShieldCheck,
   UsersRound,
 } from "lucide-react";
@@ -30,6 +33,9 @@ const navItems = [
   { href: routes.admin.camps, label: "Camps", icon: Boxes },
   { href: routes.admin.classes, label: "Classes", icon: UsersRound },
   { href: routes.admin.templates, label: "Templates", icon: BookOpenCheck },
+  { href: routes.admin.announcements, label: "Announcements", icon: Megaphone },
+  { href: routes.admin.tasks, label: "Tasks", icon: ClipboardList },
+  { href: routes.admin.notifications, label: "Notifications", icon: Bell },
 ];
 
 export function AdminLoadingSurface() {

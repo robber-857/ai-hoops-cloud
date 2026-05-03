@@ -30,6 +30,9 @@ export const routes = {
     classes: "/admin/classes",
     classMembers: (classPublicId: string) => `/admin/classes/${classPublicId}/members`,
     templates: "/admin/templates",
+    announcements: "/admin/announcements",
+    tasks: "/admin/tasks",
+    notifications: "/admin/notifications",
   },
   pose: "/pose",
   pose2d: {
