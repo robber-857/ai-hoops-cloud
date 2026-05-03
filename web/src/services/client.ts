@@ -1,3 +1,5 @@
+import { getAuthAccessToken } from "@/lib/authToken";
+
 function normalizeLoopbackHostname(baseUrl: string): string {
   if (typeof window === "undefined") {
     return baseUrl;
@@ -126,13 +128,17 @@ export async function apiRequest<TResponse>(
   init: RequestInit = {},
 ): Promise<TResponse> {
   const apiBaseUrl = resolveApiBaseUrl();
+  const accessToken = getAuthAccessToken();
+  const headers = new Headers(init.headers);
+  headers.set("Content-Type", headers.get("Content-Type") ?? "application/json");
+  if (accessToken && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${accessToken}`);
+  }
+
   const response = await fetch(`${apiBaseUrl}${path}`, {
     ...init,
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(init.headers ?? {}),
-    },
+    headers,
     cache: "no-store",
   });
 

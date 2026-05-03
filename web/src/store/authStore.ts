@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 
+import { clearAuthAccessToken, setAuthAccessToken } from "@/lib/authToken";
 import type { AuthUser, LoginResponse } from "@/types/auth";
 
 interface AuthState {
@@ -22,6 +23,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   isInitializing: false,
   hasInitialized: false,
   setSession: (payload) => {
+    setAuthAccessToken(payload.access_token);
     set({
       user: payload.user,
       isAuthenticated: true,
@@ -47,6 +49,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     });
   },
   clearSession: () => {
+    clearAuthAccessToken();
     set({
       user: null,
       isAuthenticated: false,
