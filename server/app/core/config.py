@@ -26,7 +26,15 @@ class Settings(BaseSettings):
     )
     refresh_token_expire_days: int = Field(default=7, alias="REFRESH_TOKEN_EXPIRE_DAYS")
 
-    cors_origins: list[str] = Field(default=["http://localhost:3000"], alias="CORS_ORIGINS")
+    cors_origins: list[str] = Field(
+        default=[
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:3001",
+            "http://127.0.0.1:3001",
+        ],
+        alias="CORS_ORIGINS",
+    )
 
     session_cookie_name: str = Field(default="ai-hoops-session", alias="SESSION_COOKIE_NAME")
     session_cookie_secure: bool = Field(default=False, alias="SESSION_COOKIE_SECURE")
@@ -58,7 +66,10 @@ class Settings(BaseSettings):
     template_video_bucket: str = Field(default="template-videos", alias="TEMPLATE_VIDEO_BUCKET")
 
     model_config = SettingsConfigDict(
-        env_file=(".env", ".env.production", ".env.local"),
+        # Production deployments should provide real environment variables.
+        # Local runs only load local dotenv files to avoid accidentally using
+        # production DATABASE_URL values left on disk.
+        env_file=(".env", ".env.local"),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
