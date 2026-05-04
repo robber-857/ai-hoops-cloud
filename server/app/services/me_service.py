@@ -11,6 +11,7 @@ from app.models.notification import Notification
 from app.models.student_achievement import StudentAchievement
 from app.models.student_growth_snapshot import StudentGrowthSnapshot
 from app.models.training_session import TrainingSession
+from app.models.training_task import TrainingTask
 from app.models.training_task_assignment import TrainingTaskAssignment
 from app.models.user import User
 from app.schemas.me import (
@@ -178,9 +179,12 @@ class MeService:
         best_score = self.db.scalar(select(func.max(AnalysisReport.overall_score)).where(AnalysisReport.user_id == user_id))
         average_score = self.db.scalar(select(func.avg(AnalysisReport.overall_score)).where(AnalysisReport.user_id == user_id))
         active_tasks = self.db.scalar(
-            select(func.count(TrainingTaskAssignment.id)).where(
+            select(func.count(TrainingTaskAssignment.id))
+            .join(TrainingTask, TrainingTaskAssignment.task_id == TrainingTask.id)
+            .where(
                 TrainingTaskAssignment.student_id == user_id,
                 TrainingTaskAssignment.status.in_(["pending", "in_progress", "overdue"]),
+                TrainingTask.status == "published",
             )
         ) or 0
         unread_notifications = self.db.scalar(
@@ -229,6 +233,7 @@ class MeService:
             statuses.append("completed")
         tasks = self.db.scalars(
             select(TrainingTaskAssignment)
+            .join(TrainingTask, TrainingTaskAssignment.task_id == TrainingTask.id)
             .options(
                 selectinload(TrainingTaskAssignment.task),
                 selectinload(TrainingTaskAssignment.camp_class),
@@ -236,6 +241,7 @@ class MeService:
             .where(
                 TrainingTaskAssignment.student_id == user_id,
                 TrainingTaskAssignment.status.in_(statuses),
+                TrainingTask.status == "published",
             )
             .order_by(TrainingTaskAssignment.created_at.desc())
             .limit(limit)

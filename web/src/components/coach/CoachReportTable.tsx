@@ -12,9 +12,18 @@ import type { CoachClassReportRead } from "@/services/coach";
 
 type CoachReportTableProps = {
   reports: CoachClassReportRead[];
+  returnTo?: string;
 };
 
-export function CoachReportTable({ reports }: CoachReportTableProps) {
+function reportHref(reportPublicId: string, returnTo?: string) {
+  const params = new URLSearchParams({ id: reportPublicId });
+  if (returnTo) {
+    params.set("returnTo", returnTo);
+  }
+  return `${routes.pose2d.report}?${params.toString()}`;
+}
+
+export function CoachReportTable({ reports, returnTo }: CoachReportTableProps) {
   if (reports.length === 0) {
     return (
       <div className="rounded-lg border border-white/10 bg-black/18 p-8 text-center">
@@ -72,7 +81,7 @@ export function CoachReportTable({ reports }: CoachReportTableProps) {
                 <td className="px-4 py-4 text-white/62">{formatDateTime(report.created_at)}</td>
                 <td className="px-4 py-4 text-right">
                   <Link
-                    href={`${routes.pose2d.report}?id=${report.public_id}`}
+                    href={reportHref(report.public_id, returnTo)}
                     className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.045] px-3 text-xs font-semibold text-white/78 transition hover:border-[#d8ff5d]/32 hover:bg-[#d8ff5d]/10 hover:text-[#f1ffc1]"
                   >
                     <Eye className="h-4 w-4" />

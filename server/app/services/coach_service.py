@@ -5,7 +5,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.analysis_report import AnalysisReport
@@ -190,6 +190,16 @@ class CoachService:
         limit: int = 50,
     ) -> list[CoachClassReportRead]:
         class_row = self._get_accessible_class(current_user, class_public_id)
+        student_ids = self._active_student_ids_for_class(class_row.id)
+        report_scope = TrainingSession.class_id == class_row.id
+        if student_ids:
+            report_scope = or_(
+                report_scope,
+                and_(
+                    TrainingSession.class_id.is_(None),
+                    AnalysisReport.user_id.in_(student_ids),
+                ),
+            )
         reports = self.db.scalars(
             select(AnalysisReport)
             .join(TrainingSession, AnalysisReport.session_id == TrainingSession.id)
@@ -197,7 +207,7 @@ class CoachService:
                 selectinload(AnalysisReport.session).selectinload(TrainingSession.student),
                 selectinload(AnalysisReport.video),
             )
-            .where(TrainingSession.class_id == class_row.id)
+            .where(report_scope)
             .order_by(AnalysisReport.created_at.desc())
             .limit(limit)
         ).all()
@@ -591,7 +601,10 @@ class CoachService:
             )
             .where(
                 AnalysisReport.user_id == student.id,
-                TrainingSession.class_id.in_(class_ids),
+                or_(
+                    TrainingSession.class_id.in_(class_ids),
+                    TrainingSession.class_id.is_(None),
+                ),
             )
             .order_by(AnalysisReport.created_at.desc())
             .limit(limit)
@@ -786,10 +799,28 @@ class CoachService:
         ).all()
         return {class_id: int(count) for class_id, count in rows}
 
+    def _active_student_ids_for_class(self, class_id: int) -> list[int]:
+        return list(
+            self.db.scalars(
+                select(ClassMember.user_id).where(
+                    ClassMember.class_id == class_id,
+                    ClassMember.member_role == "student",
+                    ClassMember.status == "active",
+                )
+            ).all()
+        )
+
     def _student_report_stats(self, class_id: int, student_ids: list[int]) -> dict[int, dict]:
         if not student_ids:
             return {}
 
+        report_scope = or_(
+            TrainingSession.class_id == class_id,
+            and_(
+                TrainingSession.class_id.is_(None),
+                AnalysisReport.user_id.in_(student_ids),
+            ),
+        )
         rows = self.db.execute(
             select(
                 AnalysisReport.user_id,
@@ -799,7 +830,7 @@ class CoachService:
             )
             .join(TrainingSession, AnalysisReport.session_id == TrainingSession.id)
             .where(
-                TrainingSession.class_id == class_id,
+                report_scope,
                 AnalysisReport.user_id.in_(student_ids),
                 AnalysisReport.status == ReportStatus.completed,
             )
@@ -889,7 +920,10 @@ class CoachService:
             .join(TrainingSession, AnalysisReport.session_id == TrainingSession.id)
             .where(
                 AnalysisReport.user_id == student_id,
-                TrainingSession.class_id.in_(class_ids),
+                or_(
+                    TrainingSession.class_id.in_(class_ids),
+                    TrainingSession.class_id.is_(None),
+                ),
                 AnalysisReport.status == ReportStatus.completed,
             )
         ).one()

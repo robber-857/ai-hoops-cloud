@@ -24,6 +24,7 @@ import { CoachTaskTable } from "@/components/coach/CoachTaskTable";
 import { CreateAnnouncementPanel } from "@/components/coach/CreateAnnouncementPanel";
 import { CreateTaskPanel } from "@/components/coach/CreateTaskPanel";
 import { formatDate, formatScore, getClassStatusTone } from "@/components/coach/coachUtils";
+import { routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import {
   coachService,
@@ -637,7 +638,10 @@ export default function CoachClassDetailPage() {
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.22 }}
                 >
-                  <CoachReportTable reports={reports} />
+                  <CoachReportTable
+                    reports={reports}
+                    returnTo={routes.coach.classDetail(classPublicId)}
+                  />
                 </motion.div>
               ) : activeTab === "tasks" ? (
                 <motion.div

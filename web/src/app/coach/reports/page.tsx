@@ -5,6 +5,7 @@ import { AlertTriangle, Loader2, ShieldAlert } from "lucide-react";
 
 import { CoachReportTable } from "@/components/coach/CoachReportTable";
 import { CoachShell } from "@/components/coach/CoachShell";
+import { routes } from "@/lib/routes";
 import {
   coachService,
   type CoachClassRead,
@@ -147,7 +148,7 @@ export default function CoachReportsPage() {
           </div>
         ) : null}
         <div className="mt-5">
-          <CoachReportTable reports={filteredReports} />
+          <CoachReportTable reports={filteredReports} returnTo={routes.coach.reports} />
         </div>
       </section>
     </CoachShell>

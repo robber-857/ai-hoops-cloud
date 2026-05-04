@@ -16,6 +16,7 @@ from app.models.camp_class import CampClass
 from app.models.class_member import ClassMember
 from app.models.enums import StorageProvider, UploadTaskStatus, UserRole, VideoUploadStatus, VideoVisibility
 from app.models.training_session import TrainingSession
+from app.models.training_task import TrainingTask
 from app.models.training_task_assignment import TrainingTaskAssignment
 from app.models.upload_task import UploadTask
 from app.models.user import User
@@ -269,10 +270,15 @@ class TrainingService:
     ) -> TrainingTaskAssignment:
         assignment = self.db.scalar(
             select(TrainingTaskAssignment)
-            .options(selectinload(TrainingTaskAssignment.camp_class))
+            .join(TrainingTask, TrainingTaskAssignment.task_id == TrainingTask.id)
+            .options(
+                selectinload(TrainingTaskAssignment.camp_class),
+                selectinload(TrainingTaskAssignment.task),
+            )
             .where(
                 TrainingTaskAssignment.public_id == assignment_public_id,
                 TrainingTaskAssignment.student_id == student_id,
+                TrainingTask.status == "published",
             )
         )
         if not assignment:

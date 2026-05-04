@@ -224,18 +224,54 @@ class ReportService:
             return True
         if report.user_id == current_user.id:
             return True
-        if current_user.role != UserRole.coach or not report.session.class_id:
+        if current_user.role != UserRole.coach:
             return False
 
+        if report.session.class_id:
+            membership = self.db.scalar(
+                select(ClassMember).where(
+                    ClassMember.class_id == report.session.class_id,
+                    ClassMember.user_id == current_user.id,
+                    ClassMember.member_role == "coach",
+                    ClassMember.status == "active",
+                )
+            )
+            return membership is not None
+
+        student_class_ids = (
+            select(ClassMember.class_id)
+            .where(
+                ClassMember.user_id == report.user_id,
+                ClassMember.member_role == "student",
+                ClassMember.status == "active",
+            )
+        )
         membership = self.db.scalar(
             select(ClassMember).where(
-                ClassMember.class_id == report.session.class_id,
+                ClassMember.class_id.in_(student_class_ids),
                 ClassMember.user_id == current_user.id,
                 ClassMember.member_role == "coach",
                 ClassMember.status == "active",
             )
-        )
+            )
         return membership is not None
+
+    def get_shared_report_detail(self, report_public_id: UUID) -> ReportRead:
+        report = self.db.scalar(
+            select(AnalysisReport)
+            .options(
+                selectinload(AnalysisReport.session),
+                selectinload(AnalysisReport.video),
+            )
+            .where(
+                AnalysisReport.public_id == report_public_id,
+                AnalysisReport.deleted_at.is_(None),
+                AnalysisReport.status == ReportStatus.completed,
+            )
+        )
+        if not report:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found.")
+        return _report_read(report)
 
     def _update_task_assignment(self, assignment: TrainingTaskAssignment) -> None:
         reports = self.db.scalars(

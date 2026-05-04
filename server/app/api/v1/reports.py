@@ -32,6 +32,15 @@ def list_my_reports(
     return MeReportsResponse(items=service.list_my_reports(current_user, limit=limit))
 
 
+@router.get("/shared/{report_public_id}", response_model=ReportRead, status_code=status.HTTP_200_OK)
+def get_shared_report_detail(
+    report_public_id: UUID,
+    db: Session = Depends(get_db),
+) -> ReportRead:
+    service = ReportService(db)
+    return service.get_shared_report_detail(report_public_id)
+
+
 @router.get("/{report_public_id}", response_model=ReportRead, status_code=status.HTTP_200_OK)
 def get_report_detail(
     report_public_id: UUID,

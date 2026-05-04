@@ -18,6 +18,7 @@ import { useAnalysisStore, FrameSample } from "@/store/analysisStore";
 import MetricTimelineCard from "@/components/Pose2D/MetricTimelineCard";
 import { ChevronLeft, Download, Activity, CheckCircle2, AlertCircle, Check, Link as LinkIcon, AlertTriangle } from "lucide-react";
 import { reportService } from "@/services/reports";
+import { useAuthStore } from "@/store/authStore";
 import Image from "next/image";
 
 // --- 1. 类型定义与扩展 ---
@@ -65,6 +66,25 @@ function getPersistedAgeGroup(scoreData: SavedScoreData): string {
 
 function buildReportSignature(templateId: string, ageGroup: string, score: number | null | undefined): string {
   return `${templateId}:${ageGroup}:${typeof score === "number" ? score.toFixed(2) : "none"}`;
+}
+
+function getSafeReturnTo(value: string | null): string | null {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+    return null;
+  }
+
+  const allowedPrefixes = [
+    routes.coach.home,
+    routes.admin.home,
+    routes.user.me,
+    routes.pose2d.shooting,
+    routes.pose2d.dribbling,
+    routes.pose2d.training,
+  ];
+
+  return allowedPrefixes.some((prefix) => value === prefix || value.startsWith(`${prefix}/`))
+    ? value
+    : null;
 }
 
 // --- 2. 顶层工具函数 ---
@@ -196,9 +216,12 @@ const ScoreCard: React.FC<ScoreCardProps> = ({ title, score, weight, icon: Icon 
 
 function ReportContent() {
   const { currentAngles, currentVideoUrl, currentTemplate, currentTimeline } = useAnalysisStore();
+  const user = useAuthStore((state) => state.user);
 
   const searchParams = useSearchParams();
   const reportId = searchParams.get('id');
+  const isSharedView = searchParams.get("share") === "1";
+  const returnTo = getSafeReturnTo(searchParams.get("returnTo"));
 
   const [ageGroup, setAgeGroup] = useState<string>(DEFAULT_AGE_GROUP);
   const [selectedMode, setSelectedMode] = useState<ActionTemplate['mode']>("dribbling");
@@ -274,7 +297,9 @@ function ReportContent() {
     async function fetchReport(publicId: string) {
       setLoading(true);
       try {
-        const data = await reportService.getReport(publicId);
+        const data = isSharedView
+          ? await reportService.getSharedReport(publicId)
+          : await reportService.getReport(publicId);
         const scoreData = data.score_data as unknown as SavedScoreData;
         const persistedAgeGroup = getPersistedAgeGroup(scoreData);
 
@@ -311,10 +336,10 @@ function ReportContent() {
       }
     }
     fetchReport(reportPublicId);
-  }, [reportId]);
+  }, [isSharedView, reportId]);
 
   useEffect(() => {
-    if (!reportId || !dbSessionPublicId || !dbSavedMetrics || !dbResult || !selectedTemplateId) {
+    if (isSharedView || !reportId || !dbSessionPublicId || !dbSavedMetrics || !dbResult || !selectedTemplateId) {
       return;
     }
 
@@ -379,13 +404,19 @@ function ReportContent() {
     dbSessionPublicId,
     dbTemplateVersion,
     dbTimeline,
+    isSharedView,
     reportId,
     selectedTemplateId,
   ]);
 
   const handleShare = () => {
-    const url = window.location.href;
-    navigator.clipboard.writeText(url).then(() => {
+    const url = new URL(window.location.href);
+    if (reportId) {
+      url.searchParams.set("id", reportId);
+      url.searchParams.set("share", "1");
+      url.searchParams.delete("returnTo");
+    }
+    navigator.clipboard.writeText(url.toString()).then(() => {
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
     });
@@ -394,12 +425,19 @@ function ReportContent() {
   const finalResult = reportId ? dbResult : result;
   const finalVideoUrl = reportId ? dbVideoUrl : currentVideoUrl;
   const finalTimeline = reportId ? dbTimeline : currentTimeline;
-  const backHref =
+  const trainingBackHref =
     selectedMode === "dribbling"
       ? routes.pose2d.dribbling
       : selectedMode === "training"
         ? routes.pose2d.training
         : routes.pose2d.shooting;
+  const roleBackHref =
+    user?.role === "coach"
+      ? routes.coach.reports
+      : user?.role === "admin"
+        ? routes.admin.home
+        : trainingBackHref;
+  const backHref = returnTo ?? (isSharedView ? routes.home : roleBackHref);
 
   // 数据异常提示逻辑
   const isDataMissing = useMemo(() => !finalResult || finalResult.overall <= 0, [finalResult]);

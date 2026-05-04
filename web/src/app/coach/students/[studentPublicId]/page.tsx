@@ -18,6 +18,7 @@ import {
   formatScore,
   getStudentDisplayName,
 } from "@/components/coach/coachUtils";
+import { routes } from "@/lib/routes";
 import {
   coachService,
   type CoachClassReportRead,
@@ -247,7 +248,10 @@ export default function CoachStudentProfilePage() {
               Recent reports
             </h2>
           </div>
-          <CoachReportTable reports={reports} />
+          <CoachReportTable
+            reports={reports}
+            returnTo={routes.coach.studentProfile(studentPublicId)}
+          />
         </motion.section>
       </div>
     </CoachShell>

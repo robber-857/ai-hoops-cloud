@@ -1,6 +1,6 @@
 # AI 篮球训练营下一轮开发任务拆解
 
-最后更新：2026-05-03
+最后更新：2026-05-04
 
 本文档是下一轮开发的执行清单。已经完成或明显过时的旧任务已清理，只保留当前产品真正需要推进的内容。
 
@@ -309,6 +309,7 @@ Admin 应能查看系统通知和 coach/student 相关通知：
 ### 剩余增强
 
 - 优先修复当前 Admin announcement 报错。
+- 优化 Admin announcement 的发布时间/过期时间输入：当前 `publish_at` / `expire_at` 让 Admin 手写 `ISO datetime`，非 IT 管理员很难判断格式；下一轮应改为日期选择 + 时间选择控件，由前端组合成后端需要的时间值。
 - 补 Admin 公告发布和通知生成的后端测试。
 - 补 Admin 任务监督列表/详情/状态修改的后端测试。
 - 增加公告、任务、通知的审计日志。
@@ -329,6 +330,7 @@ Admin 应能查看系统通知和 coach/student 相关通知：
 - Admin 可以正常进入 `/admin/announcements`。
 - Admin 可以正常加载公告列表。
 - Admin 可以发布全局、camp、class、coach/student 角色公告。
+- Admin 发布公告时可以通过日期选择器和时间选择器填写发布时间/过期时间，不需要手写 `ISO datetime`。
 - 发布公告后不会产生 500，并能在 notifications 中看到对应事件。
 
 ### Coach class announcement 500
@@ -450,5 +452,5 @@ Student 个人中心还没有 announcement 通知页面。后续建议：
 4. 优化 Admin class 成员添加：按用户名添加成员，并扩展批量添加。
 5. 补 Admin 用户管理、模板同步、公告发布、任务监督和通知监督的后端自动化测试。
 6. 增强 Coach 聚合入口：补 `/coach/announcements`、`/coach/notifications`，让 Coach 能看到 Admin 全局/camp/角色公告。
-7. 补公告、任务、通知的审计日志、批量操作和通知重发/撤回策略。
+7. 优化 Admin 运营表单体验：announcement 起止时间改为日期 + 时间选择，并补公告、任务、通知的审计日志、批量操作和通知重发/撤回策略。
 8. 继续推进 Supabase signed upload、后端异步 AI 分析和模板示例视频审核发布流程。

@@ -54,6 +54,12 @@ export const reportService = {
     });
   },
 
+  getSharedReport(reportPublicId: string) {
+    return apiRequest<ReportRead>(`/reports/shared/${reportPublicId}`, {
+      method: "GET",
+    });
+  },
+
   listMine(limit = 20) {
     return apiRequest<MyReportsResponse>(`/reports/mine?limit=${limit}`, {
       method: "GET",

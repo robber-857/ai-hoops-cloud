@@ -1,6 +1,6 @@
 # AI 篮球训练营开发状态说明
 
-最后更新：2026-05-03
+最后更新：2026-05-04
 
 本文档只保留当前仍然有指导价值的开发状态。早期已经完成、已经被后续实现覆盖，或与当前产品状态矛盾的历史内容已清理。下一轮具体任务见 `docs/training-camp-backend-next-iteration-task-breakdown.md`。
 
@@ -82,6 +82,7 @@ Admin 当前已经可以进行训练营后台管理：
 
 - Admin 公告、任务、通知监督已经具备第一版，但还缺少自动化测试、审计日志和更完整的运营流程。
 - Admin announcement 当前存在报错，需要下一轮优先排查公告列表/发布链路。
+- Admin announcement 的发布时间/过期时间字段当前要求填写 `ISO datetime`，对非 IT 管理员不友好；后续前端应改为日期选择 + 时间选择控件，由系统组合成后端需要的 `publish_at` / `expire_at` 格式。
 - Admin 用户管理已经具备第一版，但还缺少专门的后端自动化测试和更细的邀请/重置密码流程。
 - Admin 在 classes 页面向 class 添加成员时，目前需要填写被添加用户的 `user public id`；后续应改为填写用户名添加成员，并扩展批量添加操作。
 
@@ -147,6 +148,7 @@ Admin 当前已经可以进行训练营后台管理：
 - Admin announcement 和 Coach class announcement 当前有实际报错，需要优先修复。
 - Student 个人中心需要增强：`Growth trends` 改为时间-分数折线图、`Weekly tasks` 接真实任务、增加 announcement 消息提醒入口。
 - Admin class 成员添加体验需要优化：从填写 `user public id` 改为按用户名添加，并支持批量添加。
+- Admin announcement 起止时间填写体验需要优化：从手写 `ISO datetime` 改为日期 + 时间选择，避免运营人员不知道该按什么格式填写。
 - Admin 公告发布系统已完成第一版：后续需要补自动化测试、审计日志和前台/Coach 聚合展示联动。
 - Admin 任务/通知监督视图已完成第一版：后续需要补自动化测试和更多运营操作。
 - Admin 用户管理、模板同步、Coach 路由已完成第一版，但还需要补自动化测试和细节打磨。
@@ -182,5 +184,5 @@ Admin 当前已经可以进行训练营后台管理：
 3. Student 个人中心增强：重做 `Growth trends` 折线图、接入真实 `Weekly tasks`、增加 announcement 消息提醒入口。
 4. Admin class 成员添加体验优化：支持按用户名添加成员，并设计批量添加流程。
 5. Coach 聚合入口增强：补 `/coach/announcements`、`/coach/notifications`，并让 Coach 能看到 Admin 全局/camp/角色公告。
-6. Admin 运营细节：补公告/任务/通知审计日志、批量操作、通知重发/撤回策略。
+6. Admin 运营细节：补公告/任务/通知审计日志、批量操作、通知重发/撤回策略，并把 announcement 起止时间输入从手写 `ISO datetime` 改为日期 + 时间选择。
 7. 技术增强继续排期：Supabase signed upload、后端异步 AI 分析、模板示例视频审核发布流程。
