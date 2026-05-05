@@ -29,6 +29,9 @@ from app.models.user import User
 from app.schemas.admin import (
     AdminCampRead,
     AdminAnnouncementRead,
+    AdminBulkClassMemberError,
+    AdminBulkClassMembersResponse,
+    AdminBulkCreateClassMembersRequest,
     AdminCreateAnnouncementRequest,
     AdminClassMemberRead,
     AdminClassRead,
@@ -1020,38 +1023,49 @@ class AdminService:
     ) -> AdminClassMemberRead:
         _ensure_admin_access(current_user)
         class_row = self._get_class_by_public_id(class_public_id)
-        user = self._get_user_by_public_id(payload.user_public_id)
-        now = datetime.now(timezone.utc)
-
-        member = self.db.scalar(
-            select(ClassMember).where(
-                ClassMember.class_id == class_row.id,
-                ClassMember.user_id == user.id,
-                ClassMember.member_role == payload.member_role,
-            )
-        )
-
-        if member:
-            member.status = payload.status
-            member.joined_at = payload.joined_at or member.joined_at or now
-            member.left_at = None if payload.status == "active" else member.left_at
-            member.remarks = payload.remarks
-        else:
-            member = ClassMember(
-                class_id=class_row.id,
-                user_id=user.id,
-                member_role=payload.member_role,
-                status=payload.status,
-                joined_at=payload.joined_at or now,
-                remarks=payload.remarks,
-            )
-            self.db.add(member)
-
+        member = self._upsert_class_member(class_row, payload)
         self.db.commit()
         self.db.refresh(member)
-        member.camp_class = class_row
-        member.user = user
         return _member_read(member)
+
+    def bulk_add_class_members(
+        self,
+        current_user: User,
+        class_public_id: UUID,
+        payload: AdminBulkCreateClassMembersRequest,
+    ) -> AdminBulkClassMembersResponse:
+        _ensure_admin_access(current_user)
+        class_row = self._get_class_by_public_id(class_public_id)
+        added_members: list[ClassMember] = []
+        errors: list[AdminBulkClassMemberError] = []
+
+        for raw_identifier in payload.identifiers:
+            identifier = raw_identifier.strip()
+            if not identifier:
+                continue
+            try:
+                member = self._upsert_class_member(
+                    class_row,
+                    AdminCreateClassMemberRequest(
+                        username=identifier,
+                        member_role=payload.member_role,
+                        status=payload.status,
+                        joined_at=payload.joined_at,
+                        remarks=payload.remarks,
+                    ),
+                )
+                added_members.append(member)
+            except HTTPException as exc:
+                detail = exc.detail if isinstance(exc.detail, str) else "Unable to add member."
+                errors.append(AdminBulkClassMemberError(identifier=identifier, detail=detail))
+
+        self.db.commit()
+        added = []
+        for member in added_members:
+            self.db.refresh(member)
+            added.append(_member_read(member))
+
+        return AdminBulkClassMembersResponse(added=added, errors=errors)
 
     def remove_class_member(
         self,
@@ -2041,6 +2055,88 @@ class AdminService:
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
         return user
+
+    def _get_user_by_username(self, username: str) -> User:
+        user = self.db.scalar(select(User).where(User.username == username.strip()))
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+        return user
+
+    def _resolve_class_member_user(self, payload: AdminCreateClassMemberRequest) -> User:
+        if payload.user_public_id:
+            user = self._get_user_by_public_id(payload.user_public_id)
+        elif payload.username and payload.username.strip():
+            user = self._get_user_by_username(payload.username.strip())
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="user_public_id or username is required.",
+            )
+
+        if user.status != UserStatus.active:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only active users can be added to a class.",
+            )
+        return user
+
+    def _ensure_class_member_role_matches_user(self, user: User, member_role: str) -> None:
+        normalized_role = member_role.strip().lower()
+        if normalized_role not in {"coach", "student"}:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="member_role must be coach or student.",
+            )
+        if user.role.value != normalized_role:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"User role {user.role.value} cannot be added as {normalized_role}.",
+            )
+
+    def _upsert_class_member(
+        self,
+        class_row: CampClass,
+        payload: AdminCreateClassMemberRequest,
+    ) -> ClassMember:
+        user = self._resolve_class_member_user(payload)
+        member_role = payload.member_role.strip().lower()
+        self._ensure_class_member_role_matches_user(user, member_role)
+        now = datetime.now(timezone.utc)
+
+        member = self.db.scalar(
+            select(ClassMember).where(
+                ClassMember.class_id == class_row.id,
+                ClassMember.user_id == user.id,
+                ClassMember.member_role == member_role,
+            )
+        )
+
+        if member and member.status == "active" and payload.status == "active":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="User is already an active member of this class.",
+            )
+
+        if member:
+            member.status = payload.status
+            member.joined_at = payload.joined_at or member.joined_at or now
+            member.left_at = None if payload.status == "active" else member.left_at
+            member.remarks = payload.remarks
+        else:
+            member = ClassMember(
+                class_id=class_row.id,
+                user_id=user.id,
+                member_role=member_role,
+                status=payload.status,
+                joined_at=payload.joined_at or now,
+                remarks=payload.remarks,
+            )
+
+        self.db.add(member)
+        self.db.flush()
+        member.camp_class = class_row
+        member.user = user
+        return member
 
     def _get_template_by_public_id(self, template_public_id: UUID) -> TrainingTemplate:
         template = self.db.scalar(

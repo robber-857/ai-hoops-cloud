@@ -1,12 +1,12 @@
 # AI 篮球训练营开发状态说明
 
-最后更新：2026-05-04
+最后更新：2026-05-05
 
 本文档只保留当前仍然有指导价值的开发状态。早期已经完成、已经被后续实现覆盖，或与当前产品状态矛盾的历史内容已清理。下一轮具体任务见 `docs/training-camp-backend-next-iteration-task-breakdown.md`。
 
 ## 当前阶段结论
 
-篮球训练营系统已经具备学生端主链路、基础后台数据模型、登录角色跳转、Admin/Coach 初版页面、Admin 用户管理第一版、Admin 本地模板同步入口、Coach 关键工作台路由，以及 Admin 公告/任务/通知监督第一版。当前主要缺口已经从“基础链路是否可用”转为“测试覆盖、Coach 公告通知聚合入口、上传/异步分析增强和运营细节打磨”。
+篮球训练营系统已经具备学生端主链路、基础后台数据模型、登录角色跳转、Admin/Coach 初版页面、Admin 用户管理第一版、Admin 本地模板同步入口、Coach 关键工作台路由、Admin 公告/任务/通知监督第一版、Student 个人中心真实任务/公告入口第一版，以及 Admin 按用户名/批量添加 class 成员第一版。Admin / Coach 公告链路已经从阻塞修复项移出；当前主要缺口集中在更完整的测试覆盖、Coach 公告通知聚合入口、上传/异步分析增强和运营细节打磨。
 
 用户已在 2026-05-03 手动验证：
 
@@ -36,11 +36,18 @@
 
 后续学生端重点不是重做主链路，而是接入更完整的真实训练任务、模板标准和后台异步分析。
 
-当前新增反馈/待优化：
+本轮新增/完善：
 
-- Student 个人中心 `Growth trends` 趋势图当前观感不佳；后续应按前端设计规范重做为折线图，横轴为时间，纵轴固定为 `0-100 score`，并保持原有个人中心页面布局不被扰乱。
-- Student 个人中心 `Weekly tasks` 需要连接真实训练任务数据，随着教练发布、更新任务而变化，不能继续使用静态或模拟任务。
-- Student 个人中心还缺少公告/通知入口；后续可以设计一个消息提醒按钮，用于接收教练和管理员发给学生的 announcement。
+- Student 个人中心 `Growth trends` 已重做为时间-分数折线图，纵轴固定为 `0-100 score`，并保留原有个人中心信息层级。
+- Student 个人中心 `Weekly tasks` 已停止使用基于报告生成的模拟任务，改为展示后端 `/me/tasks` 的真实教练任务；无任务时显示明确空状态。
+- 后端新增 `/api/v1/me/announcements` 和 `/api/v1/me/announcements/{announcement_public_id}/read`，Student 可看到全局、camp、class、student 角色相关公告，并可标记已读。
+- Student 个人中心新增 announcement 消息入口，显示未读数量、置顶状态和公告详情。
+
+当前剩余问题：
+
+- Student 个人中心 `Growth trends` 功能已经接入并可用，但当前折线图 UI 观感仍偏普通；用户反馈希望继续升级为更有科技感的 line chart，可通过多层背景、网格光效、发光折线、分层坐标面板和更清晰 tooltip 提升视觉质量，同时不能扰乱个人中心现有布局。
+- Student announcement 目前是个人中心内聚合入口，尚未建设独立消息中心页面、批量已读和更完整的前端自动化测试。
+- Student Weekly tasks 已接真实数据，但任务完成流、实时刷新和更细的任务详情跳转仍可继续增强。
 
 ### 3. Coach 初版能力
 
@@ -62,7 +69,7 @@ Coach 区域已有第一版页面和部分后端接口基础，包含：
 
 - `/coach/tasks` 当前是聚合只读视图，任务编辑/发布主要仍在班级详情页完成。
 - `/coach/announcements`、`/coach/notifications` 还没有独立聚合页。
-- Coach 当前发布/读取 announcement 存在阻塞错误：请求 `GET http://localhost:8000/api/v1/coach/classes/de54750a-15a3-4bfb-b61e-3433c6a7575c/announcements?limit=50` 返回 `500 Internal Server Error`，前端显示 `fail to fetch`，需要下一轮优先排查。
+- Coach class announcement 发布/读取链路已回到第一版可用状态；后续重点是补回归测试，并建设 `/coach/announcements`、`/coach/notifications` 聚合入口。
 
 ### 4. Admin 初版能力
 
@@ -73,6 +80,7 @@ Admin 当前已经可以进行训练营后台管理：
 - 管理班级成员的基础接口/页面方向。
 - 管理模板元数据的第一版页面。
 - 管理注册用户的第一版能力：列表、筛选、详情、创建、编辑、禁用/恢复、班级分配。
+- 在 class 成员管理页按用户名添加 student/coach，并支持一次粘贴多个用户名批量添加，返回成功/失败明细。
 - 将本地评分模板 dry-run / sync 到后端模板注册表。
 - 发布面向全局、camp、class、coach/student 角色的公告，并可选择生成通知。
 - 统一查看 coach 发布的训练任务，支持按 coach、camp、class、状态、动作类型和关键词筛选，并可查看任务完成情况。
@@ -81,10 +89,11 @@ Admin 当前已经可以进行训练营后台管理：
 当前缺口：
 
 - Admin 公告、任务、通知监督已经具备第一版，但还缺少自动化测试、审计日志和更完整的运营流程。
-- Admin announcement 当前存在报错，需要下一轮优先排查公告列表/发布链路。
-- Admin announcement 的发布时间/过期时间字段当前要求填写 `ISO datetime`，对非 IT 管理员不友好；后续前端应改为日期选择 + 时间选择控件，由系统组合成后端需要的 `publish_at` / `expire_at` 格式。
+- Admin announcement 的列表/发布链路已回到第一版可用状态；后续仍需要补公告发布、通知生成和归档流程的自动化回归测试。
+- Admin announcement 的发布时间/过期时间字段当前仍要求填写 `ISO datetime`，对非 IT 管理员不友好；后续前端应改为日期选择 + 小时/分钟选择控件，交互可参考 Admin classes 页面日期选择，但需要额外支持具体时间，由系统组合成后端需要的 `publish_at` / `expire_at` 格式。
 - Admin 用户管理已经具备第一版，但还缺少专门的后端自动化测试和更细的邀请/重置密码流程。
-- Admin 在 classes 页面向 class 添加成员时，目前需要填写被添加用户的 `user public id`；后续应改为填写用户名添加成员，并扩展批量添加操作。
+- Admin 创建/编辑用户时，如果 `username`、`email`、`phone_number` 任一字段重复，当前错误提示仍是笼统的 `Username, phone number, or email already exists.`；后续应明确指出具体重复字段，例如 `Username already exists.`、`Email already exists.`、`Phone number already exists.`，多个字段重复时返回字段级明细。
+- Admin class 成员添加已经支持用户名和批量粘贴第一版；后续仍可继续补用户搜索/autocomplete、上传名单和更细的批量校验体验。
 
 ### 5. 模板与评分资产
 
@@ -143,12 +152,13 @@ Admin 当前已经可以进行训练营后台管理：
 
 ## 当前重要缺口
 
-### P0 / P1 缺口
+### P1 / P2 缺口
 
-- Admin announcement 和 Coach class announcement 当前有实际报错，需要优先修复。
-- Student 个人中心需要增强：`Growth trends` 改为时间-分数折线图、`Weekly tasks` 接真实任务、增加 announcement 消息提醒入口。
-- Admin class 成员添加体验需要优化：从填写 `user public id` 改为按用户名添加，并支持批量添加。
-- Admin announcement 起止时间填写体验需要优化：从手写 `ISO datetime` 改为日期 + 时间选择，避免运营人员不知道该按什么格式填写。
+- Student 个人中心增强已完成第一版：`Growth trends` 时间-分数折线图、`Weekly tasks` 接真实任务、announcement 消息提醒入口；后续重点是测试、详情页和实时刷新。
+- Student `Growth trends` line chart 需要继续做视觉升级：当前功能可用但 UI 不够精致，下一轮应做更科技感的多层背景与折线图视觉表现。
+- Admin class 成员添加体验已完成第一版：从填写 `user public id` 改为按用户名添加，并支持批量添加；后续重点是搜索选择器、上传名单和更完整测试。
+- Admin announcement 起止时间填写体验需要优化：从手写 `ISO datetime` 改为日期 + 小时/分钟选择，避免运营人员不知道该按什么格式填写。
+- Admin 用户创建/编辑重复字段错误需要优化：当用户名、邮箱或手机号重复时，必须指出具体重复项，而不是返回笼统错误。
 - Admin 公告发布系统已完成第一版：后续需要补自动化测试、审计日志和前台/Coach 聚合展示联动。
 - Admin 任务/通知监督视图已完成第一版：后续需要补自动化测试和更多运营操作。
 - Admin 用户管理、模板同步、Coach 路由已完成第一版，但还需要补自动化测试和细节打磨。
@@ -170,6 +180,7 @@ Admin 当前已经可以进行训练营后台管理：
 - `npx.cmd tsc --noEmit --pretty false`：通过。
 - `python -m compileall server\app`：通过，使用 Codex bundled Python。
 - `python -m unittest server.tests.test_report_service_idempotency`：通过，使用 Codex bundled Python，并临时把 `server` 与 `server/.venv/Lib/site-packages` 加入 `PYTHONPATH`。
+- `python -m unittest server.tests.test_camp_operations_service`：通过，覆盖 Student announcement 可见性/已读，以及 Admin 按用户名/批量添加 class member。
 
 未完成验证：
 
@@ -179,10 +190,11 @@ Admin 当前已经可以进行训练营后台管理：
 
 建议下一轮优先按以下顺序推进：
 
-1. 测试补齐：优先补 Admin 用户管理权限、公告发布、任务监督、通知监督、模板同步 dry-run/import、非 Admin 拒绝访问。
-2. 公告阻塞 bug 修复：优先排查 Admin announcement 报错，以及 Coach class announcements `500 Internal Server Error`。
-3. Student 个人中心增强：重做 `Growth trends` 折线图、接入真实 `Weekly tasks`、增加 announcement 消息提醒入口。
-4. Admin class 成员添加体验优化：支持按用户名添加成员，并设计批量添加流程。
+1. Admin 运营表单体验：优先把 announcement 起止时间从手写 `ISO datetime` 改为日期 + 小时/分钟选择，并由前端组合为后端需要的时间值。
+2. Admin 用户管理细节：创建/编辑用户遇到 `username`、`email`、`phone_number` 重复时返回字段级明确错误。
+3. Student 个人中心视觉打磨：升级 `Growth trends` line chart，为现有折线图增加更有科技感的多层背景、光效网格、清晰坐标和 tooltip。
+4. 测试补齐：继续补 Admin 用户管理权限、Admin announcement 发布/通知生成/归档、Coach class announcement 读取/发布/批量更新、任务监督、通知监督、模板同步 dry-run/import、非 Admin 拒绝访问。
 5. Coach 聚合入口增强：补 `/coach/announcements`、`/coach/notifications`，并让 Coach 能看到 Admin 全局/camp/角色公告。
-6. Admin 运营细节：补公告/任务/通知审计日志、批量操作、通知重发/撤回策略，并把 announcement 起止时间输入从手写 `ISO datetime` 改为日期 + 时间选择。
-7. 技术增强继续排期：Supabase signed upload、后端异步 AI 分析、模板示例视频审核发布流程。
+6. Student 个人中心后续增强：补独立消息中心、批量已读、任务详情跳转和真实任务联动测试。
+7. Admin class 成员添加继续打磨：补用户搜索/autocomplete、上传名单和更完整的批量添加测试。
+8. 技术增强继续排期：Supabase signed upload、后端异步 AI 分析、模板示例视频审核发布流程。

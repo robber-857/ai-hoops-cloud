@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { AlertTriangle, Loader2, Plus, UserMinus } from "lucide-react";
+import { AlertTriangle, Loader2, ListPlus, Plus, UserMinus } from "lucide-react";
 
 import {
   AdminForbiddenSurface,
@@ -29,9 +29,10 @@ export default function AdminClassMembersPage() {
   const isInitializing = useAuthStore((state) => state.isInitializing);
   const [classes, setClasses] = useState<AdminClassRead[]>([]);
   const [members, setMembers] = useState<AdminClassMemberRead[]>([]);
-  const [userPublicId, setUserPublicId] = useState("");
+  const [memberIdentifiers, setMemberIdentifiers] = useState("");
   const [memberRole, setMemberRole] = useState("student");
   const [remarks, setRemarks] = useState("");
+  const [bulkErrors, setBulkErrors] = useState<{ identifier: string; detail: string }[]>([]);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,6 +53,16 @@ export default function AdminClassMembersPage() {
     setClasses(classesResponse.items);
     setMembers(membersResponse.items);
   };
+
+  const parseIdentifiers = (value: string) =>
+    Array.from(
+      new Set(
+        value
+          .split(/[\s,;]+/)
+          .map((item) => item.trim())
+          .filter(Boolean),
+      ),
+    );
 
   useEffect(() => {
     if (!hasInitialized || !user || !isAdmin || !classPublicId) {
@@ -92,16 +103,38 @@ export default function AdminClassMembersPage() {
     setIsSubmitting(true);
     setError(null);
     setMessage(null);
+    setBulkErrors([]);
+    const identifiers = parseIdentifiers(memberIdentifiers);
+
+    if (identifiers.length === 0) {
+      setError("Enter at least one username.");
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
-      const member = await adminService.addClassMember(classPublicId, {
-        user_public_id: userPublicId.trim(),
-        member_role: memberRole,
-        status: "active",
-        remarks: remarks.trim() || null,
-      });
-      setMessage(`Added ${member.username} as ${member.member_role}.`);
-      setUserPublicId("");
+      if (identifiers.length === 1) {
+        const member = await adminService.addClassMember(classPublicId, {
+          username: identifiers[0],
+          member_role: memberRole,
+          status: "active",
+          remarks: remarks.trim() || null,
+        });
+        setMessage(`Added ${member.username} as ${member.member_role}.`);
+        setMemberIdentifiers("");
+      } else {
+        const result = await adminService.bulkAddClassMembers(classPublicId, {
+          identifiers,
+          member_role: memberRole,
+          status: "active",
+          remarks: remarks.trim() || null,
+        });
+        setBulkErrors(result.errors);
+        setMessage(`Added ${result.added.length} member(s); ${result.errors.length} failed.`);
+        if (result.errors.length === 0) {
+          setMemberIdentifiers("");
+        }
+      }
       setRemarks("");
       await loadData();
     } catch (submitError) {
@@ -186,7 +219,10 @@ export default function AdminClassMembersPage() {
                         <div className="font-semibold text-white">
                           {member.nickname || member.username}
                         </div>
-                        <div className="mt-1 text-xs text-white/38">{member.user_public_id}</div>
+                        <div className="mt-1 text-xs text-white/38">
+                          @{member.username}
+                          {member.email ? ` / ${member.email}` : ` / ${member.phone_number}`}
+                        </div>
                       </td>
                       <td className="px-4 py-4 text-white/62">
                         {member.member_role} / {member.user_role}
@@ -232,17 +268,21 @@ export default function AdminClassMembersPage() {
         <section className="rounded-lg border border-white/10 bg-white/[0.055] p-5 backdrop-blur-2xl">
           <div className={labelClass}>Add member</div>
           <h2 className="mt-2 font-[var(--font-display)] text-xl font-bold text-white">
-            Link user to class
+            Link users to class
           </h2>
           <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
             <label className="block space-y-2">
-              <span className={labelClass}>User public ID</span>
-              <input
-                className={fieldClass}
-                value={userPublicId}
-                onChange={(event) => setUserPublicId(event.target.value)}
+              <span className={labelClass}>Username list</span>
+              <textarea
+                className={`${fieldClass} min-h-28 resize-none py-3`}
+                value={memberIdentifiers}
+                onChange={(event) => setMemberIdentifiers(event.target.value)}
+                placeholder={`student_01\nstudent_02`}
                 required
               />
+              <span className="block text-xs leading-5 text-white/42">
+                Paste one or many usernames, separated by spaces, commas, or new lines.
+              </span>
             </label>
             <label className="block space-y-2">
               <span className={labelClass}>Member role</span>
@@ -263,12 +303,33 @@ export default function AdminClassMembersPage() {
                 onChange={(event) => setRemarks(event.target.value)}
               />
             </label>
+            {bulkErrors.length > 0 ? (
+              <div className="rounded-lg border border-red-400/18 bg-red-500/8 p-3 text-xs text-red-100">
+                <div className="font-semibold uppercase tracking-[0.16em] text-red-100/72">
+                  Failed entries
+                </div>
+                <div className="mt-2 space-y-1">
+                  {bulkErrors.map((item) => (
+                    <div key={item.identifier} className="flex gap-2">
+                      <span className="font-semibold">{item.identifier}</span>
+                      <span className="text-red-100/70">{item.detail}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <button
               type="submit"
               disabled={isSubmitting}
               className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#65f7ff]/34 bg-[#65f7ff]/12 px-4 text-sm font-semibold text-[#dffbff] transition hover:bg-[#65f7ff]/18 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : memberIdentifiers.trim().split(/[\s,;]+/).filter(Boolean).length > 1 ? (
+                <ListPlus className="h-4 w-4" />
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
               Add member
             </button>
           </form>

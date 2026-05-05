@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
@@ -6,11 +8,13 @@ from app.models.enums import AnalysisType
 from app.models.user import User
 from app.schemas.me import (
     MeAchievementsResponse,
+    MeAnnouncementsResponse,
     MeDashboardResponse,
     MeReportsResponse,
     MeSessionsResponse,
     MeTasksResponse,
     MeTrendsResponse,
+    AnnouncementSummaryRead,
 )
 from app.services.me_service import MeService
 
@@ -64,6 +68,30 @@ def get_achievements(
 ) -> MeAchievementsResponse:
     service = MeService(db)
     return service.get_achievements(current_user, limit=limit)
+
+
+@router.get("/announcements", response_model=MeAnnouncementsResponse, status_code=status.HTTP_200_OK)
+def get_announcements(
+    limit: int = Query(default=20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> MeAnnouncementsResponse:
+    service = MeService(db)
+    return service.get_announcements(current_user, limit=limit)
+
+
+@router.post(
+    "/announcements/{announcement_public_id}/read",
+    response_model=AnnouncementSummaryRead,
+    status_code=status.HTTP_200_OK,
+)
+def mark_announcement_read(
+    announcement_public_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AnnouncementSummaryRead:
+    service = MeService(db)
+    return service.mark_announcement_read(current_user, announcement_public_id)
 
 
 @router.get("/trends", response_model=MeTrendsResponse, status_code=status.HTTP_200_OK)

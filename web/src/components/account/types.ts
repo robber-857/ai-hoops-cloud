@@ -28,8 +28,19 @@ export type WeeklyTask = {
   dueLabel: string;
 };
 
+export type AccountAnnouncement = {
+  id: string;
+  title: string;
+  content: string;
+  scopeLabel: string;
+  publishedAt: string;
+  isPinned: boolean;
+  isRead: boolean;
+};
+
 export type TrendPoint = {
   label: string;
+  fullLabel: string;
   score: number;
 };
 

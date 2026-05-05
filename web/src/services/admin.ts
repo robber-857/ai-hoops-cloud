@@ -75,11 +75,30 @@ export type AdminClassMemberRead = {
 };
 
 export type AdminCreateClassMemberPayload = {
-  user_public_id: string;
+  user_public_id?: string | null;
+  username?: string | null;
   member_role: string;
   status?: string;
   joined_at?: string | null;
   remarks?: string | null;
+};
+
+export type AdminBulkCreateClassMembersPayload = {
+  identifiers: string[];
+  member_role: string;
+  status?: string;
+  joined_at?: string | null;
+  remarks?: string | null;
+};
+
+export type AdminBulkClassMemberError = {
+  identifier: string;
+  detail: string;
+};
+
+export type AdminBulkClassMembersResponse = {
+  added: AdminClassMemberRead[];
+  errors: AdminBulkClassMemberError[];
 };
 
 export type AdminUserRole = "user" | "student" | "coach" | "admin";
@@ -561,6 +580,16 @@ export const adminService = {
       method: "POST",
       body: JSON.stringify(payload),
     });
+  },
+
+  bulkAddClassMembers(classPublicId: string, payload: AdminBulkCreateClassMembersPayload) {
+    return apiRequest<AdminBulkClassMembersResponse>(
+      `/admin/classes/${classPublicId}/members/bulk`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    );
   },
 
   removeClassMember(classPublicId: string, memberPublicId: string) {

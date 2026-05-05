@@ -8,6 +8,8 @@ from app.models.user import User
 from app.schemas.admin import (
     AdminAnnouncementRead,
     AdminAnnouncementsResponse,
+    AdminBulkClassMembersResponse,
+    AdminBulkCreateClassMembersRequest,
     AdminCampRead,
     AdminCampsResponse,
     AdminClassMemberRead,
@@ -390,6 +392,21 @@ def add_class_member(
 ) -> AdminClassMemberRead:
     service = AdminService(db)
     return service.add_class_member(current_user, class_public_id, payload)
+
+
+@router.post(
+    "/classes/{class_public_id}/members/bulk",
+    response_model=AdminBulkClassMembersResponse,
+    status_code=status.HTTP_200_OK,
+)
+def bulk_add_class_members(
+    class_public_id: UUID,
+    payload: AdminBulkCreateClassMembersRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AdminBulkClassMembersResponse:
+    service = AdminService(db)
+    return service.bulk_add_class_members(current_user, class_public_id, payload)
 
 
 @router.delete(

@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-from app.models.enums import AnalysisType
+from app.models.enums import AnalysisType, UserRole
 from app.schemas.report import ReportListItem
 from app.schemas.training import TrainingSessionRead
 from app.schemas.user import UserRead
@@ -38,6 +38,23 @@ class AchievementSummaryRead(BaseModel):
     description: str | None = None
     icon_url: str | None = None
     unlocked_at: datetime
+
+
+class AnnouncementSummaryRead(BaseModel):
+    public_id: UUID
+    scope_type: str
+    target_role: UserRole | None = None
+    camp_public_id: UUID | None = None
+    camp_name: str | None = None
+    class_public_id: UUID | None = None
+    class_name: str | None = None
+    title: str
+    content: str
+    is_pinned: bool
+    publish_at: datetime | None = None
+    expire_at: datetime | None = None
+    is_read: bool
+    created_at: datetime
 
 
 class DashboardStatsRead(BaseModel):
@@ -74,6 +91,11 @@ class MeTasksResponse(BaseModel):
 
 class MeAchievementsResponse(BaseModel):
     items: list[AchievementSummaryRead]
+
+
+class MeAnnouncementsResponse(BaseModel):
+    items: list[AnnouncementSummaryRead]
+    unread_count: int
 
 
 class MeTrendsResponse(BaseModel):

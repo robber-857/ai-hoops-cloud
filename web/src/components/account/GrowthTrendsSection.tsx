@@ -15,8 +15,8 @@ function buildChartPath(points: TrendPoint[]): string {
 
   return points
     .map((point, index) => {
-      const x = points.length === 1 ? 50 : (index / (points.length - 1)) * 100;
-      const y = 100 - Math.max(0, Math.min(100, point.score));
+      const x = points.length === 1 ? 52 : 10 + (index / (points.length - 1)) * 84;
+      const y = 84 - Math.max(0, Math.min(100, point.score)) * 0.72;
       return `${index === 0 ? "M" : "L"} ${x} ${y}`;
     })
     .join(" ");
@@ -28,8 +28,9 @@ function buildAreaPath(points: TrendPoint[]): string {
   }
 
   const line = buildChartPath(points);
-  const endX = points.length === 1 ? 50 : 100;
-  return `${line} L ${endX} 100 L 0 100 Z`;
+  const startX = points.length === 1 ? 52 : 10;
+  const endX = points.length === 1 ? 52 : 94;
+  return `${line} L ${endX} 84 L ${startX} 84 Z`;
 }
 
 export function GrowthTrendsSection({
@@ -61,7 +62,12 @@ export function GrowthTrendsSection({
 
       <div className="mt-6 rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))] p-4 sm:p-5">
         <div className="relative h-64">
-          <div className="absolute inset-0 rounded-[24px] bg-[linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:20%_25%] opacity-40" />
+          <div className="absolute inset-0 rounded-[24px] bg-black/16" />
+          <div className="absolute bottom-10 left-0 top-2 flex w-8 flex-col justify-between text-right text-[0.68rem] font-medium text-white/38">
+            <span>100</span>
+            <span>50</span>
+            <span>0</span>
+          </div>
           <svg
             viewBox="0 0 100 100"
             preserveAspectRatio="none"
@@ -74,18 +80,31 @@ export function GrowthTrendsSection({
                 <stop offset="100%" stopColor="#d8ff5d" stopOpacity="0.04" />
               </linearGradient>
             </defs>
+            {[12, 48, 84].map((y) => (
+              <line
+                key={y}
+                x1="10"
+                x2="94"
+                y1={y}
+                y2={y}
+                stroke="rgba(255,255,255,0.12)"
+                strokeWidth="0.4"
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
             <path d={areaPath} fill="url(#account-area-fill)" />
             <path
               d={linePath}
               fill="none"
               stroke="#d8ff5d"
-              strokeWidth="2.25"
+              strokeWidth="2.4"
               strokeLinecap="round"
               strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
             />
             {points.map((point, index) => {
-              const x = points.length === 1 ? 50 : (index / (points.length - 1)) * 100;
-              const y = 100 - Math.max(0, Math.min(100, point.score));
+              const x = points.length === 1 ? 52 : 10 + (index / (points.length - 1)) * 84;
+              const y = 84 - Math.max(0, Math.min(100, point.score)) * 0.72;
 
               return (
                 <circle
@@ -96,18 +115,24 @@ export function GrowthTrendsSection({
                   fill="#d8ff5d"
                   stroke="rgba(9,11,15,0.9)"
                   strokeWidth="0.8"
+                  vectorEffect="non-scaling-stroke"
                 />
               );
             })}
           </svg>
 
-          <div className="absolute inset-x-0 bottom-0 grid grid-cols-6 gap-2 pt-4 text-[0.68rem] uppercase tracking-[0.18em] text-white/38">
+          <div className="absolute inset-x-8 bottom-0 grid auto-cols-fr grid-flow-col gap-2 pt-4 text-[0.68rem] uppercase tracking-[0.18em] text-white/38">
             {points.map((point) => (
-              <div key={point.label} className="truncate text-center">
+              <div key={point.fullLabel} className="truncate text-center" title={point.fullLabel}>
                 {point.label}
               </div>
             ))}
           </div>
+          {points.length === 0 ? (
+            <div className="absolute inset-0 flex items-center justify-center text-sm text-white/48">
+              No score trend yet.
+            </div>
+          ) : null}
         </div>
 
         <div className="mt-6 grid gap-3 md:grid-cols-3">

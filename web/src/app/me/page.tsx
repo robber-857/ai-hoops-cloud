@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { getTemplateById } from "@/config/templates";
 import { AccountCenterShell } from "@/components/account/AccountCenterShell";
+import { AnnouncementInboxSection } from "@/components/account/AnnouncementInboxSection";
 import { GrowthTrendsSection } from "@/components/account/GrowthTrendsSection";
 import { ProfileSummaryCard } from "@/components/account/ProfileSummaryCard";
 import { RecentReportsSection } from "@/components/account/RecentReportsSection";
@@ -12,6 +13,7 @@ import { StatOverviewRow } from "@/components/account/StatOverviewRow";
 import { WeeklyTasksSection } from "@/components/account/WeeklyTasksSection";
 import type {
   AccountAnalysisType,
+  AccountAnnouncement,
   AccountReport,
   GrowthSummary,
   ReportSource,
@@ -22,6 +24,7 @@ import type {
 import { routes } from "@/lib/routes";
 import {
   meService,
+  type AnnouncementSummaryRead,
   type DashboardStatsRead,
   type TaskSummaryRead,
   type TrendPointRead,
@@ -227,45 +230,13 @@ function buildTrendPoints(reports: AccountReport[]): TrendPoint[] {
     label: new Intl.DateTimeFormat("en-AU", { month: "short", day: "numeric" }).format(
       new Date(report.createdAt)
     ),
+    fullLabel: new Intl.DateTimeFormat("en-AU", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(new Date(report.createdAt)),
     score: Math.round(report.score),
   }));
-}
-
-function buildWeeklyTasks(reports: AccountReport[]): WeeklyTask[] {
-  const weeklyReports = reports.filter((report) => isWithinLastDays(report.createdAt, 7));
-  const weeklyTypes = new Set(weeklyReports.map((report) => report.analysisType));
-  const weeklyBest = Math.max(...weeklyReports.map((report) => report.score), 0);
-
-  const sessionsProgress = Math.min(weeklyReports.length / 3, 1);
-  const typeProgress = Math.min(weeklyTypes.size / 2, 1);
-  const scoreProgress = Math.min(weeklyBest / 85, 1);
-
-  return [
-    {
-      title: "Complete 3 analysis sessions",
-      description: "Keep at least three uploads moving through the lab this week.",
-      progress: sessionsProgress,
-      status: sessionsProgress >= 1 ? "done" : sessionsProgress > 0 ? "in_progress" : "pending",
-      valueLabel: `${weeklyReports.length}/3`,
-      dueLabel: "Due this week",
-    },
-    {
-      title: "Cover 2 motion labs",
-      description: "Spread work across shooting, dribbling, or training instead of repeating one lane only.",
-      progress: typeProgress,
-      status: typeProgress >= 1 ? "done" : typeProgress > 0 ? "in_progress" : "pending",
-      valueLabel: `${weeklyTypes.size}/2`,
-      dueLabel: "Mix your reps",
-    },
-    {
-      title: "Reach an A-grade session",
-      description: "Push one report above the strong-performance threshold.",
-      progress: scoreProgress,
-      status: scoreProgress >= 1 ? "done" : scoreProgress > 0 ? "in_progress" : "pending",
-      valueLabel: weeklyBest > 0 ? `${Math.round(weeklyBest)} pts` : "No score yet",
-      dueLabel: "Best of week",
-    },
-  ];
 }
 
 function normalizeTask(task: TaskSummaryRead): WeeklyTask {
@@ -304,9 +275,39 @@ function normalizeTrendPoints(points: TrendPointRead[]): TrendPoint[] {
         month: "short",
         day: "numeric",
       }).format(new Date(point.date)),
+      fullLabel: new Intl.DateTimeFormat("en-AU", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }).format(new Date(point.date)),
       score: Math.round(point.best_score ?? point.average_score ?? 0),
     }))
     .filter((point) => point.score > 0);
+}
+
+function getAnnouncementScopeLabel(announcement: AnnouncementSummaryRead): string {
+  if (announcement.scope_type === "class") {
+    return announcement.class_name ?? "Class";
+  }
+  if (announcement.scope_type === "camp") {
+    return announcement.camp_name ?? "Camp";
+  }
+  if (announcement.scope_type === "role") {
+    return announcement.target_role ? `${announcement.target_role} role` : "Role";
+  }
+  return "Global";
+}
+
+function normalizeAnnouncement(announcement: AnnouncementSummaryRead): AccountAnnouncement {
+  return {
+    id: announcement.public_id,
+    title: announcement.title,
+    content: announcement.content,
+    scopeLabel: getAnnouncementScopeLabel(announcement),
+    publishedAt: announcement.publish_at ?? announcement.created_at,
+    isPinned: announcement.is_pinned,
+    isRead: announcement.is_read,
+  };
 }
 
 export default function MePage() {
@@ -320,8 +321,11 @@ export default function MePage() {
   const [reportSource, setReportSource] = useState<ReportSource>("preview");
   const [isReportsLoading, setIsReportsLoading] = useState(false);
   const [backendStats, setBackendStats] = useState<DashboardStatsRead | null>(null);
-  const [backendTasks, setBackendTasks] = useState<WeeklyTask[] | null>(null);
+  const [backendTasks, setBackendTasks] = useState<WeeklyTask[]>([]);
   const [backendTrendPoints, setBackendTrendPoints] = useState<TrendPoint[] | null>(null);
+  const [announcements, setAnnouncements] = useState<AccountAnnouncement[]>([]);
+  const [unreadAnnouncementCount, setUnreadAnnouncementCount] = useState(0);
+  const [expandedAnnouncementId, setExpandedAnnouncementId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!hasInitialized || isAuthenticated) {
@@ -342,12 +346,14 @@ export default function MePage() {
       setIsReportsLoading(true);
 
       try {
-        const [dashboardData, reportsData, tasksData, trendsData] = await Promise.all([
-          meService.getDashboard(),
-          meService.getReports(6),
-          meService.getTasks(5),
-          meService.getTrends({ range: "30d" }),
-        ]);
+        const [dashboardData, reportsData, tasksData, trendsData, announcementsData] =
+          await Promise.all([
+            meService.getDashboard(),
+            meService.getReports(6),
+            meService.getTasks(5),
+            meService.getTrends({ range: "30d" }),
+            meService.getAnnouncements(6),
+          ]);
 
         const normalizedReports = reportsData.items
           .map(normalizeReport)
@@ -358,14 +364,17 @@ export default function MePage() {
         const nextReports = normalizedReports.length > 0 ? normalizedReports : dashboardReports;
         const nextTasks = tasksData.items.map(normalizeTask);
         const nextTrendPoints = normalizeTrendPoints(trendsData.points);
+        const nextAnnouncements = announcementsData.items.map(normalizeAnnouncement);
 
         if (!isActive) {
           return;
         }
 
         setBackendStats(dashboardData.stats);
-        setBackendTasks(nextTasks.length > 0 ? nextTasks : null);
+        setBackendTasks(nextTasks);
         setBackendTrendPoints(nextTrendPoints.length > 0 ? nextTrendPoints : null);
+        setAnnouncements(nextAnnouncements);
+        setUnreadAnnouncementCount(announcementsData.unread_count);
 
         if (nextReports.length > 0) {
           setReports(nextReports);
@@ -382,8 +391,10 @@ export default function MePage() {
         }
 
         setBackendStats(null);
-        setBackendTasks(null);
+        setBackendTasks([]);
         setBackendTrendPoints(null);
+        setAnnouncements([]);
+        setUnreadAnnouncementCount(0);
         setReports(PREVIEW_REPORTS);
         setReportSource("preview");
       } finally {
@@ -491,12 +502,41 @@ export default function MePage() {
     return {
       latestReport,
       stats,
-      tasks: backendTasks ?? buildWeeklyTasks(sortedReports),
+      tasks: backendTasks,
       trendPoints,
       highlights,
       recentReports: sortedReports,
     };
   }, [backendStats, backendTasks, backendTrendPoints, reportSource, reports]);
+
+  const handleAnnouncementToggle = async (announcement: AccountAnnouncement) => {
+    setExpandedAnnouncementId((current) => (current === announcement.id ? null : announcement.id));
+
+    if (announcement.isRead) {
+      return;
+    }
+
+    setAnnouncements((current) =>
+      current.map((item) =>
+        item.id === announcement.id ? { ...item, isRead: true } : item,
+      ),
+    );
+    setUnreadAnnouncementCount((current) => Math.max(0, current - 1));
+    setBackendStats((current) =>
+      current
+        ? {
+            ...current,
+            unread_notifications: Math.max(0, current.unread_notifications - 1),
+          }
+        : current,
+    );
+
+    try {
+      await meService.markAnnouncementRead(announcement.id);
+    } catch (error) {
+      console.error("Unable to mark announcement as read.", error);
+    }
+  };
 
   if (!hasInitialized || isInitializing || !user || !isAuthenticated) {
     return (
@@ -527,6 +567,12 @@ export default function MePage() {
         displayName={displayName}
       />
       <StatOverviewRow items={dashboard.stats} />
+      <AnnouncementInboxSection
+        announcements={announcements}
+        unreadCount={unreadAnnouncementCount}
+        expandedId={expandedAnnouncementId}
+        onToggle={handleAnnouncementToggle}
+      />
       <div className="grid gap-6 xl:grid-cols-[1.02fr_0.98fr]">
         <WeeklyTasksSection tasks={dashboard.tasks} />
         <GrowthTrendsSection

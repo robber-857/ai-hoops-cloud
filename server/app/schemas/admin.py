@@ -111,11 +111,30 @@ class AdminClassMembersResponse(BaseModel):
 
 
 class AdminCreateClassMemberRequest(BaseModel):
-    user_public_id: UUID
+    user_public_id: UUID | None = None
+    username: str | None = Field(default=None, min_length=1, max_length=50)
     member_role: str = Field(min_length=1, max_length=20)
     status: str = Field(default="active", max_length=20)
     joined_at: datetime | None = None
     remarks: str | None = None
+
+
+class AdminBulkCreateClassMembersRequest(BaseModel):
+    identifiers: list[str] = Field(min_length=1, max_length=100)
+    member_role: str = Field(min_length=1, max_length=20)
+    status: str = Field(default="active", max_length=20)
+    joined_at: datetime | None = None
+    remarks: str | None = None
+
+
+class AdminBulkClassMemberError(BaseModel):
+    identifier: str
+    detail: str
+
+
+class AdminBulkClassMembersResponse(BaseModel):
+    added: list[AdminClassMemberRead]
+    errors: list[AdminBulkClassMemberError]
 
 
 class AdminUserClassMembershipRead(BaseModel):

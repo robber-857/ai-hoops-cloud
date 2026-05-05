@@ -41,7 +41,7 @@ export function WeeklyTasksSection({ tasks }: WeeklyTasksSectionProps) {
           </h2>
         </div>
         <Badge className="border border-[#d8ff5d]/20 bg-[#d8ff5d]/12 text-[#e8ff9a]">
-          Week focus
+          Live tasks
         </Badge>
       </div>
 
@@ -80,6 +80,14 @@ export function WeeklyTasksSection({ tasks }: WeeklyTasksSectionProps) {
             </article>
           );
         })}
+        {tasks.length === 0 ? (
+          <div className="rounded-[24px] border border-white/10 bg-black/18 px-4 py-8 text-center">
+            <div className="text-sm font-semibold text-white">No coach tasks assigned.</div>
+            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-white/50">
+              New weekly work will appear here as soon as your coach publishes it.
+            </p>
+          </div>
+        ) : null}
       </div>
     </section>
   );

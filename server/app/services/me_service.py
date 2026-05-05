@@ -2,11 +2,17 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
+from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.analysis_report import AnalysisReport
+from app.models.announcement import Announcement
+from app.models.announcement_read import AnnouncementRead
+from app.models.camp_class import CampClass
+from app.models.class_member import ClassMember
+from app.models.enums import UserRole
 from app.models.notification import Notification
 from app.models.student_achievement import StudentAchievement
 from app.models.student_growth_snapshot import StudentGrowthSnapshot
@@ -16,7 +22,9 @@ from app.models.training_task_assignment import TrainingTaskAssignment
 from app.models.user import User
 from app.schemas.me import (
     AchievementSummaryRead,
+    AnnouncementSummaryRead,
     DashboardStatsRead,
+    MeAnnouncementsResponse,
     MeAchievementsResponse,
     MeDashboardResponse,
     MeReportsResponse,
@@ -65,6 +73,34 @@ def _achievement_summary(item: StudentAchievement) -> AchievementSummaryRead:
     )
 
 
+def _role_from_value(value: str | None) -> UserRole | None:
+    if value is None:
+        return None
+    try:
+        return UserRole(value)
+    except ValueError:
+        return None
+
+
+def _announcement_summary(item: Announcement, is_read: bool) -> AnnouncementSummaryRead:
+    return AnnouncementSummaryRead(
+        public_id=item.public_id,
+        scope_type=item.scope_type,
+        target_role=_role_from_value(item.target_role),
+        camp_public_id=item.camp.public_id if item.camp else None,
+        camp_name=item.camp.name if item.camp else None,
+        class_public_id=item.camp_class.public_id if item.camp_class else None,
+        class_name=item.camp_class.name if item.camp_class else None,
+        title=item.title,
+        content=item.content,
+        is_pinned=item.is_pinned,
+        publish_at=item.publish_at,
+        expire_at=item.expire_at,
+        is_read=is_read,
+        created_at=item.created_at,
+    )
+
+
 class MeService:
     def __init__(self, db: Session) -> None:
         self.db = db
@@ -96,6 +132,89 @@ class MeService:
 
     def get_achievements(self, current_user: User, limit: int = 20) -> MeAchievementsResponse:
         return MeAchievementsResponse(items=self._get_recent_achievements(current_user.id, limit=limit))
+
+    def get_announcements(self, current_user: User, limit: int = 20) -> MeAnnouncementsResponse:
+        filters = self._announcement_visibility_filters(current_user)
+        read_exists = (
+            select(AnnouncementRead.id)
+            .where(
+                AnnouncementRead.announcement_id == Announcement.id,
+                AnnouncementRead.user_id == current_user.id,
+            )
+            .exists()
+        )
+
+        announcements = self.db.scalars(
+            select(Announcement)
+            .options(
+                selectinload(Announcement.camp),
+                selectinload(Announcement.camp_class),
+            )
+            .where(*filters)
+            .order_by(
+                Announcement.is_pinned.desc(),
+                Announcement.publish_at.desc(),
+                Announcement.created_at.desc(),
+            )
+            .limit(min(max(limit, 1), 100))
+        ).all()
+        read_ids = set(
+            self.db.scalars(
+                select(AnnouncementRead.announcement_id).where(
+                    AnnouncementRead.user_id == current_user.id,
+                    AnnouncementRead.announcement_id.in_([item.id for item in announcements]),
+                )
+            ).all()
+        )
+        unread_count = self.db.scalar(
+            select(func.count(Announcement.id)).where(*filters, ~read_exists)
+        ) or 0
+
+        return MeAnnouncementsResponse(
+            items=[
+                _announcement_summary(announcement, announcement.id in read_ids)
+                for announcement in announcements
+            ],
+            unread_count=int(unread_count),
+        )
+
+    def mark_announcement_read(
+        self,
+        current_user: User,
+        announcement_public_id: UUID,
+    ) -> AnnouncementSummaryRead:
+        announcement = self._get_visible_announcement(current_user, announcement_public_id)
+        now = datetime.now(timezone.utc)
+        read = self.db.scalar(
+            select(AnnouncementRead).where(
+                AnnouncementRead.announcement_id == announcement.id,
+                AnnouncementRead.user_id == current_user.id,
+            )
+        )
+        if not read:
+            self.db.add(
+                AnnouncementRead(
+                    announcement_id=announcement.id,
+                    user_id=current_user.id,
+                    read_at=now,
+                )
+            )
+
+        notifications = self.db.scalars(
+            select(Notification).where(
+                Notification.user_id == current_user.id,
+                Notification.business_type == "announcement",
+                Notification.business_id == announcement.id,
+                Notification.is_read.is_(False),
+            )
+        ).all()
+        for notification in notifications:
+            notification.is_read = True
+            notification.read_at = now
+            self.db.add(notification)
+
+        self.db.commit()
+        return _announcement_summary(announcement, True)
 
     def get_trends(
         self,
@@ -257,6 +376,63 @@ class MeService:
             .limit(limit)
         ).all()
         return [_achievement_summary(item) for item in achievements]
+
+    def _announcement_visibility_filters(self, current_user: User):
+        now = datetime.now(timezone.utc)
+        memberships = self.db.execute(
+            select(ClassMember.class_id, CampClass.camp_id)
+            .join(CampClass, ClassMember.class_id == CampClass.id)
+            .where(
+                ClassMember.user_id == current_user.id,
+                ClassMember.status == "active",
+            )
+        ).all()
+        class_ids = [class_id for class_id, _camp_id in memberships]
+        camp_ids = list({camp_id for _class_id, camp_id in memberships if camp_id is not None})
+
+        visibility_conditions = [
+            Announcement.scope_type == "global",
+            and_(
+                Announcement.scope_type == "role",
+                Announcement.target_role == current_user.role.value,
+            ),
+        ]
+        if class_ids:
+            visibility_conditions.append(
+                and_(Announcement.scope_type == "class", Announcement.class_id.in_(class_ids))
+            )
+        if camp_ids:
+            visibility_conditions.append(
+                and_(Announcement.scope_type == "camp", Announcement.camp_id.in_(camp_ids))
+            )
+
+        return (
+            Announcement.status == "published",
+            or_(Announcement.publish_at.is_(None), Announcement.publish_at <= now),
+            or_(Announcement.expire_at.is_(None), Announcement.expire_at > now),
+            or_(*visibility_conditions),
+        )
+
+    def _get_visible_announcement(self, current_user: User, announcement_public_id: UUID) -> Announcement:
+        announcement = self.db.scalar(
+            select(Announcement)
+            .options(
+                selectinload(Announcement.camp),
+                selectinload(Announcement.camp_class),
+            )
+            .where(
+                Announcement.public_id == announcement_public_id,
+                *self._announcement_visibility_filters(current_user),
+            )
+        )
+        if not announcement:
+            from fastapi import HTTPException, status
+
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Announcement not found.",
+            )
+        return announcement
 
     def _parse_range_days(self, range_value: str) -> int:
         mapping = {"7d": 7, "30d": 30, "90d": 90}

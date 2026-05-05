@@ -50,6 +50,23 @@ export type AchievementSummaryRead = {
   unlocked_at: string;
 };
 
+export type AnnouncementSummaryRead = {
+  public_id: string;
+  scope_type: string;
+  target_role: string | null;
+  camp_public_id: string | null;
+  camp_name: string | null;
+  class_public_id: string | null;
+  class_name: string | null;
+  title: string;
+  content: string;
+  is_pinned: boolean;
+  publish_at: string | null;
+  expire_at: string | null;
+  is_read: boolean;
+  created_at: string;
+};
+
 export type DashboardStatsRead = {
   total_reports: number;
   total_sessions: number;
@@ -84,6 +101,11 @@ export type MeTasksResponse = {
 
 export type MeAchievementsResponse = {
   items: AchievementSummaryRead[];
+};
+
+export type MeAnnouncementsResponse = {
+  items: AnnouncementSummaryRead[];
+  unread_count: number;
 };
 
 export type MeTrendsResponse = {
@@ -121,6 +143,21 @@ export const meService = {
     return apiRequest<MeAchievementsResponse>(`/me/achievements?limit=${limit}`, {
       method: "GET",
     });
+  },
+
+  getAnnouncements(limit = 20) {
+    return apiRequest<MeAnnouncementsResponse>(`/me/announcements?limit=${limit}`, {
+      method: "GET",
+    });
+  },
+
+  markAnnouncementRead(announcementPublicId: string) {
+    return apiRequest<AnnouncementSummaryRead>(
+      `/me/announcements/${announcementPublicId}/read`,
+      {
+        method: "POST",
+      },
+    );
   },
 
   getTrends(params: { range?: string; analysisType?: ReportAnalysisType } = {}) {
