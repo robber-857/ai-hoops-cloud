@@ -475,40 +475,42 @@ class AdminService:
             if payload.status == UserStatus.active:
                 user.deleted_at = None
 
+        username = None
+        phone_number = None
+        email = None
+        next_email = user.email
+        email_changed = False
         if "username" in fields_set and payload.username is not None:
-            username = payload.username.strip()
-            if username != user.username:
-                self._ensure_unique_user_identity(
-                    username=username,
-                    phone_number=None,
-                    email=None,
-                    exclude_user_id=user.id,
-                )
-                user.username = username
+            next_username = payload.username.strip()
+            if next_username != user.username:
+                username = next_username
         if "password" in fields_set and payload.password is not None:
             user.password_hash = hash_password(payload.password)
         if "phone_number" in fields_set and payload.phone_number is not None:
-            phone_number = self._normalize_phone_number(payload.phone_number)
-            if phone_number != user.phone_number:
-                self._ensure_unique_user_identity(
-                    username=None,
-                    phone_number=phone_number,
-                    email=None,
-                    exclude_user_id=user.id,
-                )
-                user.phone_number = phone_number
-                user.is_phone_verified = False
+            next_phone_number = self._normalize_phone_number(payload.phone_number)
+            if next_phone_number != user.phone_number:
+                phone_number = next_phone_number
         if "email" in fields_set:
-            email = self._normalize_email(payload.email) if payload.email else None
-            if email != user.email:
-                self._ensure_unique_user_identity(
-                    username=None,
-                    phone_number=None,
-                    email=email,
-                    exclude_user_id=user.id,
-                )
-                user.email = email
-                user.is_email_verified = bool(email)
+            next_email = self._normalize_email(payload.email) if payload.email else None
+            if next_email != user.email:
+                email = next_email
+                email_changed = True
+
+        self._ensure_unique_user_identity(
+            username=username,
+            phone_number=phone_number,
+            email=email,
+            exclude_user_id=user.id,
+        )
+
+        if username is not None:
+            user.username = username
+        if phone_number is not None:
+            user.phone_number = phone_number
+            user.is_phone_verified = False
+        if email_changed:
+            user.email = next_email
+            user.is_email_verified = bool(next_email)
         if "nickname" in fields_set:
             user.nickname = payload.nickname.strip() if payload.nickname else None
 
@@ -1603,13 +1605,40 @@ class AdminService:
         if not checks:
             return
 
-        stmt = select(User.id).where(or_(*checks))
+        stmt = select(User.username, User.email, User.phone_number).where(or_(*checks))
         if exclude_user_id is not None:
             stmt = stmt.where(User.id != exclude_user_id)
-        if self.db.scalar(stmt):
+        rows = self.db.execute(stmt).all()
+        if not rows:
+            return
+
+        conflicts = []
+        if username and any(row_username == username for row_username, _row_email, _row_phone in rows):
+            conflicts.append(
+                {
+                    "field": "username",
+                    "msg": "Username already exists.",
+                }
+            )
+        if email and any(row_email == email for _row_username, row_email, _row_phone in rows):
+            conflicts.append(
+                {
+                    "field": "email",
+                    "msg": "Email already exists.",
+                }
+            )
+        if phone_number and any(row_phone == phone_number for _row_username, _row_email, row_phone in rows):
+            conflicts.append(
+                {
+                    "field": "phone_number",
+                    "msg": "Phone number already exists.",
+                }
+            )
+
+        if conflicts:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Username, phone number, or email already exists.",
+                detail=conflicts,
             )
 
     def _ensure_not_self_lockout(

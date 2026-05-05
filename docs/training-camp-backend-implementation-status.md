@@ -47,7 +47,7 @@
 
 - Student 个人中心 `Growth trends` 功能已经接入并可用，但当前折线图 UI 观感仍偏普通；用户反馈希望继续升级为更有科技感的 line chart，可通过多层背景、网格光效、发光折线、分层坐标面板和更清晰 tooltip 提升视觉质量，同时不能扰乱个人中心现有布局。
 - Student announcement 目前是个人中心内聚合入口，尚未建设独立消息中心页面、批量已读和更完整的前端自动化测试。
-- Student Weekly tasks 已接真实数据，但任务完成流、实时刷新和更细的任务详情跳转仍可继续增强。
+- Student Weekly tasks 已接真实数据，但当前学生只能查看任务，不能提交任务；后续需要补任务详情、任务提交入口、关联训练上传/报告、提交后进度与状态更新，以及实时刷新。
 
 ### 3. Coach 初版能力
 
@@ -83,16 +83,16 @@ Admin 当前已经可以进行训练营后台管理：
 - 在 class 成员管理页按用户名添加 student/coach，并支持一次粘贴多个用户名批量添加，返回成功/失败明细。
 - 将本地评分模板 dry-run / sync 到后端模板注册表。
 - 发布面向全局、camp、class、coach/student 角色的公告，并可选择生成通知。
+- Admin announcement 表单已把 `publish_at` / `expire_at` 从手写 `ISO datetime` 改为日期 + 分钟级时间选择，并由前端组合成后端 datetime payload。
 - 统一查看 coach 发布的训练任务，支持按 coach、camp、class、状态、动作类型和关键词筛选，并可查看任务完成情况。
 - 统一查看系统通知，支持按通知类型、业务类型、接收角色、读状态和关键词筛选。
+- Admin 创建/编辑用户时，`username`、`email`、`phone_number` 唯一性冲突已返回字段级明细，多个字段同时重复时会一次性返回多条错误。
 
 当前缺口：
 
 - Admin 公告、任务、通知监督已经具备第一版，但还缺少自动化测试、审计日志和更完整的运营流程。
 - Admin announcement 的列表/发布链路已回到第一版可用状态；后续仍需要补公告发布、通知生成和归档流程的自动化回归测试。
-- Admin announcement 的发布时间/过期时间字段当前仍要求填写 `ISO datetime`，对非 IT 管理员不友好；后续前端应改为日期选择 + 小时/分钟选择控件，交互可参考 Admin classes 页面日期选择，但需要额外支持具体时间，由系统组合成后端需要的 `publish_at` / `expire_at` 格式。
-- Admin 用户管理已经具备第一版，但还缺少专门的后端自动化测试和更细的邀请/重置密码流程。
-- Admin 创建/编辑用户时，如果 `username`、`email`、`phone_number` 任一字段重复，当前错误提示仍是笼统的 `Username, phone number, or email already exists.`；后续应明确指出具体重复字段，例如 `Username already exists.`、`Email already exists.`、`Phone number already exists.`，多个字段重复时返回字段级明细。
+- Admin 用户管理已经具备第一版，唯一性冲突已补字段级测试；后续仍缺更完整的权限、禁用历史数据保护、邀请/重置密码流程测试。
 - Admin class 成员添加已经支持用户名和批量粘贴第一版；后续仍可继续补用户搜索/autocomplete、上传名单和更细的批量校验体验。
 
 ### 5. 模板与评分资产
@@ -180,7 +180,7 @@ Admin 当前已经可以进行训练营后台管理：
 - `npx.cmd tsc --noEmit --pretty false`：通过。
 - `python -m compileall server\app`：通过，使用 Codex bundled Python。
 - `python -m unittest server.tests.test_report_service_idempotency`：通过，使用 Codex bundled Python，并临时把 `server` 与 `server/.venv/Lib/site-packages` 加入 `PYTHONPATH`。
-- `python -m unittest server.tests.test_camp_operations_service`：通过，覆盖 Student announcement 可见性/已读，以及 Admin 按用户名/批量添加 class member。
+- `python -m unittest server.tests.test_camp_operations_service`：通过，覆盖 Student announcement 可见性/已读、Admin 按用户名/批量添加 class member，以及 Admin 用户创建/编辑唯一性冲突字段级错误。
 
 未完成验证：
 
@@ -190,11 +190,10 @@ Admin 当前已经可以进行训练营后台管理：
 
 建议下一轮优先按以下顺序推进：
 
-1. Admin 运营表单体验：优先把 announcement 起止时间从手写 `ISO datetime` 改为日期 + 小时/分钟选择，并由前端组合为后端需要的时间值。
-2. Admin 用户管理细节：创建/编辑用户遇到 `username`、`email`、`phone_number` 重复时返回字段级明确错误。
-3. Student 个人中心视觉打磨：升级 `Growth trends` line chart，为现有折线图增加更有科技感的多层背景、光效网格、清晰坐标和 tooltip。
-4. 测试补齐：继续补 Admin 用户管理权限、Admin announcement 发布/通知生成/归档、Coach class announcement 读取/发布/批量更新、任务监督、通知监督、模板同步 dry-run/import、非 Admin 拒绝访问。
-5. Coach 聚合入口增强：补 `/coach/announcements`、`/coach/notifications`，并让 Coach 能看到 Admin 全局/camp/角色公告。
-6. Student 个人中心后续增强：补独立消息中心、批量已读、任务详情跳转和真实任务联动测试。
-7. Admin class 成员添加继续打磨：补用户搜索/autocomplete、上传名单和更完整的批量添加测试。
-8. 技术增强继续排期：Supabase signed upload、后端异步 AI 分析、模板示例视频审核发布流程。
+1. Student 个人中心视觉打磨：升级 `Growth trends` line chart，为现有折线图增加更有科技感的多层背景、光效网格、清晰坐标和 tooltip。
+2. 测试补齐：继续补 Admin 用户管理权限、禁用历史数据保护、Admin announcement 发布/通知生成/归档、Coach class announcement 读取/发布/批量更新、任务监督、通知监督、模板同步 dry-run/import、非 Admin 拒绝访问。
+3. Coach 聚合入口增强：补 `/coach/announcements`、`/coach/notifications`，并让 Coach 能看到 Admin 全局/camp/角色公告。
+4. Student 任务提交链路：补任务详情页/弹窗、提交任务入口、关联训练上传或已有训练报告、提交后更新 assignment 进度与状态，并补真实任务联动测试。
+5. Student 个人中心后续增强：补独立消息中心、批量已读、任务详情跳转和刷新策略。
+6. Admin class 成员添加继续打磨：补用户搜索/autocomplete、上传名单和更完整的批量添加测试。
+7. 技术增强继续排期：Supabase signed upload、后端异步 AI 分析、模板示例视频审核发布流程。

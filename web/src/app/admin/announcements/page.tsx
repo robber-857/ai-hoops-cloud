@@ -36,6 +36,7 @@ const labelClass = "text-[0.68rem] font-semibold uppercase tracking-[0.18em] tex
 const scopes: AdminAnnouncementScopeType[] = ["global", "camp", "class", "role"];
 const statuses = ["published", "draft", "archived"];
 const targetRoles: AdminUserRole[] = ["coach", "student"];
+type AnnouncementDateTimeField = "publish_at" | "expire_at";
 
 function statusTone(status: string) {
   if (status === "published") {
@@ -69,6 +70,49 @@ function scopedPayload(form: AdminCreateAnnouncementPayload): AdminCreateAnnounc
     publish_at: form.publish_at || null,
     expire_at: form.expire_at || null,
   };
+}
+
+function padDateTimePart(value: number) {
+  return String(value).padStart(2, "0");
+}
+
+function localDateTimeParts(value?: string | null) {
+  if (!value) {
+    return { date: "", time: "" };
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return { date: "", time: "" };
+  }
+
+  return {
+    date: [
+      parsed.getFullYear(),
+      padDateTimePart(parsed.getMonth() + 1),
+      padDateTimePart(parsed.getDate()),
+    ].join("-"),
+    time: [
+      padDateTimePart(parsed.getHours()),
+      padDateTimePart(parsed.getMinutes()),
+    ].join(":"),
+  };
+}
+
+function buildDateTimeValue(date: string, time: string) {
+  if (!date) {
+    return null;
+  }
+
+  const [year, month, day] = date.split("-").map(Number);
+  const [hours, minutes] = (time || "09:00").split(":").map(Number);
+  const parsed = new Date(year, month - 1, day, hours, minutes, 0, 0);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed.toISOString();
 }
 
 function emptyForm(): AdminCreateAnnouncementPayload {
@@ -260,6 +304,17 @@ export default function AdminAnnouncementsPage() {
     } catch (archiveError) {
       setError(archiveError instanceof Error ? archiveError.message : "Unable to archive announcement.");
     }
+  };
+
+  const updateDateTimeField = (
+    field: AnnouncementDateTimeField,
+    date: string,
+    time: string,
+  ) => {
+    setForm((current) => ({
+      ...current,
+      [field]: buildDateTimeValue(date, time),
+    }));
   };
 
   if (!hasInitialized || isInitializing || !user) {
@@ -485,14 +540,85 @@ export default function AdminAnnouncementsPage() {
               <input type="checkbox" checked={Boolean(form.notify_recipients)} onChange={(event) => setForm((current) => ({ ...current, notify_recipients: event.target.checked }))} className="h-4 w-4 accent-[#d8ff5d]" />
             </label>
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block space-y-2">
-                <span className={labelClass}>Publish at</span>
-                <input className={fieldClass} value={form.publish_at ?? ""} onChange={(event) => setForm((current) => ({ ...current, publish_at: event.target.value }))} placeholder="ISO datetime" />
-              </label>
-              <label className="block space-y-2">
-                <span className={labelClass}>Expire at</span>
-                <input className={fieldClass} value={form.expire_at ?? ""} onChange={(event) => setForm((current) => ({ ...current, expire_at: event.target.value }))} placeholder="ISO datetime" />
-              </label>
+              {(() => {
+                const publishParts = localDateTimeParts(form.publish_at);
+                const expireParts = localDateTimeParts(form.expire_at);
+
+                return (
+                  <>
+                    <div className="grid gap-3 rounded-lg border border-white/10 bg-black/16 p-3">
+                      <div className={labelClass}>Publish schedule</div>
+                      <label className="block space-y-2">
+                        <span className="text-xs font-semibold text-white/58">Date</span>
+                        <input
+                          className={fieldClass}
+                          type="date"
+                          value={publishParts.date}
+                          onChange={(event) =>
+                            updateDateTimeField(
+                              "publish_at",
+                              event.target.value,
+                              publishParts.time || "09:00",
+                            )
+                          }
+                        />
+                      </label>
+                      <label className="block space-y-2">
+                        <span className="text-xs font-semibold text-white/58">Time</span>
+                        <input
+                          className={fieldClass}
+                          type="time"
+                          step={60}
+                          value={publishParts.time}
+                          onChange={(event) =>
+                            updateDateTimeField(
+                              "publish_at",
+                              publishParts.date,
+                              event.target.value,
+                            )
+                          }
+                          disabled={!publishParts.date}
+                        />
+                      </label>
+                    </div>
+                    <div className="grid gap-3 rounded-lg border border-white/10 bg-black/16 p-3">
+                      <div className={labelClass}>Expire schedule</div>
+                      <label className="block space-y-2">
+                        <span className="text-xs font-semibold text-white/58">Date</span>
+                        <input
+                          className={fieldClass}
+                          type="date"
+                          value={expireParts.date}
+                          onChange={(event) =>
+                            updateDateTimeField(
+                              "expire_at",
+                              event.target.value,
+                              expireParts.time || "18:00",
+                            )
+                          }
+                        />
+                      </label>
+                      <label className="block space-y-2">
+                        <span className="text-xs font-semibold text-white/58">Time</span>
+                        <input
+                          className={fieldClass}
+                          type="time"
+                          step={60}
+                          value={expireParts.time}
+                          onChange={(event) =>
+                            updateDateTimeField(
+                              "expire_at",
+                              expireParts.date,
+                              event.target.value,
+                            )
+                          }
+                          disabled={!expireParts.date}
+                        />
+                      </label>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
             {selectedAnnouncement ? (
               <button type="button" onClick={saveSelectedAnnouncement} disabled={isSaving} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#d8ff5d]/32 bg-[#d8ff5d]/10 px-4 text-sm font-semibold text-[#f1ffc1] transition hover:bg-[#d8ff5d]/16 disabled:cursor-not-allowed disabled:opacity-60">

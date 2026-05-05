@@ -20,6 +20,8 @@ from app.models.user import User
 from app.schemas.admin import (
     AdminBulkCreateClassMembersRequest,
     AdminCreateClassMemberRequest,
+    AdminCreateUserRequest,
+    AdminUpdateUserRequest,
 )
 from app.services.admin_service import AdminService
 from app.services.me_service import MeService
@@ -77,6 +79,7 @@ class CampOperationsServiceTests(unittest.TestCase):
             username="student_one",
             password_hash="x",
             phone_number="200",
+            email="student.one@example.com",
             role=UserRole.student,
             status=UserStatus.active,
         )
@@ -85,6 +88,7 @@ class CampOperationsServiceTests(unittest.TestCase):
             username="coach_one",
             password_hash="x",
             phone_number="300",
+            email="coach.one@example.com",
             role=UserRole.coach,
             status=UserStatus.active,
         )
@@ -93,6 +97,7 @@ class CampOperationsServiceTests(unittest.TestCase):
             username="student_two",
             password_hash="x",
             phone_number="400",
+            email="student.two@example.com",
             role=UserRole.student,
             status=UserStatus.active,
         )
@@ -247,6 +252,48 @@ class CampOperationsServiceTests(unittest.TestCase):
 
         self.assertEqual([item.username for item in result.added], ["coach_one"])
         self.assertEqual({item.identifier for item in result.errors}, {"missing_user", "student_two"})
+
+    def test_admin_user_identity_conflicts_report_field_level_details(self) -> None:
+        service = AdminService(self.db)
+
+        with self.assertRaises(HTTPException) as create_conflict:
+            service.create_user(
+                self.admin,
+                AdminCreateUserRequest(
+                    username="student_one",
+                    password="password123",
+                    phone_number="300",
+                    email="coach.one@example.com",
+                    role=UserRole.student,
+                ),
+            )
+
+        self.assertEqual(create_conflict.exception.status_code, 409)
+        self.assertEqual(
+            create_conflict.exception.detail,
+            [
+                {"field": "username", "msg": "Username already exists."},
+                {"field": "email", "msg": "Email already exists."},
+                {"field": "phone_number", "msg": "Phone number already exists."},
+            ],
+        )
+
+        with self.assertRaises(HTTPException) as update_conflict:
+            service.update_user(
+                self.admin,
+                self.other_student.public_id,
+                AdminUpdateUserRequest(
+                    username="student_one",
+                    phone_number="300",
+                    email="coach.one@example.com",
+                ),
+            )
+
+        self.assertEqual(update_conflict.exception.status_code, 409)
+        self.assertEqual(
+            [item["field"] for item in update_conflict.exception.detail],
+            ["username", "email", "phone_number"],
+        )
 
 
 if __name__ == "__main__":
