@@ -8,6 +8,14 @@
 
 篮球训练营系统已经具备学生端主链路、基础后台数据模型、登录角色跳转、Admin/Coach 初版页面、Admin 用户管理第一版、Admin 本地模板同步入口、Coach 关键工作台路由、Admin 公告/任务/通知监督第一版、Student 个人中心真实任务/公告入口第一版，以及 Admin 按用户名/批量添加 class 成员第一版。Admin / Coach 公告链路已经从阻塞修复项移出；当前主要缺口集中在更完整的测试覆盖、Coach 公告通知聚合入口、上传/异步分析增强和运营细节打磨。
 
+本轮追加完成：
+
+- Student 个人中心 `Growth trends` 在既有时间-分数折线图基础上升级为更有训练数据仪表盘感的图表：增加暗色分层背景、数据网格、扫描光、发光折线/节点、latest/peak 摘要和 hover/focus tooltip，同时保持原有个人中心布局。
+- 后端新增当前用户通知接口：`GET /api/v1/me/notifications` 和 `POST /api/v1/me/notifications/{notification_public_id}/read`，供 Coach/Student 等角色查看自己的通知流并标记已读。
+- Coach 左侧导航补齐 `Announcements` / `Notifications` 入口。
+- 新增 `/coach/announcements` 聚合页，复用 `/me/announcements` 的当前用户可见性规则，让 Coach 能看到 Admin 全局/camp/class/role 公告以及 class announcements，并可标记已读。
+- 新增 `/coach/notifications` 聚合页，展示当前 Coach 自己的通知流，支持类型和已读状态筛选，并可打开详情后标记已读。
+
 用户已在 2026-05-03 手动验证：
 
 - `admin` 账号登录后可以正常跳转到 Admin 区域。
@@ -38,14 +46,14 @@
 
 本轮新增/完善：
 
-- Student 个人中心 `Growth trends` 已重做为时间-分数折线图，纵轴固定为 `0-100 score`，并保留原有个人中心信息层级。
+- Student 个人中心 `Growth trends` 已重做为时间-分数折线图，纵轴固定为 `0-100 score`，并完成第一版视觉升级，同时保留原有个人中心信息层级。
 - Student 个人中心 `Weekly tasks` 已停止使用基于报告生成的模拟任务，改为展示后端 `/me/tasks` 的真实教练任务；无任务时显示明确空状态。
 - 后端新增 `/api/v1/me/announcements` 和 `/api/v1/me/announcements/{announcement_public_id}/read`，Student 可看到全局、camp、class、student 角色相关公告，并可标记已读。
 - Student 个人中心新增 announcement 消息入口，显示未读数量、置顶状态和公告详情。
 
 当前剩余问题：
 
-- Student 个人中心 `Growth trends` 功能已经接入并可用，但当前折线图 UI 观感仍偏普通；用户反馈希望继续升级为更有科技感的 line chart，可通过多层背景、网格光效、发光折线、分层坐标面板和更清晰 tooltip 提升视觉质量，同时不能扰乱个人中心现有布局。
+- Student 个人中心 `Growth trends` 已完成视觉升级；后续重点转为真实数据边界、前端自动化测试和浏览器视觉回归。
 - Student announcement 目前是个人中心内聚合入口，尚未建设独立消息中心页面、批量已读和更完整的前端自动化测试。
 - Student Weekly tasks 已接真实数据，但当前学生只能查看任务，不能提交任务；后续需要补任务详情、任务提交入口、关联训练上传/报告、提交后进度与状态更新，以及实时刷新。
 
@@ -68,8 +76,8 @@ Coach 区域已有第一版页面和部分后端接口基础，包含：
 当前剩余问题：
 
 - `/coach/tasks` 当前是聚合只读视图，任务编辑/发布主要仍在班级详情页完成。
-- `/coach/announcements`、`/coach/notifications` 还没有独立聚合页。
-- Coach class announcement 发布/读取链路已回到第一版可用状态；后续重点是补回归测试，并建设 `/coach/announcements`、`/coach/notifications` 聚合入口。
+- `/coach/announcements`、`/coach/notifications` 已有独立聚合页第一版；后续仍需补前端页面测试、更多跳转联动和批量已读。
+- Coach class announcement 发布/读取链路已回到第一版可用状态；聚合入口已有第一版，后续重点是补回归测试、批量已读和关联对象跳转。
 
 ### 4. Admin 初版能力
 
@@ -155,14 +163,14 @@ Admin 当前已经可以进行训练营后台管理：
 ### P1 / P2 缺口
 
 - Student 个人中心增强已完成第一版：`Growth trends` 时间-分数折线图、`Weekly tasks` 接真实任务、announcement 消息提醒入口；后续重点是测试、详情页和实时刷新。
-- Student `Growth trends` line chart 需要继续做视觉升级：当前功能可用但 UI 不够精致，下一轮应做更科技感的多层背景与折线图视觉表现。
+- Student `Growth trends` line chart 视觉升级第一版已完成；后续重点是浏览器视觉回归、移动端边界和前端自动化测试。
 - Admin class 成员添加体验已完成第一版：从填写 `user public id` 改为按用户名添加，并支持批量添加；后续重点是搜索选择器、上传名单和更完整测试。
 - Admin announcement 起止时间填写体验需要优化：从手写 `ISO datetime` 改为日期 + 小时/分钟选择，避免运营人员不知道该按什么格式填写。
 - Admin 用户创建/编辑重复字段错误需要优化：当用户名、邮箱或手机号重复时，必须指出具体重复项，而不是返回笼统错误。
 - Admin 公告发布系统已完成第一版：后续需要补自动化测试、审计日志和前台/Coach 聚合展示联动。
 - Admin 任务/通知监督视图已完成第一版：后续需要补自动化测试和更多运营操作。
 - Admin 用户管理、模板同步、Coach 路由已完成第一版，但还需要补自动化测试和细节打磨。
-- Coach 还缺少 announcements / notifications 的独立聚合入口。
+- Coach announcements / notifications 独立聚合入口已有第一版，后续仍缺页面测试、批量已读和更多运营上下文。
 
 ### 技术债与后续增强
 
@@ -181,6 +189,8 @@ Admin 当前已经可以进行训练营后台管理：
 - `python -m compileall server\app`：通过，使用 Codex bundled Python。
 - `python -m unittest server.tests.test_report_service_idempotency`：通过，使用 Codex bundled Python，并临时把 `server` 与 `server/.venv/Lib/site-packages` 加入 `PYTHONPATH`。
 - `python -m unittest server.tests.test_camp_operations_service`：通过，覆盖 Student announcement 可见性/已读、Admin 按用户名/批量添加 class member，以及 Admin 用户创建/编辑唯一性冲突字段级错误。
+- 本轮追加验证：`python -m unittest server.tests.test_camp_operations_service` 通过，新增覆盖当前用户通知列表和通知已读。
+- 本轮追加验证：`npm.cmd run lint` 通过，仅有既存 warning；`npx.cmd tsc --noEmit --pretty false` 通过；`npm.cmd run build` 通过，并确认 `/coach/announcements`、`/coach/notifications` 已进入 Next route 列表。
 
 未完成验证：
 
@@ -190,10 +200,10 @@ Admin 当前已经可以进行训练营后台管理：
 
 建议下一轮优先按以下顺序推进：
 
-1. Student 个人中心视觉打磨：升级 `Growth trends` line chart，为现有折线图增加更有科技感的多层背景、光效网格、清晰坐标和 tooltip。
+1. Student 任务提交链路：补任务详情页/弹窗、提交任务入口、关联训练上传或已有训练报告、提交后更新 assignment 进度与状态，并补真实任务联动测试。
 2. 测试补齐：继续补 Admin 用户管理权限、禁用历史数据保护、Admin announcement 发布/通知生成/归档、Coach class announcement 读取/发布/批量更新、任务监督、通知监督、模板同步 dry-run/import、非 Admin 拒绝访问。
-3. Coach 聚合入口增强：补 `/coach/announcements`、`/coach/notifications`，并让 Coach 能看到 Admin 全局/camp/角色公告。
-4. Student 任务提交链路：补任务详情页/弹窗、提交任务入口、关联训练上传或已有训练报告、提交后更新 assignment 进度与状态，并补真实任务联动测试。
+3. Coach 聚合入口继续打磨：为 `/coach/announcements`、`/coach/notifications` 补前端页面测试、批量已读和跳转到关联 class/task/report 的上下文。
+4. Student 个人中心视觉回归：为升级后的 `Growth trends` line chart 补浏览器视觉验证和移动端边界检查。
 5. Student 个人中心后续增强：补独立消息中心、批量已读、任务详情跳转和刷新策略。
 6. Admin class 成员添加继续打磨：补用户搜索/autocomplete、上传名单和更完整的批量添加测试。
 7. 技术增强继续排期：Supabase signed upload、后端异步 AI 分析、模板示例视频审核发布流程。

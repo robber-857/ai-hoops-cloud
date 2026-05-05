@@ -9,9 +9,11 @@ import { motion } from "framer-motion";
 import {
   Activity,
   BarChart3,
+  Bell,
   ChevronRight,
   ClipboardList,
   LayoutDashboard,
+  Megaphone,
   RadioTower,
   ShieldCheck,
   UsersRound,
@@ -55,6 +57,16 @@ const navItems = [
     href: routes.coach.tasks,
     label: "Tasks",
     icon: ClipboardList,
+  },
+  {
+    href: routes.coach.announcements,
+    label: "Announcements",
+    icon: Megaphone,
+  },
+  {
+    href: routes.coach.notifications,
+    label: "Notifications",
+    icon: Bell,
   },
 ];
 

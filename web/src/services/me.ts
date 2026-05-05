@@ -67,6 +67,18 @@ export type AnnouncementSummaryRead = {
   created_at: string;
 };
 
+export type NotificationSummaryRead = {
+  public_id: string;
+  type: string;
+  title: string;
+  content: string | null;
+  business_type: string | null;
+  business_id: number | null;
+  is_read: boolean;
+  read_at: string | null;
+  created_at: string;
+};
+
 export type DashboardStatsRead = {
   total_reports: number;
   total_sessions: number;
@@ -105,6 +117,11 @@ export type MeAchievementsResponse = {
 
 export type MeAnnouncementsResponse = {
   items: AnnouncementSummaryRead[];
+  unread_count: number;
+};
+
+export type MeNotificationsResponse = {
+  items: NotificationSummaryRead[];
   unread_count: number;
 };
 
@@ -154,6 +171,21 @@ export const meService = {
   markAnnouncementRead(announcementPublicId: string) {
     return apiRequest<AnnouncementSummaryRead>(
       `/me/announcements/${announcementPublicId}/read`,
+      {
+        method: "POST",
+      },
+    );
+  },
+
+  getNotifications(limit = 20) {
+    return apiRequest<MeNotificationsResponse>(`/me/notifications?limit=${limit}`, {
+      method: "GET",
+    });
+  },
+
+  markNotificationRead(notificationPublicId: string) {
+    return apiRequest<NotificationSummaryRead>(
+      `/me/notifications/${notificationPublicId}/read`,
       {
         method: "POST",
       },

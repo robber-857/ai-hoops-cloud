@@ -31,6 +31,8 @@ from app.schemas.me import (
     MeSessionsResponse,
     MeTasksResponse,
     MeTrendsResponse,
+    MeNotificationsResponse,
+    NotificationSummaryRead,
     TaskSummaryRead,
     TrendPointRead,
 )
@@ -97,6 +99,20 @@ def _announcement_summary(item: Announcement, is_read: bool) -> AnnouncementSumm
         publish_at=item.publish_at,
         expire_at=item.expire_at,
         is_read=is_read,
+        created_at=item.created_at,
+    )
+
+
+def _notification_summary(item: Notification) -> NotificationSummaryRead:
+    return NotificationSummaryRead(
+        public_id=item.public_id,
+        type=item.type,
+        title=item.title,
+        content=item.content,
+        business_type=item.business_type,
+        business_id=item.business_id,
+        is_read=item.is_read,
+        read_at=item.read_at,
         created_at=item.created_at,
     )
 
@@ -178,6 +194,25 @@ class MeService:
             unread_count=int(unread_count),
         )
 
+    def get_notifications(self, current_user: User, limit: int = 20) -> MeNotificationsResponse:
+        notifications = self.db.scalars(
+            select(Notification)
+            .where(Notification.user_id == current_user.id)
+            .order_by(Notification.is_read.asc(), Notification.created_at.desc())
+            .limit(min(max(limit, 1), 100))
+        ).all()
+        unread_count = self.db.scalar(
+            select(func.count(Notification.id)).where(
+                Notification.user_id == current_user.id,
+                Notification.is_read.is_(False),
+            )
+        ) or 0
+
+        return MeNotificationsResponse(
+            items=[_notification_summary(notification) for notification in notifications],
+            unread_count=int(unread_count),
+        )
+
     def mark_announcement_read(
         self,
         current_user: User,
@@ -215,6 +250,34 @@ class MeService:
 
         self.db.commit()
         return _announcement_summary(announcement, True)
+
+    def mark_notification_read(
+        self,
+        current_user: User,
+        notification_public_id: UUID,
+    ) -> NotificationSummaryRead:
+        from fastapi import HTTPException, status
+
+        notification = self.db.scalar(
+            select(Notification).where(
+                Notification.public_id == notification_public_id,
+                Notification.user_id == current_user.id,
+            )
+        )
+        if not notification:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Notification not found.",
+            )
+
+        if not notification.is_read:
+            notification.is_read = True
+            notification.read_at = datetime.now(timezone.utc)
+            self.db.add(notification)
+            self.db.commit()
+            self.db.refresh(notification)
+
+        return _notification_summary(notification)
 
     def get_trends(
         self,

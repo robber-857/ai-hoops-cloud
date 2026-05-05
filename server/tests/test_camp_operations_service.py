@@ -213,6 +213,60 @@ class CampOperationsServiceTests(unittest.TestCase):
         self.assertTrue(notification.is_read)
         self.assertEqual(service.get_announcements(self.student, limit=10).unread_count, 2)
 
+    def test_me_notifications_are_user_scoped_and_marked_read(self) -> None:
+        self.db.add_all(
+            [
+                Notification(
+                    id=10,
+                    user_id=self.coach.id,
+                    type="announcement",
+                    title="Coach announcement",
+                    content="A visible coach notice.",
+                    business_type="announcement",
+                    business_id=100,
+                    is_read=False,
+                    created_at=self.now,
+                ),
+                Notification(
+                    id=11,
+                    user_id=self.coach.id,
+                    type="task",
+                    title="Coach task",
+                    content="A task event.",
+                    business_type="training_task",
+                    business_id=200,
+                    is_read=True,
+                    read_at=self.now,
+                    created_at=self.now,
+                ),
+                Notification(
+                    id=12,
+                    user_id=self.student.id,
+                    type="announcement",
+                    title="Student only",
+                    content="Coach should not see this.",
+                    business_type="announcement",
+                    business_id=300,
+                    is_read=False,
+                    created_at=self.now,
+                ),
+            ]
+        )
+        self.db.commit()
+
+        service = MeService(self.db)
+        response = service.get_notifications(self.coach, limit=10)
+
+        self.assertEqual({item.title for item in response.items}, {"Coach announcement", "Coach task"})
+        self.assertEqual(response.unread_count, 1)
+
+        unread = next(item for item in response.items if not item.is_read)
+        read_item = service.mark_notification_read(self.coach, unread.public_id)
+
+        self.assertTrue(read_item.is_read)
+        self.assertIsNotNone(read_item.read_at)
+        self.assertEqual(service.get_notifications(self.coach, limit=10).unread_count, 0)
+
     def test_admin_can_add_class_members_by_username_and_get_batch_errors(self) -> None:
         service = AdminService(self.db)
 

@@ -14,7 +14,9 @@ from app.schemas.me import (
     MeSessionsResponse,
     MeTasksResponse,
     MeTrendsResponse,
+    MeNotificationsResponse,
     AnnouncementSummaryRead,
+    NotificationSummaryRead,
 )
 from app.services.me_service import MeService
 
@@ -92,6 +94,30 @@ def mark_announcement_read(
 ) -> AnnouncementSummaryRead:
     service = MeService(db)
     return service.mark_announcement_read(current_user, announcement_public_id)
+
+
+@router.get("/notifications", response_model=MeNotificationsResponse, status_code=status.HTTP_200_OK)
+def get_notifications(
+    limit: int = Query(default=20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> MeNotificationsResponse:
+    service = MeService(db)
+    return service.get_notifications(current_user, limit=limit)
+
+
+@router.post(
+    "/notifications/{notification_public_id}/read",
+    response_model=NotificationSummaryRead,
+    status_code=status.HTTP_200_OK,
+)
+def mark_notification_read(
+    notification_public_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> NotificationSummaryRead:
+    service = MeService(db)
+    return service.mark_notification_read(current_user, notification_public_id)
 
 
 @router.get("/trends", response_model=MeTrendsResponse, status_code=status.HTTP_200_OK)

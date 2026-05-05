@@ -57,6 +57,18 @@ class AnnouncementSummaryRead(BaseModel):
     created_at: datetime
 
 
+class NotificationSummaryRead(BaseModel):
+    public_id: UUID
+    type: str
+    title: str
+    content: str | None = None
+    business_type: str | None = None
+    business_id: int | None = None
+    is_read: bool
+    read_at: datetime | None = None
+    created_at: datetime
+
+
 class DashboardStatsRead(BaseModel):
     total_reports: int
     total_sessions: int
@@ -95,6 +107,11 @@ class MeAchievementsResponse(BaseModel):
 
 class MeAnnouncementsResponse(BaseModel):
     items: list[AnnouncementSummaryRead]
+    unread_count: int
+
+
+class MeNotificationsResponse(BaseModel):
+    items: list[NotificationSummaryRead]
     unread_count: int
 
 
