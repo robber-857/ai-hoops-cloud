@@ -8,6 +8,12 @@ import {
   AdminLoadingSurface,
   AdminShell,
 } from "@/components/admin/AdminShell";
+import {
+  AdminFilterAction,
+  AdminFilterField,
+  adminFilterButtonClass,
+  adminFilterFormClass,
+} from "@/components/admin/AdminFilterControls";
 import { formatDateTime } from "@/components/coach/coachUtils";
 import { cn } from "@/lib/utils";
 import {
@@ -151,7 +157,7 @@ export default function AdminNotificationsPage() {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_28rem]">
         <section className="min-w-0 rounded-lg border border-white/10 bg-white/[0.055] p-5 backdrop-blur-2xl">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          <div>
             <div>
               <div className={labelClass}>System event feed</div>
               <h1 className="mt-2 font-[var(--font-display)] text-2xl font-bold text-white">
@@ -161,7 +167,10 @@ export default function AdminNotificationsPage() {
                 {notifications.filter((item) => !item.is_read).length} unread / {notifications.length} total
               </p>
             </div>
-            <form className="grid gap-3 md:grid-cols-3 xl:grid-cols-[9rem_9rem_9rem_8rem_auto]" onSubmit={submitFilters}>
+          </div>
+
+          <form className={cn(adminFilterFormClass, "2xl:grid-cols-6")} onSubmit={submitFilters}>
+            <AdminFilterField label="Type">
               <select className={fieldClass} value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
                 <option value="">All types</option>
                 {notificationTypes.map((type) => (
@@ -170,6 +179,8 @@ export default function AdminNotificationsPage() {
                   </option>
                 ))}
               </select>
+            </AdminFilterField>
+            <AdminFilterField label="Business">
               <select className={fieldClass} value={businessTypeFilter} onChange={(event) => setBusinessTypeFilter(event.target.value)}>
                 <option value="">All business</option>
                 {businessTypes.map((type) => (
@@ -178,6 +189,8 @@ export default function AdminNotificationsPage() {
                   </option>
                 ))}
               </select>
+            </AdminFilterField>
+            <AdminFilterField label="Role">
               <select className={fieldClass} value={roleFilter} onChange={(event) => setRoleFilter(event.target.value as AdminUserRole | "")}>
                 <option value="">All roles</option>
                 {roles.map((role) => (
@@ -186,26 +199,29 @@ export default function AdminNotificationsPage() {
                   </option>
                 ))}
               </select>
+            </AdminFilterField>
+            <AdminFilterField label="Read">
               <select className={fieldClass} value={readFilter} onChange={(event) => setReadFilter(event.target.value as "" | "true" | "false")}>
                 <option value="">Read state</option>
                 <option value="false">unread</option>
                 <option value="true">read</option>
               </select>
-              <button type="submit" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#65f7ff]/24 bg-[#65f7ff]/10 px-4 text-sm font-semibold text-[#dffbff] transition hover:bg-[#65f7ff]/16">
+            </AdminFilterField>
+            <AdminFilterField label="Keyword">
+              <input
+                className={fieldClass}
+                value={keyword}
+                onChange={(event) => setKeyword(event.target.value)}
+                placeholder="Title or content"
+              />
+            </AdminFilterField>
+            <AdminFilterAction>
+              <button type="submit" className={adminFilterButtonClass}>
                 <Search className="h-4 w-4" />
                 Search
               </button>
-            </form>
-          </div>
-
-          <div className="mt-4">
-            <input
-              className={fieldClass}
-              value={keyword}
-              onChange={(event) => setKeyword(event.target.value)}
-              placeholder="Search notification title or content"
-            />
-          </div>
+            </AdminFilterAction>
+          </form>
 
           <div className="mt-5 overflow-hidden rounded-lg border border-white/10 bg-black/18">
             <div className="overflow-x-auto">

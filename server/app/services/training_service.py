@@ -105,6 +105,11 @@ class TrainingService:
 
         if payload.task_assignment_public_id:
             task_assignment = self._get_task_assignment_for_student(current_user.id, payload.task_assignment_public_id)
+            if class_row and task_assignment.class_id != class_row.id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Task assignment does not belong to the requested class.",
+                )
             if not class_row and task_assignment.camp_class:
                 class_row = task_assignment.camp_class
 

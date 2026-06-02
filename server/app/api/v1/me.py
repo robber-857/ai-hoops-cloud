@@ -17,6 +17,8 @@ from app.schemas.me import (
     MeNotificationsResponse,
     AnnouncementSummaryRead,
     NotificationSummaryRead,
+    SubmitTaskReportRequest,
+    TaskDetailRead,
 )
 from app.services.me_service import MeService
 
@@ -60,6 +62,31 @@ def get_tasks(
 ) -> MeTasksResponse:
     service = MeService(db)
     return service.get_tasks(current_user, limit=limit)
+
+
+@router.get("/tasks/{assignment_public_id}", response_model=TaskDetailRead, status_code=status.HTTP_200_OK)
+def get_task(
+    assignment_public_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> TaskDetailRead:
+    service = MeService(db)
+    return service.get_task(current_user, assignment_public_id)
+
+
+@router.post(
+    "/tasks/{assignment_public_id}/submit-report",
+    response_model=TaskDetailRead,
+    status_code=status.HTTP_200_OK,
+)
+def submit_task_report(
+    assignment_public_id: UUID,
+    payload: SubmitTaskReportRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> TaskDetailRead:
+    service = MeService(db)
+    return service.submit_task_report(current_user, assignment_public_id, payload)
 
 
 @router.get("/achievements", response_model=MeAchievementsResponse, status_code=status.HTTP_200_OK)

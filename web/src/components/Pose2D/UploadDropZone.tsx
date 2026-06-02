@@ -14,12 +14,17 @@ import { supabase } from '@/lib/supabaseClient';
 import {
   uploadService,
   type CompletedUploadSession,
+  type UploadInitResponse,
 } from '@/services/uploads';
 
-import type { AnalysisType } from './PoseAnalysisView';
+import type { AnalysisType } from './types';
 
 interface UploadDropzoneProps {
   analysisType?: AnalysisType;
+  classPublicId?: string | null;
+  taskAssignmentPublicId?: string | null;
+  templateCode?: string | null;
+  templateVersion?: string | null;
   onFileSelect: (
     file: File | null,
     videoUrl?: string,
@@ -31,8 +36,96 @@ function getContentType(file: File): string {
   return file.type || 'application/octet-stream';
 }
 
+type SupabaseUploadResult = {
+  signedUrl: string;
+};
+
+function getUploadErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === 'string') {
+      return message;
+    }
+  }
+
+  return String(error);
+}
+
+function isFetchNetworkError(error: unknown): boolean {
+  const message = getUploadErrorMessage(error).toLowerCase();
+  return message === 'failed to fetch' || message.includes('networkerror');
+}
+
+async function uploadThroughLocalProxy(
+  file: File,
+  uploadInit: UploadInitResponse,
+): Promise<SupabaseUploadResult> {
+  const formData = new FormData();
+  formData.set('file', file);
+  formData.set('bucketName', uploadInit.bucket_name);
+  formData.set('objectKey', uploadInit.object_key);
+  formData.set('contentType', getContentType(file));
+
+  const response = await fetch('/api/storage/upload', {
+    method: 'POST',
+    body: formData,
+  });
+
+  const payload = (await response.json().catch(() => null)) as {
+    signedUrl?: string;
+    error?: string;
+  } | null;
+
+  if (!response.ok || !payload?.signedUrl) {
+    throw new Error(payload?.error || `Local upload proxy failed with ${response.status}`);
+  }
+
+  return { signedUrl: payload.signedUrl };
+}
+
+async function uploadVideoToStorage(
+  file: File,
+  uploadInit: UploadInitResponse,
+): Promise<SupabaseUploadResult> {
+  try {
+    const { error: uploadError } = await supabase.storage
+      .from(uploadInit.bucket_name)
+      .upload(uploadInit.object_key, file, {
+        contentType: getContentType(file),
+      });
+
+    if (uploadError) throw uploadError;
+
+    const { data: urlData, error: urlError } = await supabase.storage
+      .from(uploadInit.bucket_name)
+      .createSignedUrl(uploadInit.object_key, 315360000);
+
+    if (urlError) throw urlError;
+    if (!urlData?.signedUrl) {
+      throw new Error('Supabase did not return a signed video URL.');
+    }
+
+    return { signedUrl: urlData.signedUrl };
+  } catch (error) {
+    if (isFetchNetworkError(error)) {
+      console.warn('Supabase browser upload failed; retrying through local proxy.', error);
+      return uploadThroughLocalProxy(file, uploadInit);
+    }
+
+    throw error;
+  }
+}
+
 export default function UploadDropzone({
   analysisType = 'shooting',
+  classPublicId,
+  taskAssignmentPublicId,
+  templateCode,
+  templateVersion,
   onFileSelect,
 }: UploadDropzoneProps) {
   const [uploading, setUploading] = useState(false);
@@ -47,38 +140,31 @@ export default function UploadDropzone({
       setErrorMsg('');
 
       try {
-        const activeTemplate = getAllTemplates(analysisType)[0];
+        const templates = getAllTemplates(analysisType);
+        const activeTemplate =
+          templates.find((template) => template.templateId === templateCode) ?? templates[0];
         const uploadInit = await uploadService.init({
           analysis_type: analysisType,
           file_name: file.name,
           content_type: getContentType(file),
           file_size: file.size,
           template_code: activeTemplate?.templateId,
-          template_version: 'v1',
-          source_type: 'free_practice',
+          template_version: templateVersion ?? 'v1',
+          class_public_id: classPublicId ?? undefined,
+          task_assignment_public_id: taskAssignmentPublicId ?? undefined,
+          source_type: taskAssignmentPublicId ? 'coach_task' : 'free_practice',
         });
 
-        const { error: uploadError } = await supabase.storage
-          .from(uploadInit.bucket_name)
-          .upload(uploadInit.object_key, file, {
-            contentType: getContentType(file),
-          });
-
-        if (uploadError) throw uploadError;
-
-        const { data: urlData, error: urlError } = await supabase.storage
-          .from(uploadInit.bucket_name)
-          .createSignedUrl(uploadInit.object_key, 315360000);
-
-        if (urlError || !urlData) throw urlError;
+        const storageUpload = await uploadVideoToStorage(file, uploadInit);
 
         const completedUpload = await uploadService.complete({
           upload_task_public_id: uploadInit.upload_task_public_id,
           original_file_name: file.name,
-          url: urlData.signedUrl,
+          url: storageUpload.signedUrl,
         });
 
-        const videoUrl = completedUpload.video.cdn_url ?? completedUpload.video.url ?? urlData.signedUrl;
+        const videoUrl =
+          completedUpload.video.cdn_url ?? completedUpload.video.url ?? storageUpload.signedUrl;
         const uploadSession: CompletedUploadSession = {
           sessionPublicId: completedUpload.session_public_id,
           uploadTaskPublicId: completedUpload.upload_task_public_id,
@@ -92,13 +178,20 @@ export default function UploadDropzone({
         onFileSelect(file, videoUrl, uploadSession);
       } catch (error: unknown) {
         console.error('Upload failed:', error);
-        const message = error instanceof Error ? error.message : String(error);
+        const message = getUploadErrorMessage(error);
         setErrorMsg(message || 'Upload failed');
       } finally {
         setUploading(false);
       }
     },
-    [analysisType, onFileSelect]
+    [
+      analysisType,
+      classPublicId,
+      onFileSelect,
+      taskAssignmentPublicId,
+      templateCode,
+      templateVersion,
+    ]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -127,19 +220,21 @@ export default function UploadDropzone({
               Session notes
             </div>
             <p className="mt-3 text-sm leading-6 text-white/58">
-              Stay on the page during upload and let the player load before generating the report.
+              {taskAssignmentPublicId
+                ? 'This upload will count toward the selected coach task after you save the report.'
+                : 'After upload, the workspace will automatically scan the full video before the report unlocks.'}
             </p>
           </div>
           <div className="flex items-start gap-3 rounded-2xl border border-emerald-300/18 bg-emerald-300/10 px-4 py-3">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-200" />
             <p className="text-sm leading-6 text-white/58">
-              Please wait patiently for the video to load after uploading.
+              Please keep this page open while upload and automatic analysis complete.
             </p>
           </div>
           <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
             <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-white/70" />
             <p className="text-sm leading-6 text-white/58">
-              Drag and drop is now active as soon as this upload panel is shown.
+              You can preview the clip after analysis starts; manual playback is only needed as a fallback.
             </p>
           </div>
         </div>
@@ -210,7 +305,7 @@ export default function UploadDropzone({
                   Behavior
                 </div>
                 <div className="mt-2 text-sm text-white/72">
-                  Backend session
+                  {taskAssignmentPublicId ? 'Task session' : 'Backend session'}
                 </div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 backdrop-blur-md">

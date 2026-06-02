@@ -4,6 +4,7 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import UUID
 
+from fastapi import HTTPException, status
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -12,7 +13,7 @@ from app.models.announcement import Announcement
 from app.models.announcement_read import AnnouncementRead
 from app.models.camp_class import CampClass
 from app.models.class_member import ClassMember
-from app.models.enums import UserRole
+from app.models.enums import ReportStatus, UserRole
 from app.models.notification import Notification
 from app.models.student_achievement import StudentAchievement
 from app.models.student_growth_snapshot import StudentGrowthSnapshot
@@ -33,13 +34,16 @@ from app.schemas.me import (
     MeTrendsResponse,
     MeNotificationsResponse,
     NotificationSummaryRead,
+    SubmitTaskReportRequest,
+    TaskDetailRead,
+    TaskSubmissionReportRead,
     TaskSummaryRead,
     TrendPointRead,
 )
 from app.schemas.report import ReportListItem
 from app.schemas.training import TrainingSessionRead
 from app.schemas.user import UserRead
-from app.services.report_service import _report_list_item
+from app.services.report_service import ReportService, _report_list_item
 from app.services.training_service import _session_read
 
 
@@ -54,12 +58,34 @@ def _task_summary(item: TrainingTaskAssignment) -> TaskSummaryRead:
         public_id=item.public_id,
         task_public_id=item.task.public_id,
         class_public_id=item.camp_class.public_id,
+        class_name=item.camp_class.name,
         title=item.task.title,
+        description=item.task.description,
+        analysis_type=item.task.analysis_type,
+        template_code=item.task.template_code,
+        target_config=item.task.target_config,
         status=item.status,
         progress_percent=_numeric_to_float(item.progress_percent),
         completed_sessions=int(item.completed_sessions),
         best_score=_numeric_to_float(item.best_score),
+        latest_report_public_id=item.latest_report.public_id if item.latest_report else None,
+        completed_at=item.completed_at,
+        last_submission_at=item.last_submission_at,
         due_at=item.task.due_at,
+    )
+
+
+def _task_submission_report(report: AnalysisReport) -> TaskSubmissionReportRead:
+    return TaskSubmissionReportRead(
+        report_public_id=report.public_id,
+        session_public_id=report.session.public_id,
+        video_public_id=report.video.public_id,
+        analysis_type=report.analysis_type,
+        template_code=report.template_id,
+        template_version=report.template_version,
+        overall_score=_numeric_to_float(report.overall_score),
+        grade=report.grade,
+        submitted_at=report.analysis_finished_at or report.created_at,
     )
 
 
@@ -145,6 +171,63 @@ class MeService:
 
     def get_tasks(self, current_user: User, limit: int = 20) -> MeTasksResponse:
         return MeTasksResponse(items=self._get_active_tasks(current_user.id, limit=limit, include_completed=True))
+
+    def get_task(self, current_user: User, assignment_public_id: UUID) -> TaskDetailRead:
+        assignment = self._get_visible_task_assignment(current_user, assignment_public_id)
+        return self._task_detail(assignment)
+
+    def submit_task_report(
+        self,
+        current_user: User,
+        assignment_public_id: UUID,
+        payload: SubmitTaskReportRequest,
+    ) -> TaskDetailRead:
+        assignment = self._get_visible_task_assignment(current_user, assignment_public_id)
+        report = self.db.scalar(
+            select(AnalysisReport)
+            .options(selectinload(AnalysisReport.session))
+            .where(
+                AnalysisReport.public_id == payload.report_public_id,
+                AnalysisReport.user_id == current_user.id,
+                AnalysisReport.status == ReportStatus.completed,
+            )
+        )
+        if not report:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Completed report not found.",
+            )
+
+        if assignment.task.analysis_type and report.analysis_type != assignment.task.analysis_type:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Report analysis type does not match this task.",
+            )
+
+        if assignment.task.template_code and report.template_id != assignment.task.template_code:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Report template does not match this task.",
+            )
+
+        session = report.session
+        if session.task_assignment_id not in (None, assignment.id):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Report is already linked to another task.",
+            )
+
+        session.task_assignment_id = assignment.id
+        session.class_id = assignment.class_id
+        session.camp_id = assignment.task.camp_id
+        session.source_type = "coach_task"
+        self.db.add(session)
+
+        ReportService(self.db)._update_task_assignment(assignment)  # noqa: SLF001
+        self.db.commit()
+
+        refreshed_assignment = self._get_visible_task_assignment(current_user, assignment_public_id)
+        return self._task_detail(refreshed_assignment)
 
     def get_achievements(self, current_user: User, limit: int = 20) -> MeAchievementsResponse:
         return MeAchievementsResponse(items=self._get_recent_achievements(current_user.id, limit=limit))
@@ -256,8 +339,6 @@ class MeService:
         current_user: User,
         notification_public_id: UUID,
     ) -> NotificationSummaryRead:
-        from fastapi import HTTPException, status
-
         notification = self.db.scalar(
             select(Notification).where(
                 Notification.public_id == notification_public_id,
@@ -419,6 +500,7 @@ class MeService:
             .options(
                 selectinload(TrainingTaskAssignment.task),
                 selectinload(TrainingTaskAssignment.camp_class),
+                selectinload(TrainingTaskAssignment.latest_report),
             )
             .where(
                 TrainingTaskAssignment.student_id == user_id,
@@ -429,6 +511,63 @@ class MeService:
             .limit(limit)
         ).all()
         return [_task_summary(item) for item in tasks]
+
+    def _task_detail(self, assignment: TrainingTaskAssignment) -> TaskDetailRead:
+        summary = _task_summary(assignment)
+        return TaskDetailRead(
+            **summary.model_dump(),
+            submission_reports=self._get_task_submission_reports(assignment.id),
+        )
+
+    def _get_task_submission_reports(
+        self,
+        assignment_id: int,
+        limit: int = 20,
+    ) -> list[TaskSubmissionReportRead]:
+        reports = self.db.scalars(
+            select(AnalysisReport)
+            .join(TrainingSession, AnalysisReport.session_id == TrainingSession.id)
+            .options(
+                selectinload(AnalysisReport.session),
+                selectinload(AnalysisReport.video),
+            )
+            .where(
+                TrainingSession.task_assignment_id == assignment_id,
+                AnalysisReport.status == ReportStatus.completed,
+            )
+            .order_by(
+                func.coalesce(AnalysisReport.analysis_finished_at, AnalysisReport.created_at).desc(),
+                AnalysisReport.created_at.desc(),
+            )
+            .limit(limit)
+        ).all()
+        return [_task_submission_report(report) for report in reports]
+
+    def _get_visible_task_assignment(
+        self,
+        current_user: User,
+        assignment_public_id: UUID,
+    ) -> TrainingTaskAssignment:
+        assignment = self.db.scalar(
+            select(TrainingTaskAssignment)
+            .join(TrainingTask, TrainingTaskAssignment.task_id == TrainingTask.id)
+            .options(
+                selectinload(TrainingTaskAssignment.task),
+                selectinload(TrainingTaskAssignment.camp_class),
+                selectinload(TrainingTaskAssignment.latest_report),
+            )
+            .where(
+                TrainingTaskAssignment.public_id == assignment_public_id,
+                TrainingTaskAssignment.student_id == current_user.id,
+                TrainingTask.status == "published",
+            )
+        )
+        if not assignment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Training task assignment not found.",
+            )
+        return assignment
 
     def _get_recent_achievements(self, user_id: int, limit: int) -> list[AchievementSummaryRead]:
         achievements = self.db.scalars(
@@ -489,8 +628,6 @@ class MeService:
             )
         )
         if not announcement:
-            from fastapi import HTTPException, status
-
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Announcement not found.",

@@ -61,17 +61,20 @@ interface ControlsProps {
   isPlaying: boolean;
   onTogglePlay: () => void;
   onClear: () => void;
+  playDisabled?: boolean;
 }
 
 export default function Controls({
   isPlaying,
   onTogglePlay,
   onClear,
+  playDisabled = false,
 }: ControlsProps) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
       <Button
         onClick={onTogglePlay}
+        disabled={playDisabled}
         size="lg"
         className="min-h-12 rounded-full border border-sky-300/20 bg-sky-300 px-5 text-slate-950 shadow-[0_14px_30px_rgba(125,211,252,0.22)] hover:bg-sky-200"
       >
@@ -80,7 +83,7 @@ export default function Controls({
         ) : (
           <PlayIcon className="mr-1 h-4 w-4" />
         )}
-        {isPlaying ? "Pause" : "Play"}
+        {playDisabled ? "Analyzing..." : isPlaying ? "Pause" : "Play"}
       </Button>
 
       <Button

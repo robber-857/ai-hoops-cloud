@@ -1,283 +1,541 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-import type { GrowthSummary, ReportSource, TrendPoint } from "./types";
+import type {
+  AccountAnalysisType,
+  ReportSource,
+  TrendPoint,
+  TrendPointsByType,
+} from "./types";
 
 type GrowthTrendsSectionProps = {
-  points: TrendPoint[];
-  highlights: GrowthSummary[];
+  pointsByType: TrendPointsByType;
   source: ReportSource;
 };
 
-type ChartPoint = TrendPoint & {
-  x: number;
-  y: number;
+type TrendConfig = {
+  type: AccountAnalysisType;
+  title: string;
+  helper: string;
+  accent: string;
+  accentSoft: string;
+  gradientId: string;
 };
 
+type WeekDay = {
+  date: Date;
+  dateKey: string;
+  weekdayLabel: string;
+  dayLabel: string;
+  fullLabel: string;
+};
+
+type WeekPoint = WeekDay & {
+  point: TrendPoint | null;
+  score: number | null;
+  x: number;
+  y: number | null;
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 const CHART_LEFT = 8;
 const CHART_RIGHT = 96;
-const CHART_TOP = 12;
-const CHART_BOTTOM = 86;
+const CHART_TOP = 8;
+const CHART_BOTTOM = 72;
+const SCORE_LINES = [100, 75, 50, 25, 0];
+
+const TREND_CONFIGS: TrendConfig[] = [
+  {
+    type: "shooting",
+    title: "Shooting",
+    helper: "Daily shooting report score",
+    accent: "#d8ff5d",
+    accentSoft: "rgba(216,255,93,0.16)",
+    gradientId: "growth-shooting-bar",
+  },
+  {
+    type: "dribbling",
+    title: "Dribbling",
+    helper: "Daily dribbling report score",
+    accent: "#65f7ff",
+    accentSoft: "rgba(101,247,255,0.16)",
+    gradientId: "growth-dribbling-bar",
+  },
+  {
+    type: "training",
+    title: "Training",
+    helper: "Daily training report score",
+    accent: "#c4b5fd",
+    accentSoft: "rgba(196,181,253,0.16)",
+    gradientId: "growth-training-bar",
+  },
+];
 
 function clampScore(score: number): number {
   return Math.max(0, Math.min(100, score));
 }
 
-function buildChartPoints(points: TrendPoint[]): ChartPoint[] {
-  return points.map((point, index) => {
-    const x =
-      points.length === 1
-        ? (CHART_LEFT + CHART_RIGHT) / 2
-        : CHART_LEFT + (index / (points.length - 1)) * (CHART_RIGHT - CHART_LEFT);
-    const y = CHART_BOTTOM - (clampScore(point.score) / 100) * (CHART_BOTTOM - CHART_TOP);
+function scoreToY(score: number): number {
+  return CHART_BOTTOM - (clampScore(score) / 100) * (CHART_BOTTOM - CHART_TOP);
+}
 
+function dayToX(index: number): number {
+  return CHART_LEFT + (index / 6) * (CHART_RIGHT - CHART_LEFT);
+}
+
+function startOfLocalDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function startOfWeek(date: Date): Date {
+  const day = (date.getDay() + 6) % 7;
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() - day);
+}
+
+function addDays(date: Date, days: number): Date {
+  return new Date(date.getTime() + days * DAY_MS);
+}
+
+function toDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function parseDateKey(dateKey: string): Date {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function formatFullDate(date: Date): string {
+  return new Intl.DateTimeFormat("en-AU", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
+
+function buildWeekDays(weekStart: Date): WeekDay[] {
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = addDays(weekStart, index);
     return {
-      ...point,
-      x,
-      y,
+      date,
+      dateKey: toDateKey(date),
+      weekdayLabel: new Intl.DateTimeFormat("en-AU", { weekday: "short" }).format(date),
+      dayLabel: new Intl.DateTimeFormat("en-AU", { day: "numeric" }).format(date),
+      fullLabel: formatFullDate(date),
     };
   });
 }
 
-function buildChartPath(points: ChartPoint[]): string {
-  if (points.length === 0) {
-    return "";
-  }
-
+function buildLinePath(points: WeekPoint[]): string {
   return points
-    .map((point, index) => {
-      return `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`;
-    })
+    .filter((point) => point.score !== null && point.y !== null)
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
     .join(" ");
 }
 
-function buildAreaPath(points: ChartPoint[]): string {
-  if (points.length === 0) {
-    return "";
+function scoreDeltaLabel(first: WeekPoint | null, latest: WeekPoint | null): string {
+  if (!first || !latest || first === latest || first.score === null || latest.score === null) {
+    return "--";
   }
 
-  const line = buildChartPath(points);
-  const startX = points[0].x;
-  const endX = points[points.length - 1].x;
-  return `${line} L ${endX} ${CHART_BOTTOM} L ${startX} ${CHART_BOTTOM} Z`;
+  const delta = Math.round(latest.score - first.score);
+  if (delta === 0) return "Flat";
+  return `${delta > 0 ? "+" : ""}${delta}`;
 }
 
-export function GrowthTrendsSection({
+function getLatestDataWeek(pointsByType: TrendPointsByType): Date {
+  const latestDate = TREND_CONFIGS.flatMap((config) => pointsByType[config.type])
+    .map((point) => parseDateKey(point.dateKey))
+    .filter((date) => !Number.isNaN(date.getTime()))
+    .sort((left, right) => right.getTime() - left.getTime())[0];
+
+  return startOfWeek(latestDate ?? startOfLocalDay(new Date()));
+}
+
+function TrendPanel({
+  config,
   points,
-  highlights,
-  source,
-}: GrowthTrendsSectionProps) {
+  weekDays,
+}: {
+  config: TrendConfig;
+  points: TrendPoint[];
+  weekDays: WeekDay[];
+}) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const chartPoints = useMemo(() => buildChartPoints(points), [points]);
-  const activePoint =
-    activeIndex !== null && chartPoints[activeIndex] ? chartPoints[activeIndex] : null;
-  const linePath = buildChartPath(chartPoints);
-  const areaPath = buildAreaPath(chartPoints);
-  const lastPoint = chartPoints[chartPoints.length - 1] ?? null;
+  const weekPoints = useMemo<WeekPoint[]>(() => {
+    const byDate = new Map(points.map((point) => [point.dateKey, point]));
+    return weekDays.map((day, index) => {
+      const point = byDate.get(day.dateKey) ?? null;
+      const score = point ? Math.round(point.score) : null;
+      return {
+        ...day,
+        point,
+        score,
+        x: dayToX(index),
+        y: score === null ? null : scoreToY(score),
+      };
+    });
+  }, [points, weekDays]);
+
+  const scoredPoints = weekPoints.filter((point) => point.score !== null);
+  const firstPoint = scoredPoints[0] ?? null;
+  const latestPoint = scoredPoints[scoredPoints.length - 1] ?? null;
   const bestPoint =
-    chartPoints.length > 0
-      ? chartPoints.reduce((best, point) => (point.score > best.score ? point : best), chartPoints[0])
+    scoredPoints.length > 0
+      ? scoredPoints.reduce((best, point) =>
+          (point.score ?? 0) > (best.score ?? 0) ? point : best,
+        )
       : null;
+  const averageScore =
+    scoredPoints.length > 0
+      ? Math.round(
+          scoredPoints.reduce((sum, point) => sum + (point.score ?? 0), 0) /
+            scoredPoints.length,
+        )
+      : null;
+  const activePoint =
+    activeIndex !== null && weekPoints[activeIndex]?.score !== null
+      ? weekPoints[activeIndex]
+      : null;
+  const linePath = buildLinePath(weekPoints);
+  const deltaLabel = scoreDeltaLabel(firstPoint, latestPoint);
 
   return (
-    <section className="analysis-surface rounded-[32px] border border-white/10 p-5 sm:p-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <section className="rounded-[24px] border border-white/10 bg-white/[0.035] p-4 sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <div className="text-[0.72rem] uppercase tracking-[0.28em] text-white/42">
-            Growth trends
+          <div className="flex items-center gap-2">
+            <span
+              className="h-2.5 w-2.5 rounded-full"
+              style={{ backgroundColor: config.accent }}
+            />
+            <h3 className="font-[var(--font-display)] text-xl font-semibold text-white">
+              {config.title}
+            </h3>
           </div>
-          <h2 className="mt-2 text-2xl font-semibold text-white">
-            Score movement over your recent sessions
-          </h2>
+          <p className="mt-1 text-sm text-white/50">{config.helper}</p>
         </div>
-        <Badge
-          variant="outline"
-          className="border-white/12 bg-white/[0.03] text-white/62"
-        >
-          {source === "live" ? "Recent reports" : "Preview curve"}
-        </Badge>
+        <div className="grid grid-cols-3 gap-2 text-right sm:min-w-[18rem]">
+          <div className="rounded-2xl border border-white/8 bg-black/18 px-3 py-2">
+            <div className="text-[0.62rem] uppercase tracking-[0.16em] text-white/38">
+              Latest
+            </div>
+            <div className="mt-1 font-[var(--font-display)] text-2xl font-semibold text-white">
+              {latestPoint?.score ?? "--"}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-white/8 bg-black/18 px-3 py-2">
+            <div className="text-[0.62rem] uppercase tracking-[0.16em] text-white/38">
+              Best
+            </div>
+            <div
+              className="mt-1 font-[var(--font-display)] text-2xl font-semibold"
+              style={{ color: config.accent }}
+            >
+              {bestPoint?.score ?? "--"}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-white/8 bg-black/18 px-3 py-2">
+            <div className="text-[0.62rem] uppercase tracking-[0.16em] text-white/38">
+              Change
+            </div>
+            <div className="mt-1 font-[var(--font-display)] text-2xl font-semibold text-sky-100">
+              {deltaLabel}
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.01))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:p-5">
-        <div className="relative h-72 overflow-hidden rounded-[24px] border border-[#65f7ff]/10 bg-[#05090f]">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(101,247,255,0.16),transparent_28%),radial-gradient(circle_at_86%_22%,rgba(216,255,93,0.12),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0))]" />
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(101,247,255,0.075)_1px,transparent_1px),linear-gradient(to_bottom,rgba(101,247,255,0.06)_1px,transparent_1px)] bg-[size:36px_36px] opacity-70" />
-          <div className="absolute inset-x-0 top-0 h-20 bg-[linear-gradient(180deg,rgba(101,247,255,0.12),transparent)]" />
-          <div className="account-chart-scan absolute inset-x-0 top-0 h-16 bg-[linear-gradient(180deg,transparent,rgba(216,255,93,0.1),transparent)]" />
-          <div className="absolute bottom-10 left-0 top-4 flex w-9 flex-col justify-between pr-2 text-right text-[0.68rem] font-semibold text-white/42">
-            <span>100</span>
-            <span>50</span>
-            <span>0</span>
-          </div>
-          <svg
-            viewBox="0 0 100 100"
-            preserveAspectRatio="none"
-            className="absolute inset-0 h-full w-full"
-            aria-hidden="true"
-          >
-            <defs>
-              <linearGradient id="account-area-fill" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor="#d8ff5d" stopOpacity="0.34" />
-                <stop offset="48%" stopColor="#65f7ff" stopOpacity="0.1" />
-                <stop offset="100%" stopColor="#d8ff5d" stopOpacity="0.02" />
-              </linearGradient>
-              <filter id="account-line-glow" x="-40%" y="-40%" width="180%" height="180%">
-                <feGaussianBlur stdDeviation="2.8" result="blur" />
-                <feColorMatrix
-                  in="blur"
-                  type="matrix"
-                  values="0 0 0 0 0.85 0 0 0 0 1 0 0 0 0 0.36 0 0 0 0.65 0"
-                  result="glow"
-                />
-                <feMerge>
-                  <feMergeNode in="glow" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-            </defs>
-            {[CHART_TOP, (CHART_TOP + CHART_BOTTOM) / 2, CHART_BOTTOM].map((y) => (
+      <div
+        className="relative mt-4 h-64 overflow-hidden rounded-[22px] border border-white/10 bg-[#070b10]"
+        aria-label={`${config.title} 7 day score trend. ${
+          latestPoint ? `Latest ${latestPoint.score}.` : "No scores in this week."
+        }`}
+      >
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `linear-gradient(180deg, rgba(255,255,255,0.045), transparent 40%), radial-gradient(circle at 88% 12%, ${config.accentSoft}, transparent 32%)`,
+          }}
+        />
+        <div className="absolute bottom-[24%] left-0 top-[8%] z-10 flex w-9 flex-col justify-between pr-2 text-right text-[0.65rem] font-medium text-white/38">
+          {SCORE_LINES.map((score) => (
+            <span key={score}>{score}</span>
+          ))}
+        </div>
+
+        <svg
+          viewBox="0 0 100 86"
+          preserveAspectRatio="none"
+          className="absolute inset-0 h-full w-full"
+          aria-hidden="true"
+        >
+          <defs>
+            <linearGradient id={config.gradientId} x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor={config.accent} stopOpacity="0.82" />
+              <stop offset="100%" stopColor={config.accent} stopOpacity="0.12" />
+            </linearGradient>
+          </defs>
+          {SCORE_LINES.map((score) => {
+            const y = scoreToY(score);
+            return (
               <line
-                key={y}
+                key={score}
                 x1={CHART_LEFT}
                 x2={CHART_RIGHT}
                 y1={y}
                 y2={y}
-                stroke="rgba(255,255,255,0.14)"
-                strokeWidth="0.4"
+                stroke={score === 0 ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.09)"}
+                strokeWidth="0.45"
                 vectorEffect="non-scaling-stroke"
               />
-            ))}
-            {chartPoints.length > 0 ? (
-              <path
-                d={linePath}
-                fill="none"
-                stroke="rgba(216,255,93,0.22)"
-                strokeWidth="7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                vectorEffect="non-scaling-stroke"
-                filter="url(#account-line-glow)"
+            );
+          })}
+          {weekPoints.map((point) => (
+            <line
+              key={`${point.dateKey}-day-line`}
+              x1={point.x}
+              x2={point.x}
+              y1={CHART_TOP}
+              y2={CHART_BOTTOM}
+              stroke="rgba(255,255,255,0.045)"
+              strokeWidth="0.35"
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+          {weekPoints.map((point) =>
+            point.score !== null && point.y !== null ? (
+              <rect
+                key={`${point.dateKey}-bar`}
+                x={point.x - 2.2}
+                y={point.y}
+                width={4.4}
+                height={CHART_BOTTOM - point.y}
+                rx="1.4"
+                fill={`url(#${config.gradientId})`}
+                opacity={activeIndex === null || activeIndex === weekPoints.indexOf(point) ? 0.86 : 0.38}
               />
-            ) : null}
-            <path d={areaPath} fill="url(#account-area-fill)" />
+            ) : (
+              <circle
+                key={`${point.dateKey}-empty`}
+                cx={point.x}
+                cy={CHART_BOTTOM}
+                r="1.4"
+                fill="rgba(255,255,255,0.22)"
+              />
+            ),
+          )}
+          {linePath ? (
             <path
               d={linePath}
               fill="none"
-              stroke="#d8ff5d"
-              strokeWidth="2.8"
+              stroke="rgba(255,255,255,0.22)"
+              strokeWidth="4.8"
               strokeLinecap="round"
               strokeLinejoin="round"
               vectorEffect="non-scaling-stroke"
             />
-            {chartPoints.map((point, index) => (
-              <g key={`${point.label}-${index}`}>
-                <circle
-                  cx={point.x}
-                  cy={point.y}
-                  r="4.2"
-                  fill="rgba(216,255,93,0.18)"
-                  className={index === chartPoints.length - 1 ? "account-chart-pulse" : ""}
-                />
-                <circle
-                  cx={point.x}
-                  cy={point.y}
-                  r="2.2"
-                  fill={activeIndex === index ? "#ffffff" : "#d8ff5d"}
-                  stroke="rgba(9,11,15,0.9)"
-                  strokeWidth="0.8"
-                  vectorEffect="non-scaling-stroke"
-                />
-              </g>
-            ))}
-          </svg>
+          ) : null}
+          {linePath ? (
+            <path
+              d={linePath}
+              fill="none"
+              stroke={config.accent}
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+            />
+          ) : null}
+          {weekPoints.map((point, index) =>
+            point.score !== null && point.y !== null ? (
+              <circle
+                key={`${point.dateKey}-point`}
+                cx={point.x}
+                cy={point.y}
+                r={activeIndex === index ? "2.8" : "2.1"}
+                fill={activeIndex === index ? "#ffffff" : config.accent}
+                stroke="#071018"
+                strokeWidth="0.8"
+                vectorEffect="non-scaling-stroke"
+              />
+            ) : null,
+          )}
+        </svg>
 
-          <div className="absolute inset-x-9 bottom-0 grid auto-cols-fr grid-flow-col gap-2 border-t border-white/8 bg-black/18 px-1 py-3 text-[0.68rem] uppercase tracking-[0.18em] text-white/42">
-            {points.map((point) => (
-              <div key={point.fullLabel} className="truncate text-center" title={point.fullLabel}>
-                {point.label}
+        <div className="absolute inset-x-9 bottom-0 grid grid-cols-7 border-t border-white/8 bg-black/24 px-1 py-2 text-center">
+          {weekPoints.map((point) => (
+            <div key={`${point.dateKey}-label`} className="min-w-0 px-0.5" title={point.fullLabel}>
+              <div className="truncate text-[0.62rem] uppercase tracking-[0.08em] text-white/44">
+                {point.weekdayLabel}
               </div>
-            ))}
+              <div className="mt-0.5 text-xs font-semibold tabular-nums text-white/64">
+                {point.dayLabel}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {weekPoints.map((point, index) => (
+          <button
+            type="button"
+            key={`${point.dateKey}-target`}
+            aria-label={`${config.title} ${point.fullLabel}: ${
+              point.score === null ? "no score" : `${point.score} score`
+            }`}
+            className="absolute h-9 w-9 -translate-x-1/2 -translate-y-1/2 rounded-full outline-none transition focus-visible:ring-2 focus-visible:ring-white/70"
+            style={{
+              left: `${point.x}%`,
+              top: `${point.y ?? CHART_BOTTOM}%`,
+            }}
+            onFocus={() => setActiveIndex(index)}
+            onBlur={() => setActiveIndex(null)}
+            onMouseEnter={() => setActiveIndex(index)}
+            onMouseLeave={() => setActiveIndex(null)}
+          />
+        ))}
+
+        {activePoint ? (
+          <div
+            className={cn(
+              "pointer-events-none absolute z-20 w-44 rounded-xl border border-white/12 bg-[#071018]/95 px-3 py-2 text-left shadow-[0_18px_48px_rgba(0,0,0,0.42)] backdrop-blur-xl",
+              activePoint.x > 72 ? "-translate-x-full" : "-translate-x-2",
+              (activePoint.y ?? CHART_BOTTOM) < 28 ? "translate-y-4" : "-translate-y-full",
+            )}
+            style={{
+              left: `${activePoint.x}%`,
+              top: `${activePoint.y ?? CHART_BOTTOM}%`,
+            }}
+          >
+            <div className="text-[0.65rem] uppercase tracking-[0.16em] text-white/54">
+              {activePoint.fullLabel}
+            </div>
+            <div className="mt-1 font-[var(--font-display)] text-3xl font-semibold text-white">
+              {activePoint.score}
+            </div>
+            <div className="mt-1 text-xs leading-5 text-white/54">
+              {activePoint.point?.metaLabel ?? "0-100 daily score"}
+            </div>
           </div>
-          {chartPoints.map((point, index) => (
+        ) : null}
+
+        {scoredPoints.length === 0 ? (
+          <div className="absolute inset-x-10 top-1/2 -translate-y-1/2 text-center text-sm text-white/48">
+            No {config.title.toLowerCase()} scores in this 7 day window.
+          </div>
+        ) : null}
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-white/46">
+        <span>{scoredPoints.length} scored days</span>
+        <span className="h-1 w-1 rounded-full bg-white/26" />
+        <span>{averageScore === null ? "No weekly average" : `${averageScore} weekly average`}</span>
+        <span className="h-1 w-1 rounded-full bg-white/26" />
+        <span>{bestPoint?.point?.metaLabel ?? "Daily average uses completed reports"}</span>
+      </div>
+    </section>
+  );
+}
+
+export function GrowthTrendsSection({
+  pointsByType,
+  source,
+}: GrowthTrendsSectionProps) {
+  const [selectedWeekStartKey, setSelectedWeekStartKey] = useState<string | null>(null);
+  const latestWeekStart = useMemo(() => getLatestDataWeek(pointsByType), [pointsByType]);
+  const currentWeekStart = useMemo(() => startOfWeek(startOfLocalDay(new Date())), []);
+  const selectedWeekStart = selectedWeekStartKey
+    ? parseDateKey(selectedWeekStartKey)
+    : latestWeekStart;
+  const selectedWeekStartStable = startOfWeek(selectedWeekStart);
+  const selectedWeekStartStableKey = toDateKey(selectedWeekStartStable);
+  const weekDays = useMemo(
+    () => buildWeekDays(parseDateKey(selectedWeekStartStableKey)),
+    [selectedWeekStartStableKey],
+  );
+  const weekEnd = weekDays[6]?.date ?? addDays(selectedWeekStartStable, 6);
+  const canGoNext = selectedWeekStartStable.getTime() < currentWeekStart.getTime();
+  const weekLabel = `${formatFullDate(selectedWeekStartStable)} - ${formatFullDate(weekEnd)}`;
+
+  const moveWeek = (offset: number) => {
+    setSelectedWeekStartKey(toDateKey(addDays(selectedWeekStartStable, offset * 7)));
+  };
+
+  const resetToThisWeek = () => {
+    setSelectedWeekStartKey(toDateKey(currentWeekStart));
+  };
+
+  return (
+    <section className="analysis-surface rounded-[32px] border border-white/10 p-5 sm:p-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div className="text-[0.72rem] uppercase tracking-[0.24em] text-white/42">
+            Growth trends
+          </div>
+          <h2 className="mt-2 text-2xl font-semibold text-white">
+            Daily score trends by training type
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-white/52">
+            Each chart shows one 7 day window. Shooting, dribbling, and training are tracked separately so scores are not mixed.
+          </p>
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:justify-end">
+          <Badge
+            variant="outline"
+            className="w-fit border-sky-200/15 bg-sky-300/10 text-sky-100/78"
+          >
+            {source === "live" ? "Live reports" : "Preview data"}
+          </Badge>
+          <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-black/18 p-1.5">
             <button
               type="button"
-              key={`${point.fullLabel}-target`}
-              aria-label={`${point.fullLabel}: ${Math.round(point.score)} score`}
-              className="absolute h-8 w-8 -translate-x-1/2 -translate-y-1/2 rounded-full outline-none transition focus-visible:ring-2 focus-visible:ring-[#d8ff5d]/70"
-              style={{ left: `${point.x}%`, top: `${point.y}%` }}
-              onFocus={() => setActiveIndex(index)}
-              onBlur={() => setActiveIndex(null)}
-              onMouseEnter={() => setActiveIndex(index)}
-              onMouseLeave={() => setActiveIndex(null)}
-            />
-          ))}
-          {activePoint ? (
-            <div
-              className={cn(
-                "pointer-events-none absolute z-10 w-36 rounded-lg border border-[#65f7ff]/22 bg-[#07111d]/92 px-3 py-2 text-left shadow-[0_14px_40px_rgba(0,0,0,0.36),0_0_24px_rgba(101,247,255,0.14)] backdrop-blur-xl",
-                activePoint.x > 72 ? "-translate-x-full" : "-translate-x-2",
-                activePoint.y < 28 ? "translate-y-4" : "-translate-y-full",
-              )}
-              style={{
-                left: `${activePoint.x}%`,
-                top: `${activePoint.y}%`,
-              }}
+              onClick={() => moveWeek(-1)}
+              className="inline-flex min-h-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-3 text-white/72 transition hover:bg-white/[0.08] focus:outline-none focus:ring-2 focus:ring-[#65f7ff]/22"
+              aria-label="Previous week"
             >
-              <div className="text-[0.65rem] uppercase tracking-[0.18em] text-[#65f7ff]/74">
-                {activePoint.fullLabel}
-              </div>
-              <div className="mt-1 font-[var(--font-display)] text-2xl font-bold text-white">
-                {Math.round(activePoint.score)}
-              </div>
-              <div className="text-xs text-white/50">0-100 score</div>
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <div className="flex min-h-10 min-w-[14rem] items-center justify-center gap-2 rounded-xl px-3 text-center text-sm font-semibold text-white">
+              <CalendarDays className="h-4 w-4 text-[#65f7ff]" />
+              <span>{weekLabel}</span>
             </div>
-          ) : null}
-          {lastPoint ? (
-            <div className="absolute right-3 top-3 rounded-lg border border-white/10 bg-black/26 px-3 py-2 text-right backdrop-blur-xl">
-              <div className="text-[0.62rem] uppercase tracking-[0.18em] text-white/38">
-                Latest
-              </div>
-              <div className="mt-1 text-lg font-semibold text-[#d8ff5d]">
-                {Math.round(lastPoint.score)}
-              </div>
-            </div>
-          ) : null}
-          {bestPoint ? (
-            <div className="absolute left-12 top-3 rounded-lg border border-white/10 bg-black/24 px-3 py-2 backdrop-blur-xl">
-              <div className="text-[0.62rem] uppercase tracking-[0.18em] text-white/38">
-                Peak
-              </div>
-              <div className="mt-1 text-lg font-semibold text-white">
-                {Math.round(bestPoint.score)}
-              </div>
-            </div>
-          ) : null}
-          {points.length === 0 ? (
-            <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-sm text-white/54">
-              No score trend yet. Complete a few sessions to light up the curve.
-            </div>
-          ) : null}
+            <button
+              type="button"
+              onClick={() => moveWeek(1)}
+              disabled={!canGoNext}
+              className="inline-flex min-h-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-3 text-white/72 transition hover:bg-white/[0.08] focus:outline-none focus:ring-2 focus:ring-[#65f7ff]/22 disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="Next week"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={resetToThisWeek}
+              className="inline-flex min-h-10 items-center justify-center rounded-xl border border-[#65f7ff]/20 bg-[#65f7ff]/10 px-3 text-xs font-semibold uppercase tracking-[0.12em] text-[#dffbff] transition hover:bg-[#65f7ff]/16 focus:outline-none focus:ring-2 focus:ring-[#65f7ff]/22"
+            >
+              This week
+            </button>
+          </div>
         </div>
+      </div>
 
-        <div className="mt-6 grid gap-3 md:grid-cols-3">
-          {highlights.map((item) => (
-            <div
-              key={item.label}
-              className="rounded-[22px] border border-white/10 bg-black/20 p-4"
-            >
-              <div className="text-[0.68rem] uppercase tracking-[0.24em] text-white/40">
-                {item.label}
-              </div>
-              <div className="mt-3 text-2xl font-semibold text-white">
-                {item.value}
-              </div>
-              <div className="mt-1 text-sm text-white/50">{item.helper}</div>
-            </div>
-          ))}
-        </div>
+      <div className="mt-6 grid gap-4">
+        {TREND_CONFIGS.map((config) => (
+          <TrendPanel
+            key={config.type}
+            config={config}
+            points={pointsByType[config.type]}
+            weekDays={weekDays}
+          />
+        ))}
       </div>
     </section>
   );

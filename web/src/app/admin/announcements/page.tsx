@@ -17,6 +17,12 @@ import {
   AdminLoadingSurface,
   AdminShell,
 } from "@/components/admin/AdminShell";
+import {
+  AdminFilterAction,
+  AdminFilterField,
+  adminFilterButtonClass,
+  adminFilterFormClass,
+} from "@/components/admin/AdminFilterControls";
 import { formatDateTime } from "@/components/coach/coachUtils";
 import { cn } from "@/lib/utils";
 import {
@@ -342,7 +348,7 @@ export default function AdminAnnouncementsPage() {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_28rem]">
         <section className="min-w-0 rounded-lg border border-white/10 bg-white/[0.055] p-5 backdrop-blur-2xl">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
             <div>
               <div className={labelClass}>Broadcast center</div>
               <h1 className="mt-2 font-[var(--font-display)] text-2xl font-bold text-white">
@@ -352,7 +358,10 @@ export default function AdminAnnouncementsPage() {
                 {announcements.length} announcements in the current view
               </p>
             </div>
-            <form className="grid gap-3 md:grid-cols-[9rem_9rem_minmax(12rem,1fr)_auto]" onSubmit={submitFilters}>
+          </div>
+
+          <form className={cn(adminFilterFormClass, "lg:grid-cols-4")} onSubmit={submitFilters}>
+            <AdminFilterField label="Scope">
               <select className={fieldClass} value={scopeFilter} onChange={(event) => setScopeFilter(event.target.value as AdminAnnouncementScopeType | "")}>
                 <option value="">All scopes</option>
                 {scopes.map((scope) => (
@@ -361,6 +370,8 @@ export default function AdminAnnouncementsPage() {
                   </option>
                 ))}
               </select>
+            </AdminFilterField>
+            <AdminFilterField label="Status">
               <select className={fieldClass} value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
                 <option value="">All status</option>
                 {statuses.map((status) => (
@@ -369,18 +380,22 @@ export default function AdminAnnouncementsPage() {
                   </option>
                 ))}
               </select>
+            </AdminFilterField>
+            <AdminFilterField label="Keyword">
               <input
                 className={fieldClass}
                 value={keyword}
                 onChange={(event) => setKeyword(event.target.value)}
                 placeholder="Title or content"
               />
-              <button type="submit" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#65f7ff]/24 bg-[#65f7ff]/10 px-4 text-sm font-semibold text-[#dffbff] transition hover:bg-[#65f7ff]/16">
+            </AdminFilterField>
+            <AdminFilterAction>
+              <button type="submit" className={adminFilterButtonClass}>
                 <Search className="h-4 w-4" />
                 Search
               </button>
-            </form>
-          </div>
+            </AdminFilterAction>
+          </form>
 
           <div className="mt-5 overflow-hidden rounded-lg border border-white/10 bg-black/18">
             <div className="overflow-x-auto">

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 
 import PoseWorkspaceShell from '@/components/Pose2D/PoseWorkspaceShell';
@@ -20,6 +20,22 @@ export default function DribblingPage() {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [cloudVideoUrl, setCloudVideoUrl] = useState<string | null>(null);
   const [uploadSession, setUploadSession] = useState<CompletedUploadSession | null>(null);
+  const [taskContext, setTaskContext] = useState({
+    classPublicId: null as string | null,
+    taskAssignmentPublicId: null as string | null,
+    templateCode: null as string | null,
+    templateVersion: null as string | null,
+  });
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setTaskContext({
+      classPublicId: params.get('classId'),
+      taskAssignmentPublicId: params.get('taskAssignmentId'),
+      templateCode: params.get('templateCode'),
+      templateVersion: params.get('templateVersion'),
+    });
+  }, []);
 
   const handleClear = () => {
     setVideoFile(null);
@@ -51,10 +67,19 @@ export default function DribblingPage() {
           uploadSession={uploadSession}
           onClear={handleClear}
           analysisType="dribbling"
+          templateCode={taskContext.templateCode}
+          templateVersion={taskContext.templateVersion}
         />
       ) : (
         <div className="py-2">
-          <UploadDropzone analysisType="dribbling" onFileSelect={handleFileSelect} />
+          <UploadDropzone
+            analysisType="dribbling"
+            classPublicId={taskContext.classPublicId}
+            taskAssignmentPublicId={taskContext.taskAssignmentPublicId}
+            templateCode={taskContext.templateCode}
+            templateVersion={taskContext.templateVersion}
+            onFileSelect={handleFileSelect}
+          />
         </div>
       )}
     </PoseWorkspaceShell>

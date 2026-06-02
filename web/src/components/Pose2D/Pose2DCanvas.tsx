@@ -2,49 +2,24 @@
 
 import React, { useRef, useEffect, useState } from "react";
 import { useMediaPipePose } from "@/hooks/useMediaPipePose";
-import type { Results, NormalizedLandmark } from "@mediapipe/pose"; // [Fix] 导入 NormalizedLandmark 以修复 any
+import type { Results } from "@mediapipe/pose";
 // 导入类型定义，避免循环依赖建议使用 import type
-import type { AnalysisType, AngleData } from "./PoseAnalysisView";
+import type { AnalysisType, AngleData } from "./types";
 import { extractDribbleFrame, DribbleFrame } from "@/lib/dribbleTemporal";
-import { 
-  calculateAndDrawAngles,
-  calculateAngles, 
-  calculateCrouchAngle, 
-  calculateStanceToShoulderRatio,
-  calculateElbowToTorso,
-  calculateWristMidlineNorm,
-  calculateTrunkLean,
-  calculateForearmVertical,
-  checkKneeOverToe 
-} from "@/lib/angles2d";
+import { calculateAndDrawAngles } from "@/lib/angles2d";
+import { FACE_IDX, extractPoseAngles } from "./poseMetrics";
 
 interface Pose2DCanvasProps {
   videoUrl: string;
   isPlaying: boolean;
   onVideoEnd: () => void;
-  onTime?: (current: number, duration: number) => void;//把当前时间/总时长回传给父组件
-  seekTo?: number | null;//父组件想跳转到的秒数
+  onTime?: (current: number, duration: number) => void;
+  seekTo?: { time: number; requestId: number } | null;
   analysisType: AnalysisType;
   onProcessing: (isProcessing: boolean) => void;
   onAnglesUpdate: (angles: AngleData[], time: number) => void;// 加了time 参数
   onFrameCaptured?: (frame: DribbleFrame) => void;// 新增一个回调专门传原始帧数据
 }
-const FACE_IDX = new Set<number>([0,1,2,3,4,5,6,7,8,9,10]);
-
-// 在文件头部 imports 下方，添加一个简单的本地计算函数，
-// 避免去修改 angles2d.ts 导致未知错误
-// 计算三点夹角 (A-B-C)
-// [Fix] 使用 NormalizedLandmark 替换 any，修复 ESLint 报错
-function calcLocalAngle(a: NormalizedLandmark, b: NormalizedLandmark, c: NormalizedLandmark) {
-  // 增加空值和可见性检查 (使用 ?? 0 处理可能的 undefined)
-  if(!a || !b || !c || (a.visibility ?? 0) < 0.5 || (b.visibility ?? 0) < 0.5 || (c.visibility ?? 0) < 0.5) return 0;
-  
-  const rad = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
-  let deg = Math.abs(rad * 180.0 / Math.PI);
-  if (deg > 180.0) deg = 360 - deg;
-  return deg;
-}
-
 export default function Pose2DCanvas({ videoUrl, isPlaying, onVideoEnd, onTime, seekTo, analysisType,
   onAnglesUpdate, onProcessing,onFrameCaptured}: Pose2DCanvasProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -102,9 +77,9 @@ export default function Pose2DCanvas({ videoUrl, isPlaying, onVideoEnd, onTime, 
 
     const handleEnded = () => {
       // 结束时把时间钉到尾部，并通知父层
-      onVideoEnd?.();
       const dur = Number.isFinite(v.duration) ? v.duration : 0;
       onTime?.(dur, dur);
+      onVideoEnd?.();
     };
 
     const handleSeeked = async () => {
@@ -131,21 +106,22 @@ export default function Pose2DCanvas({ videoUrl, isPlaying, onVideoEnd, onTime, 
    };
   }, [videoUrl, onTime, onVideoEnd, isPlaying, pose]);
 
-  // 外部请求 seek（来自父组件的 Scrubber 松手后）
+  // External seek request from the scrubber.
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-    if (seekTo == null || !Number.isFinite(seekTo)) return;
+    if (!seekTo || !Number.isFinite(seekTo.time)) return;
 
     const duration = Number.isFinite(v.duration) ? v.duration : undefined;
-    const dst = Math.max(0, duration != null ? Math.min(seekTo, duration) : seekTo);
+    const dst = Math.max(0, duration != null ? Math.min(seekTo.time, duration) : seekTo.time);
 
     try {
-      v.currentTime = dst; // 触发上面的 'seeked'，从而在暂停态也会推理一帧
+      v.currentTime = dst;
+      onTime?.(dst, duration ?? 0);
     } catch {
     // 某些环境在 metadata 未就绪前不允许 seek，可忽略或延后
     }
-  }, [seekTo]);
+  }, [seekTo, onTime]);
 
   
 //窗口尺寸变化时重建画布像素
@@ -190,127 +166,13 @@ export default function Pose2DCanvas({ videoUrl, isPlaying, onVideoEnd, onTime, 
         // 如果它期望“像素坐标”，用下面这一行替换成像素后再传入：
         // const px = results.poseLandmarks.map(p => ({ ...p, x: p.x * W, y: p.y * H }));
         // calculateAndDrawAngles(ctx, px as any);
-        // --- 核心逻辑：计算并回传数据 ---
-        const newAngleData: AngleData[] = [];
-        if (analysisType === "shooting") {
-          // ================= [SHOOTING 逻辑修改] =================
-          
-          // 假设是右手投篮 (Right Handed)
-          // 真正的项目里，这个 true/false 应该来自 options 或者自动检测
-          const isLeft = false; 
-
-          // 1. 正面视角指标 (Front View Metrics)
-          // ----------------------------------------------------
-          // 对应 JSON: "elbowToTorsoDistanceNorm" (手肘贴合度)
-          const elbowTuck = calculateElbowToTorso(landmarks, isLeft);
-          newAngleData.push({ 
-            name: "elbowToTorsoDistanceNorm", 
-            value: parseFloat(elbowTuck.toFixed(2)), 
-            unit: "ratio" 
-          });
-
-          // 对应 JSON: "wristMidlineOffsetNorm" (手腕中线偏移)
-          const wristOffset = calculateWristMidlineNorm(landmarks, isLeft);
-          newAngleData.push({ 
-            name: "wristMidlineOffsetNorm", 
-            value: parseFloat(wristOffset.toFixed(2)), 
-            unit: "ratio" 
-          });
-
-          // 2. 侧面视角指标 (Side View Metrics)
-          // ----------------------------------------------------
-          // 对应 JSON: "trunkLeanDegSide" (躯干倾角)
-          const trunkLean = calculateTrunkLean(landmarks);
-          newAngleData.push({ 
-            name: "trunkLeanDegSide", 
-            value: Math.round(trunkLean), 
-            unit: "°" 
-          });
-
-          // 对应 JSON: "forearmVerticalDeg" (前臂垂直度)
-          const forearmVert = calculateForearmVertical(landmarks, isLeft);
-          newAngleData.push({ 
-            name: "forearmVerticalDeg", 
-            value: Math.round(forearmVert), 
-            unit: "°" 
-          });
-
-          // 对应 JSON: "kneeOverToeSide" (膝盖过脚尖 - Boolean)
-          const kneeOverToe = checkKneeOverToe(landmarks);
-          newAngleData.push({ 
-            name: "kneeOverToeSide", 
-            value: kneeOverToe, 
-            unit: "bool" 
-          });
-
-          // 对应 JSON: "minKneeAngleDuringLoad" (下蹲深度)
-          // 注意：我们在单帧分析时，发送“当前膝盖角度”即可
-          const kneeAngle = calculateCrouchAngle(landmarks);
-          if (kneeAngle !== null) {
-             newAngleData.push({ 
-               name: "minKneeAngleDuringLoad", 
-               value: Math.round(kneeAngle), 
-               unit: "°" 
-             });
-          }
-
-          // 3. 基础/通用指标 (可选，用于调试显示)
-          // ----------------------------------------------------
-          const angles = calculateAngles(landmarks);
-          if (angles) {
-            newAngleData.push({ name: "Elbow Angle", value: angles.elbow, unit: "°" });
-            newAngleData.push({ name: "Shoulder Angle", value: angles.shoulder, unit: "°" });
-          }
-        } else if (analysisType === "dribbling"|| analysisType === "training") {
-          const crouchAngle = calculateCrouchAngle(landmarks);
-          const stanceRatio = calculateStanceToShoulderRatio(landmarks);
-          // [建议新增] 推送更多用于静态分析的基础数据，防止动态计算失败
-          const trunkLean = calculateTrunkLean(landmarks); 
-          newAngleData.push({ name: "trunkLeanDegSide", value: trunkLean, unit: "°" });
-
-          if (crouchAngle !== null) {
-            newAngleData.push({
-              // [修正] 将 "下蹲角度" 改为 "kneeAngleDeg" 以匹配 JSON 模板的 computeKey
-              name: "kneeAngleDeg", 
-              value: crouchAngle,
-              unit: "°",
-            });
-          }
-          if (stanceRatio !== null) {
-            newAngleData.push({
-              // [修正] 将 "双脚/肩宽比" 改为 "shoulderStanceRatio" 以匹配 JSON 模板的 computeKey
-              name: "shoulderStanceRatio", 
-              value: parseFloat(stanceRatio.toFixed(2)),
-              unit: "ratio", // 修改单位
-            });
-          }
-          
-          // [New] 为平板支撑增加“身体直线度” (Hip Angle)
-          // 自动取可见性高的一侧
-          const lk = landmarks[25], rk = landmarks[26];
-          // 增加判空保护
-          if (lk && rk) {
-              const isLeft = (lk.visibility ?? 0) > (rk.visibility ?? 0);
-              const hipAngle = calcLocalAngle(
-                isLeft ? landmarks[11] : landmarks[12], // Shoulder
-                isLeft ? landmarks[23] : landmarks[24], // Hip
-                isLeft ? landmarks[27] : landmarks[28]  // Ankle
-              );
-              if (hipAngle > 0) {
-                newAngleData.push({
-                name: "bodyLineDeg", // 这个名字只是显示用
-                value: Math.round(hipAngle),
-                unit: "°",
-              });
-              }
-          }
-
-          // [新增] 提取 DribbleFrame 并回传
-          if (results.poseLandmarks && onFrameCaptured) {
-          // 直接调用我们写好的提取函数
-            const dFrame = extractDribbleFrame(results.poseLandmarks, currentTime);
-            onFrameCaptured(dFrame);
-          }
+        const newAngleData = extractPoseAngles(landmarks, analysisType);
+        if (
+          (analysisType === "dribbling" || analysisType === "training") &&
+          results.poseLandmarks &&
+          onFrameCaptured
+        ) {
+          onFrameCaptured(extractDribbleFrame(results.poseLandmarks, currentTime));
         }
         onAnglesUpdate(newAngleData, currentTime); // 回传给父组件显示
       } else {
@@ -328,9 +190,13 @@ export default function Pose2DCanvas({ videoUrl, isPlaying, onVideoEnd, onTime, 
 
   useEffect(() => {
     const v = videoRef.current;
-    if (!v || !isReady || !pose) return;
+    if (!v || !isReady || !pose) {
+      onProcessing(false);
+      return;
+    }
 
     let raf = 0;
+    let stopped = false;
     const loop = async () => {
       // ③ 侦测 dpr 改变（浏览器缩放会触发），变了就立刻重设画布尺寸
       const cur = window.devicePixelRatio || 1;
@@ -339,20 +205,35 @@ export default function Pose2DCanvas({ videoUrl, isPlaying, onVideoEnd, onTime, 
       }
       //如果视频还在播，把当前帧送入 MediaPipe
       //如果暂停/结束，不再排队新的 requestAnimationFrame
-      if (!v.paused && !v.ended) {
-        await pose.send({ image: v });
+      if (!stopped && !v.paused && !v.ended) {
+        try {
+          await pose.send({ image: v });
+        } catch (err) {
+          console.error("Pose frame processing failed:", err);
+        }
         raf = requestAnimationFrame(loop);
+      } else {
+        onProcessing(false);
       }
     };
 //播放/推理循环
     if (isPlaying) {
-      v.play().catch((err) => { if (err?.name !== "AbortError") console.error("Video play error:", err); });
+      onProcessing(true);
+      v.play().catch((err) => {
+        onProcessing(false);
+        if (err?.name !== "AbortError") console.error("Video play error:", err);
+      });
       raf = requestAnimationFrame(loop);
     } else {
       v.pause();
+      onProcessing(false);
     }
-    return () => cancelAnimationFrame(raf);
-  }, [isPlaying, isReady, pose]);
+    return () => {
+      stopped = true;
+      cancelAnimationFrame(raf);
+      onProcessing(false);
+    };
+  }, [isPlaying, isReady, pose, onProcessing]);
 
   return (
     <div
@@ -379,10 +260,8 @@ export default function Pose2DCanvas({ videoUrl, isPlaying, onVideoEnd, onTime, 
         ref={videoRef}
         src={videoUrl}
         className="absolute inset-0 w-full h-full object-contain opacity-0"
-        onEnded={onVideoEnd}
         playsInline
         muted
-        loop
         preload="metadata"
         crossOrigin="anonymous"
       />

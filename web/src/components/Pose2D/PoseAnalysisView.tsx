@@ -2,8 +2,12 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Activity, Sparkles } from "lucide-react";
+import { AlertCircle, ArrowRight, Activity, CheckCircle2, Loader2, Sparkles } from "lucide-react";
 
+import PoseAutoAnalyzer, {
+  type AutoAnalysisProgress,
+  type AutoAnalysisResult,
+} from "./PoseAutoAnalyzer";
 import Pose2DCanvas from "./Pose2DCanvas";
 import Scrubber from "./Scrubber";
 import Controls from "./Controls";
@@ -18,9 +22,72 @@ import { aggregateDribbleSequence } from "@/lib/dribbleCalculator";
 import { aggregateTrainingSequence } from "@/lib/trainingCalculator";
 import { reportService } from "@/services/reports";
 import type { CompletedUploadSession } from "@/services/uploads";
+import type { AnalysisType, AngleData } from "./types";
 
-export type AnalysisType = "shooting" | "dribbling" | "training";
-export type AngleData = { name: string; value: number; unit?: string };
+export type { AnalysisType, AngleData } from "./types";
+
+const MIN_ANALYSIS_FRAMES = 8;
+const MIN_ANALYSIS_COVERAGE_PERCENT = 90;
+const LOOP_TOLERANCE_SECONDS = 0.25;
+
+type CaptureStats = {
+  samples: number;
+  coveredSeconds: number;
+  coveragePercent: number;
+  latestTime: number;
+  ready: boolean;
+};
+
+const EMPTY_CAPTURE_STATS: CaptureStats = {
+  samples: 0,
+  coveredSeconds: 0,
+  coveragePercent: 0,
+  latestTime: 0,
+  ready: false,
+};
+
+const EMPTY_AUTO_ANALYSIS_PROGRESS: AutoAnalysisProgress = {
+  status: "idle",
+  processedFrames: 0,
+  totalFrames: 0,
+  coveragePercent: 0,
+  currentTime: 0,
+  duration: 0,
+};
+
+function buildCaptureStats(frames: FrameSample[], duration: number): CaptureStats {
+  if (frames.length === 0) return EMPTY_CAPTURE_STATS;
+
+  const times = frames
+    .map((frame) => frame.time)
+    .filter((time) => Number.isFinite(time))
+    .sort((a, b) => a - b);
+
+  if (times.length === 0) return EMPTY_CAPTURE_STATS;
+
+  const firstTime = times[0] ?? 0;
+  const latestTime = times[times.length - 1] ?? 0;
+  const coveredSeconds = Math.max(0, latestTime - firstTime);
+  const safeDuration = Number.isFinite(duration) && duration > 0 ? duration : 0;
+  const coveragePercent =
+    safeDuration > 0
+      ? Math.min(100, Math.max(0, (coveredSeconds / safeDuration) * 100))
+      : Math.min(100, frames.length * 5);
+  const reachedEnd = safeDuration > 0 && firstTime <= 1 && latestTime >= safeDuration - 0.75;
+  const ready =
+    frames.length >= MIN_ANALYSIS_FRAMES &&
+    (safeDuration === 0 ||
+      coveragePercent >= MIN_ANALYSIS_COVERAGE_PERCENT ||
+      reachedEnd);
+
+  return {
+    samples: frames.length,
+    coveredSeconds,
+    coveragePercent,
+    latestTime,
+    ready,
+  };
+}
 
 type Props = {
   file?: File | null;
@@ -28,6 +95,8 @@ type Props = {
   uploadSession?: CompletedUploadSession | null;
   onClear: () => void;
   analysisType?: AnalysisType;
+  templateCode?: string | null;
+  templateVersion?: string | null;
 };
 
 function aggregateFrames(frames: FrameSample[]): AngleData[] {
@@ -117,6 +186,8 @@ export default function PoseAnalysisView({
   uploadSession,
   onClear,
   analysisType = "shooting",
+  templateCode,
+  templateVersion,
 }: Props) {
   const router = useRouter();
   const setAnalysisResult = useAnalysisStore((state) => state.setAnalysisResult);
@@ -125,38 +196,56 @@ export default function PoseAnalysisView({
   const [videoUrl, setVideoUrl] = useState<string>("");
   const [currentTime, setCurrentTime] = React.useState(0);
   const [duration, setDuration] = React.useState(0);
-  const [pendingSeek, setPendingSeek] = React.useState<number | null>(null);
+  const [pendingSeek, setPendingSeek] =
+    React.useState<{ time: number; requestId: number } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [displayAngles, setDisplayAngles] = useState<AngleData[]>([]);
+  const [captureStats, setCaptureStats] = useState<CaptureStats>(EMPTY_CAPTURE_STATS);
+  const [autoAnalysisProgress, setAutoAnalysisProgress] =
+    useState<AutoAnalysisProgress>(EMPTY_AUTO_ANALYSIS_PROGRESS);
+  const [analysisWarning, setAnalysisWarning] = useState<string | null>(null);
 
   const localUrlRef = useRef<string | null>(null);
   const allFramesRef = useRef<FrameSample[]>([]);
   const dribbleFramesRef = useRef<DribbleFrame[]>([]);
   const trainingFramesRef = useRef<DribbleFrame[]>([]);
   const latestAnglesRef = useRef<AngleData[]>([]);
+  const seekRequestIdRef = useRef(0);
+  const autoAnalysisStartedAtRef = useRef<string | null>(null);
+  const autoAnalysisFinishedAtRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (propVideoUrl) {
+      if (localUrlRef.current) {
+        URL.revokeObjectURL(localUrlRef.current);
+        localUrlRef.current = null;
+      }
       setVideoUrl(propVideoUrl);
-      return;
-    }
-
-    if (file) {
+    } else if (file) {
       if (localUrlRef.current) URL.revokeObjectURL(localUrlRef.current);
       const url = URL.createObjectURL(file);
       localUrlRef.current = url;
       setVideoUrl(url);
+    } else {
+      setVideoUrl("");
     }
 
     setCurrentTime(0);
     setDuration(0);
+    setPendingSeek(null);
     setIsPlaying(false);
     setDisplayAngles([]);
     latestAnglesRef.current = [];
     allFramesRef.current = [];
     dribbleFramesRef.current = [];
+    trainingFramesRef.current = [];
+    autoAnalysisStartedAtRef.current = null;
+    autoAnalysisFinishedAtRef.current = null;
     setIsProcessing(false);
+    setCaptureStats(EMPTY_CAPTURE_STATS);
+    setAutoAnalysisProgress(EMPTY_AUTO_ANALYSIS_PROGRESS);
+    setAnalysisWarning(null);
   }, [file, propVideoUrl]);
 
   const handleFrameCaptured = useCallback(
@@ -165,14 +254,20 @@ export default function PoseAnalysisView({
 
       if (analysisType === "dribbling") {
         const currentData = dribbleFramesRef.current;
-        if (currentData.length > 0 && frame.t < currentData[currentData.length - 1].t - 0.5) {
-          dribbleFramesRef.current = [];
+        if (
+          currentData.length > 0 &&
+          frame.t < currentData[currentData.length - 1].t - LOOP_TOLERANCE_SECONDS
+        ) {
+          return;
         }
         dribbleFramesRef.current.push(frame);
       } else if (analysisType === "training") {
         const currentData = trainingFramesRef.current;
-        if (currentData.length > 0 && frame.t < currentData[currentData.length - 1].t - 0.5) {
-          trainingFramesRef.current = [];
+        if (
+          currentData.length > 0 &&
+          frame.t < currentData[currentData.length - 1].t - LOOP_TOLERANCE_SECONDS
+        ) {
+          return;
         }
         trainingFramesRef.current.push(frame);
       }
@@ -190,28 +285,111 @@ export default function PoseAnalysisView({
 
         if (history.length > 0) {
           const lastTime = history[history.length - 1].time;
-          if (time < lastTime - 0.5) {
-            console.log("Loop detected in Timeline. Resetting.");
-            allFramesRef.current = [];
+          if (time < lastTime - LOOP_TOLERANCE_SECONDS) {
+            return;
           }
         }
 
         allFramesRef.current.push({ time, angles });
+        setCaptureStats(buildCaptureStats(allFramesRef.current, duration));
+        setAnalysisWarning((current) => (current ? null : current));
       }
     },
-    [isPlaying]
+    [isPlaying, duration]
   );
+
+  const handleProcessingChange = useCallback((processing: boolean) => {
+    setIsProcessing(processing);
+  }, []);
+
+  const handleTimeUpdate = useCallback((curr: number, dur: number) => {
+    setCurrentTime(curr);
+    setDuration(dur);
+  }, []);
+
+  const handleVideoEnd = useCallback(() => {
+    setIsPlaying(false);
+    setIsProcessing(false);
+    setCaptureStats(buildCaptureStats(allFramesRef.current, duration));
+  }, [duration]);
+
+  const handleAutoAnalysisProgress = useCallback((progress: AutoAnalysisProgress) => {
+    setAutoAnalysisProgress(progress);
+
+    if (progress.status === "loading" || progress.status === "analyzing") {
+      if (!autoAnalysisStartedAtRef.current) {
+        autoAnalysisStartedAtRef.current = new Date().toISOString();
+      }
+      autoAnalysisFinishedAtRef.current = null;
+
+      setCaptureStats((current) =>
+        current.ready
+          ? current
+          : {
+              samples: progress.processedFrames,
+              coveredSeconds: progress.currentTime,
+              coveragePercent: progress.coveragePercent,
+              latestTime: progress.currentTime,
+              ready: false,
+          }
+      );
+    } else if (progress.status === "ready" || progress.status === "error") {
+      autoAnalysisFinishedAtRef.current = new Date().toISOString();
+    }
+  }, []);
+
+  const handleAutoAnalysisComplete = useCallback(
+    ({ frames, drillFrames, duration: analyzedDuration }: AutoAnalysisResult) => {
+      allFramesRef.current = frames;
+      if (analysisType === "dribbling") {
+        dribbleFramesRef.current = drillFrames;
+      } else if (analysisType === "training") {
+        trainingFramesRef.current = drillFrames;
+      }
+
+      const latestFrame = frames[frames.length - 1];
+      latestAnglesRef.current = latestFrame?.angles ?? [];
+      setDisplayAngles(latestFrame?.angles ?? []);
+      setDuration(analyzedDuration);
+
+      const latestStats = buildCaptureStats(frames, analyzedDuration);
+      setCaptureStats(latestStats);
+      autoAnalysisFinishedAtRef.current = autoAnalysisFinishedAtRef.current ?? new Date().toISOString();
+      setAnalysisWarning(
+        latestStats.ready
+          ? null
+          : "Automatic analysis finished, but it did not capture enough pose frames. Try a clearer clip or play the clip once manually."
+      );
+    },
+    [analysisType]
+  );
+
+  const handleAutoAnalysisError = useCallback((message: string) => {
+    setAnalysisWarning(`${message} You can still play the clip once to collect frames manually.`);
+  }, []);
 
   const handleGenerateReport = async () => {
     setIsPlaying(false);
+    setAnalysisWarning(null);
 
-    if (allFramesRef.current.length === 0 && latestAnglesRef.current.length > 0) {
-      allFramesRef.current.push({ time: 0, angles: latestAnglesRef.current });
+    if (
+      autoAnalysisProgress.status === "loading" ||
+      autoAnalysisProgress.status === "analyzing"
+    ) {
+      setAnalysisWarning("Full-video analysis is still running. Please wait until it finishes.");
+      return;
     }
 
-    if (allFramesRef.current.length === 0) {
-      alert(
-        "If you find the black screen time is too long, please try again in an area with a smooth internet connection. After the screen displays, play for a few seconds before clicking the button."
+    if (allFramesRef.current.length === 0 && latestAnglesRef.current.length > 0) {
+      allFramesRef.current.push({ time: currentTime, angles: latestAnglesRef.current });
+    }
+
+    const latestStats = buildCaptureStats(allFramesRef.current, duration);
+    setCaptureStats(latestStats);
+
+    if (!latestStats.ready) {
+      setAnalysisWarning(
+        "Automatic analysis has not captured enough frames yet. Wait for it to finish or play the clip once manually."
       );
       return;
     }
@@ -220,7 +398,8 @@ export default function PoseAnalysisView({
 
     try {
       const templates = getAllTemplates(analysisType);
-      const activeTemplate = templates[0];
+      const activeTemplate =
+        templates.find((template) => template.templateId === templateCode) ?? templates[0];
 
       if (!activeTemplate) {
         alert("No analysis template is available for this mode.");
@@ -302,11 +481,17 @@ export default function PoseAnalysisView({
         ...realScoreResult,
         saved_metrics: finalInputForScoring,
       };
+      const captureSource =
+        autoAnalysisProgress.status === "ready" ? "auto_full_video" : "manual_playback";
+      const analysisStartedAt =
+        captureSource === "auto_full_video" ? autoAnalysisStartedAtRef.current : null;
+      const analysisFinishedAt =
+        captureSource === "auto_full_video" ? autoAnalysisFinishedAtRef.current : null;
 
       const savedReport = await reportService.saveReport({
         session_public_id: uploadSession.sessionPublicId,
         template_code: activeTemplate.templateId,
-        template_version: "v1",
+        template_version: templateVersion ?? "v1",
         overall_score: realScoreResult.overall,
         grade: realScoreResult.grade,
         score_data: scoreDataToSave,
@@ -316,7 +501,16 @@ export default function PoseAnalysisView({
           handedness: detectedHandness,
           metrics_count: finalInputForScoring.length,
           template_name: activeTemplate.displayName,
+          capture_source: captureSource,
+          timeline_frames: allFramesRef.current.length,
+          timeline_duration_seconds: duration,
+          timeline_coverage_percent: Math.round(latestStats.coveragePercent * 100) / 100,
+          auto_analysis_status: autoAnalysisProgress.status,
+          auto_analysis_processed_frames: autoAnalysisProgress.processedFrames,
+          auto_analysis_total_frames: autoAnalysisProgress.totalFrames,
         },
+        analysis_started_at: analysisStartedAt,
+        analysis_finished_at: analysisFinishedAt,
       });
 
       longTermVideoUrl = savedReport.video_url ?? uploadSession.videoUrl ?? longTermVideoUrl;
@@ -339,6 +533,55 @@ export default function PoseAnalysisView({
     }
   };
 
+  const isAutoAnalyzing =
+    autoAnalysisProgress.status === "loading" || autoAnalysisProgress.status === "analyzing";
+  const isAutoError = autoAnalysisProgress.status === "error";
+  const progressPercent = Math.round(
+    captureStats.ready ? captureStats.coveragePercent : autoAnalysisProgress.coveragePercent
+  );
+  const displayedSamples = captureStats.ready
+    ? captureStats.samples
+    : Math.max(captureStats.samples, autoAnalysisProgress.processedFrames);
+  const isCollectingFrames = (isAutoAnalyzing || isPlaying || isProcessing) && !captureStats.ready;
+  const AnalysisStatusIcon = captureStats.ready
+    ? CheckCircle2
+    : isCollectingFrames
+      ? Loader2
+      : AlertCircle;
+  const analysisTitle = captureStats.ready
+    ? "Analysis frames ready"
+    : isAutoAnalyzing
+      ? "Analyzing full video"
+      : isAutoError
+        ? "Automatic analysis needs help"
+        : isCollectingFrames
+      ? "Analyzing video frames"
+      : captureStats.samples > 0
+        ? "Analysis needs a full pass"
+        : "Waiting for video frames";
+  const analysisDescription = captureStats.ready
+    ? "The report will use the captured MediaPipe timeline from this clip."
+    : isAutoAnalyzing
+      ? "The uploaded clip is being scanned frame by frame. View Analysis unlocks when it finishes."
+      : isAutoError
+        ? "Play the clip once manually, or upload a clearer clip if pose landmarks were not detected."
+        : captureStats.samples > 0
+          ? "Keep playing from the beginning until the progress reaches the end of the clip."
+          : "Automatic full-video analysis starts after the MediaPipe engine loads.";
+  const coverageLabel =
+    isAutoAnalyzing && autoAnalysisProgress.totalFrames > 0
+      ? `${autoAnalysisProgress.processedFrames}/${autoAnalysisProgress.totalFrames} frames · ${autoAnalysisProgress.currentTime.toFixed(1)}s / ${autoAnalysisProgress.duration.toFixed(1)}s`
+      : isAutoAnalyzing
+        ? autoAnalysisProgress.message ?? "Preparing full-video analysis"
+        : duration > 0
+          ? `${captureStats.coveredSeconds.toFixed(1)}s / ${duration.toFixed(1)}s covered`
+          : `${captureStats.samples} frames captured`;
+  const reportButtonLabel = isGeneratingReport
+    ? "Saving..."
+    : captureStats.ready
+      ? "View Analysis Report"
+      : "Collecting frames";
+
   return (
     <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]">
       <div className="space-y-5">
@@ -357,7 +600,13 @@ export default function PoseAnalysisView({
                 {analysisType}
               </div>
               <div className="rounded-full border border-sky-300/18 bg-sky-300/10 px-3 py-1.5 text-[0.68rem] uppercase tracking-[0.26em] text-sky-100/80">
-                {isProcessing ? "Processing" : "Ready"}
+                {captureStats.ready
+                  ? "Report ready"
+                  : isAutoAnalyzing
+                    ? "Auto analysis"
+                    : isProcessing
+                      ? "Analyzing"
+                      : "Awaiting frames"}
               </div>
             </div>
           </div>
@@ -373,29 +622,33 @@ export default function PoseAnalysisView({
             </div>
 
             <div className="aspect-video relative">
+              {videoUrl && (
+                <PoseAutoAnalyzer
+                  key={`${videoUrl}-${analysisType}`}
+                  videoUrl={videoUrl}
+                  analysisType={analysisType}
+                  onProgress={handleAutoAnalysisProgress}
+                  onComplete={handleAutoAnalysisComplete}
+                  onError={handleAutoAnalysisError}
+                />
+              )}
+
               <Pose2DCanvas
                 videoUrl={videoUrl}
                 isPlaying={isPlaying}
-                onVideoEnd={() => setIsPlaying(false)}
-                onTime={(curr, dur) => {
-                  setCurrentTime(curr);
-                  setDuration(dur);
-                }}
+                onVideoEnd={handleVideoEnd}
+                onTime={handleTimeUpdate}
                 seekTo={pendingSeek}
                 analysisType={analysisType}
                 onAnglesUpdate={handleAnglesUpdate}
                 onFrameCaptured={handleFrameCaptured}
-                onProcessing={(processing) => setIsProcessing(processing)}
+                onProcessing={handleProcessingChange}
               />
 
-              {isProcessing && (
-                <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="h-9 w-9 rounded-full border-4 border-sky-400 border-t-transparent animate-spin" />
-                    <span className="text-sm font-medium tracking-[0.18em] text-white">
-                      AI Processing...
-                    </span>
-                  </div>
+              {(isProcessing || isAutoAnalyzing) && (
+                <div className="absolute bottom-4 right-4 z-40 inline-flex items-center gap-2 rounded-full border border-sky-300/25 bg-black/55 px-3 py-2 text-[0.68rem] uppercase tracking-[0.24em] text-sky-100/85 backdrop-blur-md">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {isAutoAnalyzing ? "Analyzing full video" : "Analyzing frames"}
                 </div>
               )}
             </div>
@@ -415,10 +668,63 @@ export default function PoseAnalysisView({
                 setCurrentTime(sec);
               }}
               onScrubEnd={(sec) => {
-                setPendingSeek(sec);
-                setTimeout(() => setPendingSeek(null), 0);
+                const safeDuration = Number.isFinite(duration) && duration > 0 ? duration : 0;
+                const nextTime = safeDuration > 0 ? Math.min(Math.max(sec, 0), safeDuration) : Math.max(sec, 0);
+                seekRequestIdRef.current += 1;
+                setCurrentTime(nextTime);
+                setPendingSeek({ time: nextTime, requestId: seekRequestIdRef.current });
               }}
             />
+          </div>
+
+          <div className="mt-4 rounded-[22px] border border-white/10 bg-white/[0.035] p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center gap-3">
+                <div
+                  className={`grid h-10 w-10 shrink-0 place-items-center rounded-full border ${
+                    captureStats.ready
+                      ? "border-emerald-300/25 bg-emerald-300/12 text-emerald-200"
+                      : "border-sky-300/20 bg-sky-300/10 text-sky-100"
+                  }`}
+                >
+                  <AnalysisStatusIcon
+                    className={`h-5 w-5 ${isCollectingFrames ? "animate-spin" : ""}`}
+                  />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-white">{analysisTitle}</div>
+                  <div className="mt-1 text-xs leading-5 text-white/52">{analysisDescription}</div>
+                </div>
+              </div>
+              <div className="shrink-0 text-left sm:text-right">
+                <div className="text-2xl font-semibold text-white tabular-nums">
+                  {progressPercent}%
+                </div>
+                <div className="mt-1 text-[0.68rem] uppercase tracking-[0.22em] text-white/42">
+                  {displayedSamples} samples
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/[0.06]">
+              <div
+                className={`h-full rounded-full ${
+                  captureStats.ready ? "bg-emerald-300" : "bg-sky-300"
+                }`}
+                style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}
+              />
+            </div>
+
+            <div className="mt-3 flex flex-col gap-2 text-xs text-white/46 sm:flex-row sm:items-center sm:justify-between">
+              <span>{coverageLabel}</span>
+              <span>Full-video timeline is kept until a new upload starts.</span>
+            </div>
+
+            {analysisWarning && (
+              <div className="mt-3 rounded-2xl border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-xs leading-5 text-amber-100/85">
+                {analysisWarning}
+              </div>
+            )}
           </div>
 
           <div className="mt-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -426,20 +732,29 @@ export default function PoseAnalysisView({
               isPlaying={isPlaying}
               onTogglePlay={() => setIsPlaying((p) => !p)}
               onClear={onClear}
+              playDisabled={isAutoAnalyzing}
             />
 
             <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
               <div className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-3 text-[0.72rem] uppercase tracking-[0.24em] text-white/55">
-                <Sparkles className="h-4 w-4" />
-                {isGeneratingReport ? "Saving report" : "Report ready"}
+                {isGeneratingReport ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                {isGeneratingReport
+                  ? "Saving report"
+                  : captureStats.ready
+                    ? "Report ready"
+                    : "Collecting timeline"}
               </div>
               <Button
                 onClick={handleGenerateReport}
-                disabled={isGeneratingReport || isProcessing}
+                disabled={isGeneratingReport || isAutoAnalyzing || !captureStats.ready}
                 className="min-h-12 rounded-full border border-indigo-300/20 bg-indigo-400 px-5 text-slate-950 shadow-[0_14px_35px_rgba(129,140,248,0.28)] hover:bg-indigo-300"
               >
-                {isGeneratingReport ? "Saving..." : "View Analysis Report"}
-                {!isGeneratingReport && <ArrowRight className="h-4 w-4" />}
+                {reportButtonLabel}
+                {!isGeneratingReport && captureStats.ready && <ArrowRight className="h-4 w-4" />}
               </Button>
             </div>
           </div>

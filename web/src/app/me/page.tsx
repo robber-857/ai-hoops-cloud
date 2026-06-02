@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { getTemplateById } from "@/config/templates";
@@ -15,18 +15,23 @@ import type {
   AccountAnalysisType,
   AccountAnnouncement,
   AccountReport,
-  GrowthSummary,
   ReportSource,
   StatOverviewItem,
+  TaskSubmissionHistoryItem,
+  TaskReportOption,
   TrendPoint,
+  TrendPointsByType,
   WeeklyTask,
+  WeeklyTaskDetail,
 } from "@/components/account/types";
 import { routes } from "@/lib/routes";
 import {
   meService,
   type AnnouncementSummaryRead,
   type DashboardStatsRead,
+  type TaskDetailRead,
   type TaskSummaryRead,
+  type TaskSubmissionReportRead,
   type TrendPointRead,
 } from "@/services/me";
 import type { ReportListItem } from "@/services/reports";
@@ -36,6 +41,7 @@ const PREVIEW_REPORTS: AccountReport[] = [
   {
     id: "preview-shooting-1",
     analysisType: "shooting",
+    templateCode: "shoot_front_form_close",
     templateName: "Front Form Check",
     score: 92,
     grade: "S",
@@ -45,6 +51,7 @@ const PREVIEW_REPORTS: AccountReport[] = [
   {
     id: "preview-dribbling-1",
     analysisType: "dribbling",
+    templateCode: "dribble_front_narrow_crossover",
     templateName: "Narrow Crossover",
     score: 81,
     grade: "A",
@@ -54,6 +61,7 @@ const PREVIEW_REPORTS: AccountReport[] = [
   {
     id: "preview-training-1",
     analysisType: "training",
+    templateCode: "high_knees_in_place_side",
     templateName: "High Knees Side",
     score: 76,
     grade: "B",
@@ -63,6 +71,7 @@ const PREVIEW_REPORTS: AccountReport[] = [
   {
     id: "preview-shooting-2",
     analysisType: "shooting",
+    templateCode: "shoot_side_form_close",
     templateName: "Side Form Review",
     score: 88,
     grade: "A",
@@ -72,6 +81,7 @@ const PREVIEW_REPORTS: AccountReport[] = [
   {
     id: "preview-dribbling-2",
     analysisType: "dribbling",
+    templateCode: "dribble_side_onehand_oneside",
     templateName: "One Hand One Side",
     score: 72,
     grade: "B",
@@ -81,6 +91,7 @@ const PREVIEW_REPORTS: AccountReport[] = [
   {
     id: "preview-training-2",
     analysisType: "training",
+    templateCode: "wall_sit_half_hold",
     templateName: "Wall Sit Hold",
     score: 84,
     grade: "A",
@@ -88,6 +99,47 @@ const PREVIEW_REPORTS: AccountReport[] = [
     linkable: false,
   },
 ];
+
+const ACCOUNT_ANALYSIS_TYPES: AccountAnalysisType[] = ["shooting", "dribbling", "training"];
+
+function emptyTrendPointsByType(): TrendPointsByType {
+  return {
+    shooting: [],
+    dribbling: [],
+    training: [],
+  };
+}
+
+function localDateKey(input: string | Date): string {
+  const date = typeof input === "string" ? new Date(input) : input;
+  if (Number.isNaN(date.getTime())) {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function parseDateKey(dateKey: string): Date {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function formatTrendLabel(dateKey: string): string {
+  return new Intl.DateTimeFormat("en-AU", { month: "short", day: "numeric" }).format(
+    parseDateKey(dateKey),
+  );
+}
+
+function formatTrendFullLabel(dateKey: string): string {
+  return new Intl.DateTimeFormat("en-AU", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(parseDateKey(dateKey));
+}
 
 function getDisplayName(username: string, nickname: string | null): string {
   if (nickname?.trim()) {
@@ -145,6 +197,7 @@ function normalizeReport(row: ReportListItem): AccountReport | null {
   return {
     id: row.public_id,
     analysisType,
+    templateCode: row.template_code ?? null,
     templateName: template?.displayName ?? row.template_code ?? "Motion review",
     score,
     grade: row.grade ?? getGrade(score),
@@ -175,6 +228,13 @@ function formatRelativeTime(input: string): string {
   return new Intl.DateTimeFormat("en-AU", {
     month: "short",
     day: "numeric",
+  }).format(new Date(input));
+}
+
+function formatRefreshTime(input: string): string {
+  return new Intl.DateTimeFormat("en-AU", {
+    hour: "2-digit",
+    minute: "2-digit",
   }).format(new Date(input));
 }
 
@@ -221,26 +281,142 @@ function computeStreakDays(reports: AccountReport[]): number {
   return streak;
 }
 
-function buildTrendPoints(reports: AccountReport[]): TrendPoint[] {
-  const points = [...reports]
-    .sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime())
-    .slice(-6);
+function buildTrendPointsByTypeFromReports(reports: AccountReport[]): TrendPointsByType {
+  const grouped = emptyTrendPointsByType();
+  const buckets: Record<AccountAnalysisType, Record<string, AccountReport[]>> = {
+    shooting: {},
+    dribbling: {},
+    training: {},
+  };
 
-  return points.map((report) => ({
-    label: new Intl.DateTimeFormat("en-AU", { month: "short", day: "numeric" }).format(
-      new Date(report.createdAt)
-    ),
-    fullLabel: new Intl.DateTimeFormat("en-AU", {
+  for (const report of reports) {
+    const dateKey = localDateKey(report.createdAt);
+    const typeBuckets = buckets[report.analysisType];
+    typeBuckets[dateKey] = [...(typeBuckets[dateKey] ?? []), report];
+  }
+
+  for (const type of ACCOUNT_ANALYSIS_TYPES) {
+    grouped[type] = Object.entries(buckets[type])
+      .sort(([leftDate], [rightDate]) => leftDate.localeCompare(rightDate))
+      .map(([dateKey, dayReports]) => {
+        const scores = dayReports.map((report) => report.score);
+        const bestReport = dayReports.reduce((best, report) =>
+          report.score > best.score ? report : best,
+        );
+
+        return {
+          analysisType: type,
+          dateKey,
+          label: formatTrendLabel(dateKey),
+          fullLabel: formatTrendFullLabel(dateKey),
+          score: Math.round(average(scores)),
+          metaLabel:
+            dayReports.length === 1
+              ? bestReport.templateName
+              : `${dayReports.length} reports, best ${Math.round(bestReport.score)}`,
+          sessionCount: dayReports.length,
+        };
+      });
+  }
+
+  return grouped;
+}
+
+function getTaskActionHref(task: TaskSummaryRead, analysisType: AccountAnalysisType): string {
+  const baseHref =
+    analysisType === "dribbling"
+      ? routes.pose2d.dribbling
+      : analysisType === "training"
+        ? routes.pose2d.training
+        : routes.pose2d.shooting;
+  const searchParams = new URLSearchParams({
+    taskAssignmentId: task.public_id,
+    classId: task.class_public_id,
+  });
+
+  if (task.template_code) {
+    searchParams.set("templateCode", task.template_code);
+  }
+
+  return `${baseHref}?${searchParams.toString()}`;
+}
+
+function getTargetLabel(task: TaskSummaryRead): string {
+  const targetConfig = task.target_config ?? {};
+  const targetSessions = Number(targetConfig.target_sessions ?? 0);
+  const targetScore = Number(targetConfig.target_score ?? 0);
+
+  if (targetSessions > 0 && targetScore > 0) {
+    return `${targetSessions} sessions / ${Math.round(targetScore)} pts`;
+  }
+  if (targetSessions > 0) {
+    return `${targetSessions} sessions`;
+  }
+  if (targetScore > 0) {
+    return `${Math.round(targetScore)} pts target`;
+  }
+  return "Coach target";
+}
+
+function findCandidateReports(task: TaskSummaryRead, reports: AccountReport[]): AccountReport[] {
+  const analysisType = normalizeAnalysisType(task.analysis_type, task.template_code);
+  return reports
+    .filter((report) => report.linkable)
+    .filter((report) => report.analysisType === analysisType)
+    .filter((report) => !task.template_code || report.templateCode === task.template_code)
+    .sort(
+      (left, right) =>
+        new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+    );
+}
+
+function buildReportOptions(reports: AccountReport[]): TaskReportOption[] {
+  return reports.map((report) => ({
+    id: report.id,
+    label: report.templateName,
+    scoreLabel: `${Math.round(report.score)} pts`,
+    dateLabel: new Intl.DateTimeFormat("en-AU", {
       month: "short",
       day: "numeric",
       year: "numeric",
     }).format(new Date(report.createdAt)),
-    score: Math.round(report.score),
   }));
 }
 
-function normalizeTask(task: TaskSummaryRead): WeeklyTask {
+function normalizeTaskSubmission(row: TaskSubmissionReportRead): TaskSubmissionHistoryItem {
+  const analysisType = normalizeAnalysisType(row.analysis_type, row.template_code);
+  const templateName = getTemplateName(row.template_code, analysisType);
+  return {
+    id: row.report_public_id,
+    title: templateName,
+    scoreLabel:
+      row.overall_score !== null ? `${Math.round(row.overall_score)} pts` : "No score",
+    gradeLabel: row.grade ? `Grade ${row.grade}` : "No grade",
+    dateLabel: new Intl.DateTimeFormat("en-AU", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(new Date(row.submitted_at)),
+  };
+}
+
+function normalizeTaskDetail(task: TaskDetailRead): WeeklyTaskDetail {
+  return {
+    submissionHistory: task.submission_reports.map(normalizeTaskSubmission),
+  };
+}
+
+function getTemplateName(templateCode: string | null, analysisType: AccountAnalysisType): string {
+  const template = templateCode ? getTemplateById(templateCode) : null;
+  return template?.displayName ?? templateCode ?? `${analysisType} practice`;
+}
+
+function normalizeTask(task: TaskSummaryRead, reports: AccountReport[]): WeeklyTask {
   const progress = Math.max(0, Math.min(1, (task.progress_percent ?? 0) / 100));
+  const analysisType = normalizeAnalysisType(task.analysis_type, task.template_code);
+  const templateName = getTemplateName(task.template_code, analysisType);
+  const candidateReports = findCandidateReports(task, reports);
+  const candidateReport = candidateReports[0] ?? null;
   const status: WeeklyTask["status"] =
     task.status === "completed"
       ? "done"
@@ -255,8 +431,11 @@ function normalizeTask(task: TaskSummaryRead): WeeklyTask {
     : "Assigned task";
 
   return {
+    id: task.public_id,
     title: task.title,
-    description: "Assigned by your coach through the training camp workflow.",
+    description:
+      task.description?.trim() ||
+      `Assigned for ${task.class_name} using ${templateName}.`,
     progress,
     status,
     valueLabel:
@@ -264,25 +443,51 @@ function normalizeTask(task: TaskSummaryRead): WeeklyTask {
         ? `${Math.round(task.best_score)} pts`
         : `${task.completed_sessions} sessions`,
     dueLabel,
+    actionHref: getTaskActionHref(task, analysisType),
+    className: task.class_name,
+    analysisType,
+    templateCode: task.template_code,
+    templateName,
+    targetLabel: getTargetLabel(task),
+    completedSessions: task.completed_sessions,
+    candidateReportId: candidateReport?.id ?? null,
+    candidateReportLabel: candidateReport
+      ? `${candidateReport.templateName} - ${Math.round(candidateReport.score)} pts`
+      : null,
+    reportOptions: buildReportOptions(candidateReports),
+    latestReportId: task.latest_report_public_id,
   };
 }
 
-function normalizeTrendPoints(points: TrendPointRead[]): TrendPoint[] {
+function normalizeTrendPoints(
+  points: TrendPointRead[],
+  analysisType: AccountAnalysisType,
+): TrendPoint[] {
   return points
-    .slice(-6)
     .map((point) => ({
-      label: new Intl.DateTimeFormat("en-AU", {
-        month: "short",
-        day: "numeric",
-      }).format(new Date(point.date)),
-      fullLabel: new Intl.DateTimeFormat("en-AU", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      }).format(new Date(point.date)),
-      score: Math.round(point.best_score ?? point.average_score ?? 0),
+      analysisType,
+      dateKey: point.date,
+      label: formatTrendLabel(point.date),
+      fullLabel: formatTrendFullLabel(point.date),
+      score: Math.round(point.average_score ?? point.best_score ?? 0),
+      metaLabel: `${point.session_count} ${point.session_count === 1 ? "session" : "sessions"}`,
+      sessionCount: point.session_count,
     }))
     .filter((point) => point.score > 0);
+}
+
+function normalizeTrendPointsByType(
+  responses: Array<{ points: TrendPointRead[] }>,
+): TrendPointsByType {
+  const next = emptyTrendPointsByType();
+  ACCOUNT_ANALYSIS_TYPES.forEach((analysisType, index) => {
+    next[analysisType] = normalizeTrendPoints(responses[index]?.points ?? [], analysisType);
+  });
+  return next;
+}
+
+function hasTrendData(pointsByType: TrendPointsByType): boolean {
+  return ACCOUNT_ANALYSIS_TYPES.some((analysisType) => pointsByType[analysisType].length > 0);
 }
 
 function getAnnouncementScopeLabel(announcement: AnnouncementSummaryRead): string {
@@ -310,6 +515,13 @@ function normalizeAnnouncement(announcement: AnnouncementSummaryRead): AccountAn
   };
 }
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+  return fallback;
+}
+
 export default function MePage() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
@@ -321,11 +533,21 @@ export default function MePage() {
   const [reportSource, setReportSource] = useState<ReportSource>("preview");
   const [isReportsLoading, setIsReportsLoading] = useState(false);
   const [backendStats, setBackendStats] = useState<DashboardStatsRead | null>(null);
-  const [backendTasks, setBackendTasks] = useState<WeeklyTask[]>([]);
-  const [backendTrendPoints, setBackendTrendPoints] = useState<TrendPoint[] | null>(null);
+  const [backendTasks, setBackendTasks] = useState<TaskSummaryRead[]>([]);
+  const [taskDetailsById, setTaskDetailsById] = useState<Record<string, TaskDetailRead>>({});
+  const [loadingTaskDetailId, setLoadingTaskDetailId] = useState<string | null>(null);
+  const [taskDetailErrors, setTaskDetailErrors] = useState<Record<string, string>>({});
+  const [taskSubmitErrors, setTaskSubmitErrors] = useState<Record<string, string>>({});
+  const [isTaskRefreshing, setIsTaskRefreshing] = useState(false);
+  const [lastTaskRefreshAt, setLastTaskRefreshAt] = useState<string | null>(null);
+  const [taskRefreshError, setTaskRefreshError] = useState<string | null>(null);
+  const [backendTrendPointsByType, setBackendTrendPointsByType] =
+    useState<TrendPointsByType | null>(null);
   const [announcements, setAnnouncements] = useState<AccountAnnouncement[]>([]);
   const [unreadAnnouncementCount, setUnreadAnnouncementCount] = useState(0);
   const [expandedAnnouncementId, setExpandedAnnouncementId] = useState<string | null>(null);
+  const [submittingTaskId, setSubmittingTaskId] = useState<string | null>(null);
+  const taskRefreshInFlightRef = useRef(false);
 
   useEffect(() => {
     if (!hasInitialized || isAuthenticated) {
@@ -346,12 +568,16 @@ export default function MePage() {
       setIsReportsLoading(true);
 
       try {
-        const [dashboardData, reportsData, tasksData, trendsData, announcementsData] =
+        const [dashboardData, reportsData, tasksData, trendResponses, announcementsData] =
           await Promise.all([
             meService.getDashboard(),
-            meService.getReports(6),
+            meService.getReports(60),
             meService.getTasks(5),
-            meService.getTrends({ range: "30d" }),
+            Promise.all(
+              ACCOUNT_ANALYSIS_TYPES.map((analysisType) =>
+                meService.getTrends({ range: "90d", analysisType }),
+              ),
+            ),
             meService.getAnnouncements(6),
           ]);
 
@@ -362,8 +588,7 @@ export default function MePage() {
           .map(normalizeReport)
           .filter((row): row is AccountReport => Boolean(row));
         const nextReports = normalizedReports.length > 0 ? normalizedReports : dashboardReports;
-        const nextTasks = tasksData.items.map(normalizeTask);
-        const nextTrendPoints = normalizeTrendPoints(trendsData.points);
+        const nextTrendPointsByType = normalizeTrendPointsByType(trendResponses);
         const nextAnnouncements = announcementsData.items.map(normalizeAnnouncement);
 
         if (!isActive) {
@@ -371,8 +596,15 @@ export default function MePage() {
         }
 
         setBackendStats(dashboardData.stats);
-        setBackendTasks(nextTasks);
-        setBackendTrendPoints(nextTrendPoints.length > 0 ? nextTrendPoints : null);
+        setBackendTasks(tasksData.items);
+        setTaskDetailsById({});
+        setTaskDetailErrors({});
+        setTaskSubmitErrors({});
+        setTaskRefreshError(null);
+        setLastTaskRefreshAt(new Date().toISOString());
+        setBackendTrendPointsByType(
+          hasTrendData(nextTrendPointsByType) ? nextTrendPointsByType : null,
+        );
         setAnnouncements(nextAnnouncements);
         setUnreadAnnouncementCount(announcementsData.unread_count);
 
@@ -392,7 +624,12 @@ export default function MePage() {
 
         setBackendStats(null);
         setBackendTasks([]);
-        setBackendTrendPoints(null);
+        setTaskDetailsById({});
+        setTaskDetailErrors({});
+        setTaskSubmitErrors({});
+        setTaskRefreshError(null);
+        setLastTaskRefreshAt(null);
+        setBackendTrendPointsByType(null);
         setAnnouncements([]);
         setUnreadAnnouncementCount(0);
         setReports(PREVIEW_REPORTS);
@@ -419,7 +656,11 @@ export default function MePage() {
     const weeklyReports = sortedReports.filter((report) => isWithinLastDays(report.createdAt, 7));
     const scores = sortedReports.map((report) => report.score);
     const bestScore = Math.max(...scores, 0);
-    const trendPoints = backendTrendPoints ?? buildTrendPoints(sortedReports);
+    const reportTrendPointsByType = buildTrendPointsByTypeFromReports(sortedReports);
+    const trendPointsByType =
+      backendTrendPointsByType && hasTrendData(backendTrendPointsByType)
+        ? backendTrendPointsByType
+        : reportTrendPointsByType;
     const streak = computeStreakDays(sortedReports);
     const liveStats = reportSource === "live" ? backendStats : null;
 
@@ -475,39 +716,130 @@ export default function MePage() {
           },
         ];
 
-    const highlights: GrowthSummary[] = [
-      {
-        label: "7-day average",
-        value:
-          weeklyReports.length > 0
-            ? `${Math.round(average(weeklyReports.map((report) => report.score)))}`
-            : "--",
-        helper: "Short-term form",
-      },
-      {
-        label: "30-day average",
-        value:
-          liveStats && liveStats.average_score !== null
-            ? `${Math.round(liveStats.average_score)}`
-            : `${Math.round(average(sortedReports.slice(0, 6).map((report) => report.score))) || 0}`,
-        helper: liveStats ? "Backend aggregate" : "Latest report window",
-      },
-      {
-        label: liveStats ? "Completed sessions" : "Streak days",
-        value: liveStats ? String(liveStats.completed_sessions) : String(streak),
-        helper: liveStats ? "All-time completed" : "Consecutive active days",
-      },
-    ];
-
     return {
       latestReport,
       stats,
-      tasks: backendTasks,
-      trendPoints,
-      highlights,
+      tasks: backendTasks.map((task) => normalizeTask(task, sortedReports)),
+      trendPointsByType,
+      streak,
       recentReports: sortedReports,
     };
-  }, [backendStats, backendTasks, backendTrendPoints, reportSource, reports]);
+  }, [backendStats, backendTasks, backendTrendPointsByType, reportSource, reports]);
+
+  const taskDetailViews = useMemo<Record<string, WeeklyTaskDetail>>(() => {
+    return Object.fromEntries(
+      Object.entries(taskDetailsById).map(([taskId, detail]) => [
+        taskId,
+        normalizeTaskDetail(detail),
+      ]),
+    );
+  }, [taskDetailsById]);
+
+  const taskRefreshLabel = lastTaskRefreshAt
+    ? `Updated ${formatRefreshTime(lastTaskRefreshAt)}`
+    : reportSource === "live"
+      ? "Live data"
+      : "Preview data";
+
+  const refreshTaskData = useCallback(
+    async ({ silent = false }: { silent?: boolean } = {}) => {
+      if (!user || !isAuthenticated || taskRefreshInFlightRef.current) {
+        return;
+      }
+
+      taskRefreshInFlightRef.current = true;
+      if (!silent) {
+        setIsTaskRefreshing(true);
+      }
+      setTaskRefreshError(null);
+
+      try {
+        const detailIds = Object.keys(taskDetailsById);
+        const [dashboardData, reportsData, tasksData, trendResponses, detailResults] = await Promise.all([
+          meService.getDashboard(),
+          meService.getReports(60),
+          meService.getTasks(5),
+          Promise.all(
+            ACCOUNT_ANALYSIS_TYPES.map((analysisType) =>
+              meService.getTrends({ range: "90d", analysisType }),
+            ),
+          ),
+          Promise.allSettled(detailIds.map((taskId) => meService.getTask(taskId))),
+        ]);
+        const normalizedReports = reportsData.items
+          .map(normalizeReport)
+          .filter((row): row is AccountReport => Boolean(row));
+        const dashboardReports = dashboardData.recent_reports
+          .map(normalizeReport)
+          .filter((row): row is AccountReport => Boolean(row));
+        const nextReports = normalizedReports.length > 0 ? normalizedReports : dashboardReports;
+        const nextTrendPointsByType = normalizeTrendPointsByType(trendResponses);
+        const visibleTaskIds = new Set(tasksData.items.map((task) => task.public_id));
+        const refreshedDetails = detailResults
+          .filter((result): result is PromiseFulfilledResult<TaskDetailRead> => result.status === "fulfilled")
+          .map((result) => result.value)
+          .filter((detail) => visibleTaskIds.has(detail.public_id));
+
+        setBackendStats(dashboardData.stats);
+        setBackendTasks(tasksData.items);
+        setTaskDetailsById((current) => {
+          const next = Object.fromEntries(
+            Object.entries(current).filter(([taskId]) => visibleTaskIds.has(taskId)),
+          ) as Record<string, TaskDetailRead>;
+          for (const detail of refreshedDetails) {
+            next[detail.public_id] = detail;
+          }
+          return next;
+        });
+        setTaskDetailErrors((current) =>
+          Object.fromEntries(
+            Object.entries(current).filter(([taskId]) => visibleTaskIds.has(taskId)),
+          ),
+        );
+        setTaskSubmitErrors((current) =>
+          Object.fromEntries(
+            Object.entries(current).filter(([taskId]) => visibleTaskIds.has(taskId)),
+          ),
+        );
+
+        if (nextReports.length > 0) {
+          setReports(nextReports);
+          setReportSource("live");
+        }
+
+        setBackendTrendPointsByType(
+          hasTrendData(nextTrendPointsByType) ? nextTrendPointsByType : null,
+        );
+
+        setLastTaskRefreshAt(new Date().toISOString());
+      } catch (error) {
+        console.error("Unable to refresh task data.", error);
+        if (!silent) {
+          setTaskRefreshError(getErrorMessage(error, "Could not refresh task data."));
+        }
+      } finally {
+        taskRefreshInFlightRef.current = false;
+        if (!silent) {
+          setIsTaskRefreshing(false);
+        }
+      }
+    },
+    [isAuthenticated, taskDetailsById, user],
+  );
+
+  useEffect(() => {
+    if (!hasInitialized || !user || !isAuthenticated) {
+      return;
+    }
+
+    const refreshIntervalId = window.setInterval(() => {
+      void refreshTaskData({ silent: true });
+    }, 60000);
+
+    return () => {
+      window.clearInterval(refreshIntervalId);
+    };
+  }, [hasInitialized, isAuthenticated, refreshTaskData, user]);
 
   const handleAnnouncementToggle = async (announcement: AccountAnnouncement) => {
     setExpandedAnnouncementId((current) => (current === announcement.id ? null : announcement.id));
@@ -535,6 +867,86 @@ export default function MePage() {
       await meService.markAnnouncementRead(announcement.id);
     } catch (error) {
       console.error("Unable to mark announcement as read.", error);
+    }
+  };
+
+  const handleSubmitTaskReport = async (task: WeeklyTask, reportPublicId: string) => {
+    if (!reportPublicId) {
+      return;
+    }
+
+    setSubmittingTaskId(task.id);
+    setTaskSubmitErrors((current) => {
+      const next = { ...current };
+      delete next[task.id];
+      return next;
+    });
+
+    try {
+      const previousTask = backendTasks.find((item) => item.public_id === task.id);
+      const updatedTask = await meService.submitTaskReport(task.id, reportPublicId);
+      setBackendTasks((current) =>
+        current.map((item) => (item.public_id === updatedTask.public_id ? updatedTask : item)),
+      );
+      setTaskDetailsById((current) => ({
+        ...current,
+        [updatedTask.public_id]: updatedTask,
+      }));
+      setBackendStats((current) =>
+        current
+          ? {
+              ...current,
+              active_tasks:
+                previousTask?.status !== "completed" && updatedTask.status === "completed"
+                  ? Math.max(0, current.active_tasks - 1)
+                  : current.active_tasks,
+            }
+          : current,
+      );
+      setLastTaskRefreshAt(new Date().toISOString());
+    } catch (error) {
+      console.error("Unable to submit report for task.", error);
+      setTaskSubmitErrors((current) => ({
+        ...current,
+        [task.id]: getErrorMessage(
+          error,
+          "Could not submit this report to the task. Please check that it matches the task.",
+        ),
+      }));
+    } finally {
+      setSubmittingTaskId(null);
+    }
+  };
+
+  const handleRequestTaskDetail = async (task: WeeklyTask) => {
+    if (taskDetailsById[task.id] || loadingTaskDetailId === task.id) {
+      return;
+    }
+
+    setLoadingTaskDetailId(task.id);
+    setTaskDetailErrors((current) => {
+      const next = { ...current };
+      delete next[task.id];
+      return next;
+    });
+
+    try {
+      const detail = await meService.getTask(task.id);
+      setBackendTasks((current) =>
+        current.map((item) => (item.public_id === detail.public_id ? detail : item)),
+      );
+      setTaskDetailsById((current) => ({
+        ...current,
+        [detail.public_id]: detail,
+      }));
+    } catch (error) {
+      console.error("Unable to load task detail.", error);
+      setTaskDetailErrors((current) => ({
+        ...current,
+        [task.id]: getErrorMessage(error, "Could not load this task detail."),
+      }));
+    } finally {
+      setLoadingTaskDetailId((current) => (current === task.id ? null : current));
     }
   };
 
@@ -574,10 +986,22 @@ export default function MePage() {
         onToggle={handleAnnouncementToggle}
       />
       <div className="grid gap-6 xl:grid-cols-[1.02fr_0.98fr]">
-        <WeeklyTasksSection tasks={dashboard.tasks} />
+        <WeeklyTasksSection
+          tasks={dashboard.tasks}
+          taskDetailsById={taskDetailViews}
+          loadingTaskDetailId={loadingTaskDetailId}
+          taskDetailErrors={taskDetailErrors}
+          taskSubmitErrors={taskSubmitErrors}
+          submittingTaskId={submittingTaskId}
+          isRefreshing={isTaskRefreshing}
+          refreshLabel={taskRefreshLabel}
+          refreshError={taskRefreshError}
+          onRequestTaskDetail={handleRequestTaskDetail}
+          onSubmitReport={handleSubmitTaskReport}
+          onRefresh={() => void refreshTaskData()}
+        />
         <GrowthTrendsSection
-          points={dashboard.trendPoints}
-          highlights={dashboard.highlights}
+          pointsByType={dashboard.trendPointsByType}
           source={reportSource}
         />
       </div>

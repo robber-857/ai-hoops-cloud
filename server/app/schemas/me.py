@@ -22,12 +22,40 @@ class TaskSummaryRead(BaseModel):
     public_id: UUID
     task_public_id: UUID
     class_public_id: UUID
+    class_name: str
     title: str
+    description: str | None = None
+    analysis_type: AnalysisType | None = None
+    template_code: str | None = None
+    target_config: dict | None = None
     status: str
     progress_percent: float | None = None
     completed_sessions: int
     best_score: float | None = None
+    latest_report_public_id: UUID | None = None
+    completed_at: datetime | None = None
+    last_submission_at: datetime | None = None
     due_at: datetime | None = None
+
+
+class TaskSubmissionReportRead(BaseModel):
+    report_public_id: UUID
+    session_public_id: UUID
+    video_public_id: UUID
+    analysis_type: AnalysisType
+    template_code: str
+    template_version: str | None = None
+    overall_score: float | None = None
+    grade: str | None = None
+    submitted_at: datetime
+
+
+class TaskDetailRead(TaskSummaryRead):
+    submission_reports: list[TaskSubmissionReportRead]
+
+
+class SubmitTaskReportRequest(BaseModel):
+    report_public_id: UUID
 
 
 class AchievementSummaryRead(BaseModel):

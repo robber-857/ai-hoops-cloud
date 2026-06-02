@@ -32,12 +32,36 @@ export type TaskSummaryRead = {
   public_id: string;
   task_public_id: string;
   class_public_id: string;
+  class_name: string;
   title: string;
+  description: string | null;
+  analysis_type: ReportAnalysisType | null;
+  template_code: string | null;
+  target_config: Record<string, unknown> | null;
   status: string;
   progress_percent: number | null;
   completed_sessions: number;
   best_score: number | null;
+  latest_report_public_id: string | null;
+  completed_at: string | null;
+  last_submission_at: string | null;
   due_at: string | null;
+};
+
+export type TaskSubmissionReportRead = {
+  report_public_id: string;
+  session_public_id: string;
+  video_public_id: string;
+  analysis_type: ReportAnalysisType;
+  template_code: string;
+  template_version: string | null;
+  overall_score: number | null;
+  grade: string | null;
+  submitted_at: string;
+};
+
+export type TaskDetailRead = TaskSummaryRead & {
+  submission_reports: TaskSubmissionReportRead[];
 };
 
 export type AchievementSummaryRead = {
@@ -153,6 +177,21 @@ export const meService = {
   getTasks(limit = 20) {
     return apiRequest<MeTasksResponse>(`/me/tasks?limit=${limit}`, {
       method: "GET",
+    });
+  },
+
+  getTask(assignmentPublicId: string) {
+    return apiRequest<TaskDetailRead>(`/me/tasks/${assignmentPublicId}`, {
+      method: "GET",
+    });
+  },
+
+  submitTaskReport(assignmentPublicId: string, reportPublicId: string) {
+    return apiRequest<TaskDetailRead>(`/me/tasks/${assignmentPublicId}/submit-report`, {
+      method: "POST",
+      body: JSON.stringify({
+        report_public_id: reportPublicId,
+      }),
     });
   },
 

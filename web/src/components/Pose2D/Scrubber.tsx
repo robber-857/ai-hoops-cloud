@@ -25,22 +25,53 @@ export default function Scrubber({
 }: Props) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const isDraggingRef = React.useRef(false);
+  const commitTimerRef = React.useRef<number | null>(null);
   const [dragVal, setDragVal] = React.useState<number | null>(null);
 
   const value = dragVal ?? current;
   const max = isFinite(duration) && duration > 0 ? duration : 0;
+  const boundedValue = React.useCallback(
+    (raw: number) => {
+      if (!Number.isFinite(raw)) return 0;
+      return Math.min(Math.max(raw, 0), max);
+    },
+    [max]
+  );
+
+  const updateScrubValue = React.useCallback(
+    (raw: number) => {
+      const nextValue = boundedValue(raw);
+      setDragVal(nextValue);
+      onScrub?.(nextValue);
+      return nextValue;
+    },
+    [boundedValue, onScrub]
+  );
+
+  const commitScrubValue = React.useCallback(
+    (raw: number) => {
+      const nextValue = boundedValue(raw);
+      setDragVal(null);
+      onScrub?.(nextValue);
+      onScrubEnd?.(nextValue);
+    },
+    [boundedValue, onScrub, onScrubEnd]
+  );
 
   React.useEffect(() => {
     const finish = () => {
       if (!isDraggingRef.current) return;
       isDraggingRef.current = false;
 
-      const el = inputRef.current;
-      if (!el) return;
-      const nextValue = Number(el.value);
-
-      setDragVal(null);
-      onScrubEnd?.(nextValue);
+      if (commitTimerRef.current != null) {
+        window.clearTimeout(commitTimerRef.current);
+      }
+      commitTimerRef.current = window.setTimeout(() => {
+        commitTimerRef.current = null;
+        const el = inputRef.current;
+        if (!el) return;
+        commitScrubValue(Number(el.value));
+      }, 0);
     };
 
     window.addEventListener('pointerup', finish, true);
@@ -48,11 +79,14 @@ export default function Scrubber({
     window.addEventListener('touchend', finish, true);
 
     return () => {
+      if (commitTimerRef.current != null) {
+        window.clearTimeout(commitTimerRef.current);
+      }
       window.removeEventListener('pointerup', finish, true);
       window.removeEventListener('mouseup', finish, true);
       window.removeEventListener('touchend', finish, true);
     };
-  }, [onScrubEnd]);
+  }, [commitScrubValue]);
 
   return (
     <div className="w-full px-2 py-2">
@@ -68,27 +102,29 @@ export default function Scrubber({
           max={max}
           value={Math.min(value, max)}
           disabled={max <= 0}
+          aria-label="Video timeline"
           onPointerDown={() => {
             isDraggingRef.current = true;
           }}
           onChange={(e) => {
-            const nextValue = Number(e.target.value);
-            setDragVal(nextValue);
-            onScrub?.(nextValue);
+            updateScrubValue(Number(e.target.value));
           }}
-          onMouseUp={(e) => {
+          onKeyUp={(e) => {
+            const commitKeys = new Set([
+              'ArrowLeft',
+              'ArrowRight',
+              'Home',
+              'End',
+              'PageUp',
+              'PageDown',
+            ]);
+            if (!commitKeys.has(e.key)) return;
+            commitScrubValue(Number((e.target as HTMLInputElement).value));
+          }}
+          onBlur={(e) => {
             if (!isDraggingRef.current) return;
             isDraggingRef.current = false;
-            const nextValue = Number((e.target as HTMLInputElement).value);
-            setDragVal(null);
-            onScrubEnd?.(nextValue);
-          }}
-          onTouchEnd={(e) => {
-            if (!isDraggingRef.current) return;
-            isDraggingRef.current = false;
-            const nextValue = Number((e.target as HTMLInputElement).value);
-            setDragVal(null);
-            onScrubEnd?.(nextValue);
+            commitScrubValue(Number((e.target as HTMLInputElement).value));
           }}
           className="analysis-range h-2.5 w-full"
         />
