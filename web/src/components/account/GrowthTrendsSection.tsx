@@ -85,7 +85,11 @@ function scoreToY(score: number): number {
 }
 
 function dayToX(index: number): number {
-  return CHART_LEFT + (index / 6) * (CHART_RIGHT - CHART_LEFT);
+  return CHART_LEFT + ((index + 0.5) / 7) * (CHART_RIGHT - CHART_LEFT);
+}
+
+function dayBoundaryToX(index: number): number {
+  return CHART_LEFT + (index / 7) * (CHART_RIGHT - CHART_LEFT);
 }
 
 function startOfLocalDay(date: Date): Date {
@@ -299,11 +303,11 @@ function TrendPanel({
               />
             );
           })}
-          {weekPoints.map((point) => (
+          {Array.from({ length: 8 }, (_, index) => (
             <line
-              key={`${point.dateKey}-day-line`}
-              x1={point.x}
-              x2={point.x}
+              key={`day-boundary-${index}`}
+              x1={dayBoundaryToX(index)}
+              x2={dayBoundaryToX(index)}
               y1={CHART_TOP}
               y2={CHART_BOTTOM}
               stroke="rgba(255,255,255,0.045)"
@@ -311,7 +315,7 @@ function TrendPanel({
               vectorEffect="non-scaling-stroke"
             />
           ))}
-          {weekPoints.map((point) =>
+          {weekPoints.map((point, index) =>
             point.score !== null && point.y !== null ? (
               <rect
                 key={`${point.dateKey}-bar`}
@@ -321,7 +325,7 @@ function TrendPanel({
                 height={CHART_BOTTOM - point.y}
                 rx="1.4"
                 fill={`url(#${config.gradientId})`}
-                opacity={activeIndex === null || activeIndex === weekPoints.indexOf(point) ? 0.86 : 0.38}
+                opacity={activeIndex === null || activeIndex === index ? 0.86 : 0.38}
               />
             ) : (
               <circle
@@ -371,9 +375,14 @@ function TrendPanel({
           )}
         </svg>
 
-        <div className="absolute inset-x-9 bottom-0 grid grid-cols-7 border-t border-white/8 bg-black/24 px-1 py-2 text-center">
+        <div className="absolute inset-x-0 bottom-0 h-[24%] border-t border-white/8 bg-black/24">
           {weekPoints.map((point) => (
-            <div key={`${point.dateKey}-label`} className="min-w-0 px-0.5" title={point.fullLabel}>
+            <div
+              key={`${point.dateKey}-label`}
+              className="absolute top-2 w-12 -translate-x-1/2 text-center"
+              style={{ left: `${point.x}%` }}
+              title={point.fullLabel}
+            >
               <div className="truncate text-[0.62rem] uppercase tracking-[0.08em] text-white/44">
                 {point.weekdayLabel}
               </div>
