@@ -46,6 +46,8 @@ export type WeeklyTask = {
   progress: number;
   status: "done" | "in_progress" | "pending";
   valueLabel: string;
+  progressDetailLabel: string;
+  scoreGateLabel: string | null;
   dueLabel: string;
   actionHref: string;
   className: string;

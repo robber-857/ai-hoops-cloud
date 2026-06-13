@@ -40,6 +40,12 @@ type SupabaseUploadResult = {
   signedUrl: string;
 };
 
+type LocalVideoMetadata = {
+  duration_seconds?: number;
+  width?: number;
+  height?: number;
+};
+
 function getUploadErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message;
@@ -58,6 +64,40 @@ function getUploadErrorMessage(error: unknown): string {
 function isFetchNetworkError(error: unknown): boolean {
   const message = getUploadErrorMessage(error).toLowerCase();
   return message === 'failed to fetch' || message.includes('networkerror');
+}
+
+function readLocalVideoMetadata(file: File): Promise<LocalVideoMetadata> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    let settled = false;
+
+    const finish = (metadata: LocalVideoMetadata) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      video.removeAttribute('src');
+      video.load();
+      URL.revokeObjectURL(url);
+      resolve(metadata);
+    };
+
+    const timeoutId = window.setTimeout(() => finish({}), 8000);
+
+    video.preload = 'metadata';
+    video.muted = true;
+    video.playsInline = true;
+    video.onloadedmetadata = () => {
+      finish({
+        duration_seconds: Number.isFinite(video.duration) ? video.duration : undefined,
+        width: video.videoWidth || undefined,
+        height: video.videoHeight || undefined,
+      });
+    };
+    video.onerror = () => finish({});
+    video.src = url;
+    video.load();
+  });
 }
 
 async function uploadThroughLocalProxy(
@@ -140,6 +180,7 @@ export default function UploadDropzone({
       setErrorMsg('');
 
       try {
+        const metadataPromise = readLocalVideoMetadata(file);
         const templates = getAllTemplates(analysisType);
         const activeTemplate =
           templates.find((template) => template.templateId === templateCode) ?? templates[0];
@@ -156,11 +197,13 @@ export default function UploadDropzone({
         });
 
         const storageUpload = await uploadVideoToStorage(file, uploadInit);
+        const localVideoMetadata = await metadataPromise;
 
         const completedUpload = await uploadService.complete({
           upload_task_public_id: uploadInit.upload_task_public_id,
           original_file_name: file.name,
           url: storageUpload.signedUrl,
+          ...localVideoMetadata,
         });
 
         const videoUrl =

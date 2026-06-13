@@ -341,21 +341,39 @@ function getTaskActionHref(task: TaskSummaryRead, analysisType: AccountAnalysisT
   return `${baseHref}?${searchParams.toString()}`;
 }
 
-function getTargetLabel(task: TaskSummaryRead): string {
-  const targetConfig = task.target_config ?? {};
-  const targetSessions = Number(targetConfig.target_sessions ?? 0);
-  const targetScore = Number(targetConfig.target_score ?? 0);
+type TaskTargetMetrics = {
+  targetSessions: number;
+  targetScore: number;
+};
 
-  if (targetSessions > 0 && targetScore > 0) {
+function getTaskTargetMetrics(task: TaskSummaryRead): TaskTargetMetrics {
+  const targetConfig = task.target_config ?? {};
+  const rawTargetSessions = Number(targetConfig.target_sessions ?? 0);
+  const targetScore = Number(targetConfig.target_score ?? 0);
+  return {
+    targetSessions: rawTargetSessions > 0 ? rawTargetSessions : 1,
+    targetScore: targetScore > 0 ? targetScore : 0,
+  };
+}
+
+function getTargetLabel({ targetSessions, targetScore }: TaskTargetMetrics): string {
+  if (targetScore > 0) {
     return `${targetSessions} sessions / ${Math.round(targetScore)} pts`;
   }
-  if (targetSessions > 0) {
-    return `${targetSessions} sessions`;
+  return `${targetSessions} sessions`;
+}
+
+function getProgressDetailLabel(task: TaskSummaryRead, targets: TaskTargetMetrics): string {
+  return `${task.completed_sessions}/${targets.targetSessions} sessions`;
+}
+
+function getScoreGateLabel(task: TaskSummaryRead, targets: TaskTargetMetrics): string | null {
+  if (targets.targetScore <= 0) {
+    return null;
   }
-  if (targetScore > 0) {
-    return `${Math.round(targetScore)} pts target`;
-  }
-  return "Coach target";
+
+  const bestScore = task.best_score !== null ? Math.round(task.best_score) : 0;
+  return `Score gate ${bestScore}/${Math.round(targets.targetScore)} pts`;
 }
 
 function findCandidateReports(task: TaskSummaryRead, reports: AccountReport[]): AccountReport[] {
@@ -417,6 +435,7 @@ function normalizeTask(task: TaskSummaryRead, reports: AccountReport[]): WeeklyT
   const templateName = getTemplateName(task.template_code, analysisType);
   const candidateReports = findCandidateReports(task, reports);
   const candidateReport = candidateReports[0] ?? null;
+  const targets = getTaskTargetMetrics(task);
   const status: WeeklyTask["status"] =
     task.status === "completed"
       ? "done"
@@ -438,17 +457,16 @@ function normalizeTask(task: TaskSummaryRead, reports: AccountReport[]): WeeklyT
       `Assigned for ${task.class_name} using ${templateName}.`,
     progress,
     status,
-    valueLabel:
-      task.best_score !== null
-        ? `${Math.round(task.best_score)} pts`
-        : `${task.completed_sessions} sessions`,
+    valueLabel: getProgressDetailLabel(task, targets),
+    progressDetailLabel: getProgressDetailLabel(task, targets),
+    scoreGateLabel: getScoreGateLabel(task, targets),
     dueLabel,
     actionHref: getTaskActionHref(task, analysisType),
     className: task.class_name,
     analysisType,
     templateCode: task.template_code,
     templateName,
-    targetLabel: getTargetLabel(task),
+    targetLabel: getTargetLabel(targets),
     completedSessions: task.completed_sessions,
     candidateReportId: candidateReport?.id ?? null,
     candidateReportLabel: candidateReport
@@ -985,7 +1003,7 @@ export default function MePage() {
         expandedId={expandedAnnouncementId}
         onToggle={handleAnnouncementToggle}
       />
-      <div className="grid gap-6 xl:grid-cols-[1.02fr_0.98fr]">
+      <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)]">
         <WeeklyTasksSection
           tasks={dashboard.tasks}
           taskDetailsById={taskDetailViews}

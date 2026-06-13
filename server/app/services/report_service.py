@@ -309,7 +309,7 @@ class ReportService:
         session_progress = min(assignment.completed_sessions / max(target_sessions, 1), 1)
         best_score = _numeric_to_float(assignment.best_score) or 0
         score_progress = 1.0 if target_score <= 0 else min(best_score / target_score, 1)
-        assignment.progress_percent = round(max(session_progress, score_progress) * 100, 2)
+        assignment.progress_percent = round(min(session_progress, score_progress) * 100, 2)
 
         meets_sessions = assignment.completed_sessions >= target_sessions
         meets_score = target_score <= 0 or best_score >= target_score

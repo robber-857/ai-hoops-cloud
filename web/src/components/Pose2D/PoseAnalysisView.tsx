@@ -26,7 +26,9 @@ import type { AnalysisType, AngleData } from "./types";
 
 export type { AnalysisType, AngleData } from "./types";
 
-const MIN_ANALYSIS_FRAMES = 8;
+const MIN_ANALYSIS_FRAMES = 12;
+const MIN_TEMPORAL_ANALYSIS_FRAMES = 12;
+const MIN_SCORING_METRICS = 3;
 const MIN_ANALYSIS_COVERAGE_PERCENT = 90;
 const LOOP_TOLERANCE_SECONDS = 0.25;
 
@@ -87,6 +89,27 @@ function buildCaptureStats(frames: FrameSample[], duration: number): CaptureStat
     latestTime,
     ready,
   };
+}
+
+function buildTemporalStats(frames: DribbleFrame[], duration: number): CaptureStats {
+  if (frames.length === 0) return EMPTY_CAPTURE_STATS;
+
+  const frameSamples: FrameSample[] = frames.map((frame) => ({
+    time: frame.t,
+    angles: [{ name: "temporalFrame", value: 1 }],
+  }));
+  const stats = buildCaptureStats(frameSamples, duration);
+
+  return {
+    ...stats,
+    ready:
+      frames.length >= MIN_TEMPORAL_ANALYSIS_FRAMES &&
+      (duration <= 0 || stats.coveragePercent >= MIN_ANALYSIS_COVERAGE_PERCENT),
+  };
+}
+
+function needsTemporalTimeline(analysisType: AnalysisType): boolean {
+  return analysisType === "dribbling" || analysisType === "training";
 }
 
 type Props = {
@@ -202,6 +225,7 @@ export default function PoseAnalysisView({
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [displayAngles, setDisplayAngles] = useState<AngleData[]>([]);
   const [captureStats, setCaptureStats] = useState<CaptureStats>(EMPTY_CAPTURE_STATS);
+  const [temporalStats, setTemporalStats] = useState<CaptureStats>(EMPTY_CAPTURE_STATS);
   const [autoAnalysisProgress, setAutoAnalysisProgress] =
     useState<AutoAnalysisProgress>(EMPTY_AUTO_ANALYSIS_PROGRESS);
   const [analysisWarning, setAnalysisWarning] = useState<string | null>(null);
@@ -244,6 +268,7 @@ export default function PoseAnalysisView({
     autoAnalysisFinishedAtRef.current = null;
     setIsProcessing(false);
     setCaptureStats(EMPTY_CAPTURE_STATS);
+    setTemporalStats(EMPTY_CAPTURE_STATS);
     setAutoAnalysisProgress(EMPTY_AUTO_ANALYSIS_PROGRESS);
     setAnalysisWarning(null);
   }, [file, propVideoUrl]);
@@ -261,6 +286,7 @@ export default function PoseAnalysisView({
           return;
         }
         dribbleFramesRef.current.push(frame);
+        setTemporalStats(buildTemporalStats(dribbleFramesRef.current, duration));
       } else if (analysisType === "training") {
         const currentData = trainingFramesRef.current;
         if (
@@ -270,9 +296,10 @@ export default function PoseAnalysisView({
           return;
         }
         trainingFramesRef.current.push(frame);
+        setTemporalStats(buildTemporalStats(trainingFramesRef.current, duration));
       }
     },
-    [isPlaying, analysisType]
+    [isPlaying, analysisType, duration]
   );
 
   const handleAnglesUpdate = useCallback(
@@ -311,7 +338,14 @@ export default function PoseAnalysisView({
     setIsPlaying(false);
     setIsProcessing(false);
     setCaptureStats(buildCaptureStats(allFramesRef.current, duration));
-  }, [duration]);
+    const currentTemporalFrames =
+      analysisType === "dribbling"
+        ? dribbleFramesRef.current
+        : analysisType === "training"
+          ? trainingFramesRef.current
+          : [];
+    setTemporalStats(buildTemporalStats(currentTemporalFrames, duration));
+  }, [analysisType, duration]);
 
   const handleAutoAnalysisProgress = useCallback((progress: AutoAnalysisProgress) => {
     setAutoAnalysisProgress(progress);
@@ -353,12 +387,14 @@ export default function PoseAnalysisView({
       setDuration(analyzedDuration);
 
       const latestStats = buildCaptureStats(frames, analyzedDuration);
+      const latestTemporalStats = buildTemporalStats(drillFrames, analyzedDuration);
       setCaptureStats(latestStats);
+      setTemporalStats(needsTemporalTimeline(analysisType) ? latestTemporalStats : EMPTY_CAPTURE_STATS);
       autoAnalysisFinishedAtRef.current = autoAnalysisFinishedAtRef.current ?? new Date().toISOString();
       setAnalysisWarning(
-        latestStats.ready
+        latestStats.ready && (!needsTemporalTimeline(analysisType) || latestTemporalStats.ready)
           ? null
-          : "Automatic analysis finished, but it did not capture enough pose frames. Try a clearer clip or play the clip once manually."
+          : "Automatic analysis finished, but it did not capture enough usable motion frames. Try a clearer clip or play the clip once manually."
       );
     },
     [analysisType]
@@ -394,6 +430,24 @@ export default function PoseAnalysisView({
       return;
     }
 
+    const currentTemporalFrames =
+      analysisType === "dribbling"
+        ? dribbleFramesRef.current
+        : analysisType === "training"
+          ? trainingFramesRef.current
+          : [];
+    const latestTemporalStats = buildTemporalStats(currentTemporalFrames, duration);
+    setTemporalStats(
+      needsTemporalTimeline(analysisType) ? latestTemporalStats : EMPTY_CAPTURE_STATS,
+    );
+
+    if (needsTemporalTimeline(analysisType) && !latestTemporalStats.ready) {
+      setAnalysisWarning(
+        `${analysisType} reports need a full motion sequence. Collected ${currentTemporalFrames.length}/${MIN_TEMPORAL_ANALYSIS_FRAMES} sequence frames; wait for automatic analysis or play the clip once manually.`
+      );
+      return;
+    }
+
     setIsGeneratingReport(true);
 
     try {
@@ -419,49 +473,48 @@ export default function PoseAnalysisView({
       if (analysisType === "dribbling") {
         const dribbleFrames = dribbleFramesRef.current;
 
-        if (dribbleFrames.length > 10) {
-          const { computedValues, handUsed } = aggregateDribbleSequence(
-            dribbleFrames,
-            activeTemplate
-          );
-          detectedHandness = handUsed;
+        const { computedValues, handUsed } = aggregateDribbleSequence(
+          dribbleFrames,
+          activeTemplate
+        );
+        detectedHandness = handUsed;
 
-          const dynamicMetrics: AngleData[] = Object.entries(computedValues).map(
-            ([key, value]) => ({
-              name: key,
-              value,
-              unit: "calc",
-            })
-          );
+        const dynamicMetrics: AngleData[] = Object.entries(computedValues).map(
+          ([key, value]) => ({
+            name: key,
+            value,
+            unit: "calc",
+          })
+        );
 
-          const staticMetrics = aggregateFrames(allFramesRef.current);
-          finalInputForScoring = [...staticMetrics, ...dynamicMetrics];
-        } else {
-          console.warn("Not enough dribble frames. Fallback to static.");
-          finalInputForScoring = aggregateFrames(allFramesRef.current);
-        }
+        const staticMetrics = aggregateFrames(allFramesRef.current);
+        finalInputForScoring = [...staticMetrics, ...dynamicMetrics];
       } else if (analysisType === "training") {
         const trainingFrames = trainingFramesRef.current;
 
-        if (trainingFrames.length > 10) {
-          console.log("Analyzing Training Data:", trainingFrames.length, "frames");
-          const computedStats = aggregateTrainingSequence(trainingFrames, activeTemplate);
+        console.log("Analyzing Training Data:", trainingFrames.length, "frames");
+        const computedStats = aggregateTrainingSequence(trainingFrames, activeTemplate);
 
-          const dynamicMetrics: AngleData[] = Object.entries(computedStats)
-            .filter(([, value]) => value !== undefined)
-            .map(([key, value]) => ({
-              name: key,
-              value: value as number,
-              unit: "calc",
-            }));
+        const dynamicMetrics: AngleData[] = Object.entries(computedStats)
+          .filter(([, value]) => value !== undefined)
+          .map(([key, value]) => ({
+            name: key,
+            value: value as number,
+            unit: "calc",
+          }));
 
-          const staticMetrics = aggregateFrames(allFramesRef.current);
-          finalInputForScoring = [...staticMetrics, ...dynamicMetrics];
-        } else {
-          finalInputForScoring = aggregateFrames(allFramesRef.current);
-        }
+        const staticMetrics = aggregateFrames(allFramesRef.current);
+        finalInputForScoring = [...staticMetrics, ...dynamicMetrics];
       } else {
         finalInputForScoring = aggregateFrames(allFramesRef.current);
+      }
+
+      if (finalInputForScoring.length < MIN_SCORING_METRICS) {
+        setAnalysisWarning(
+          `Only ${finalInputForScoring.length}/${MIN_SCORING_METRICS} scoring metrics were collected. Use a clearer full-body clip and try again.`
+        );
+        setIsGeneratingReport(false);
+        return;
       }
 
       const realScoreResult = calculateRealScore(activeTemplate, finalInputForScoring, {
@@ -505,6 +558,16 @@ export default function PoseAnalysisView({
           timeline_frames: allFramesRef.current.length,
           timeline_duration_seconds: duration,
           timeline_coverage_percent: Math.round(latestStats.coveragePercent * 100) / 100,
+          temporal_frames: currentTemporalFrames.length,
+          temporal_coverage_percent:
+            Math.round(latestTemporalStats.coveragePercent * 100) / 100,
+          min_analysis_frames: MIN_ANALYSIS_FRAMES,
+          min_temporal_analysis_frames: MIN_TEMPORAL_ANALYSIS_FRAMES,
+          min_scoring_metrics: MIN_SCORING_METRICS,
+          analysis_data_ready:
+            latestStats.ready &&
+            (!needsTemporalTimeline(analysisType) || latestTemporalStats.ready) &&
+            finalInputForScoring.length >= MIN_SCORING_METRICS,
           auto_analysis_status: autoAnalysisProgress.status,
           auto_analysis_processed_frames: autoAnalysisProgress.processedFrames,
           auto_analysis_total_frames: autoAnalysisProgress.totalFrames,
@@ -536,20 +599,31 @@ export default function PoseAnalysisView({
   const isAutoAnalyzing =
     autoAnalysisProgress.status === "loading" || autoAnalysisProgress.status === "analyzing";
   const isAutoError = autoAnalysisProgress.status === "error";
+  const requiresTemporal = needsTemporalTimeline(analysisType);
+  const analysisDataReady = captureStats.ready && (!requiresTemporal || temporalStats.ready);
   const progressPercent = Math.round(
-    captureStats.ready ? captureStats.coveragePercent : autoAnalysisProgress.coveragePercent
+    requiresTemporal && captureStats.ready && !temporalStats.ready
+      ? temporalStats.coveragePercent
+      : captureStats.ready
+        ? captureStats.coveragePercent
+        : autoAnalysisProgress.coveragePercent
   );
-  const displayedSamples = captureStats.ready
-    ? captureStats.samples
-    : Math.max(captureStats.samples, autoAnalysisProgress.processedFrames);
-  const isCollectingFrames = (isAutoAnalyzing || isPlaying || isProcessing) && !captureStats.ready;
-  const AnalysisStatusIcon = captureStats.ready
+  const displayedSamples =
+    requiresTemporal && captureStats.ready && !temporalStats.ready
+      ? temporalStats.samples
+      : captureStats.ready
+        ? captureStats.samples
+        : Math.max(captureStats.samples, autoAnalysisProgress.processedFrames);
+  const isCollectingFrames = (isAutoAnalyzing || isPlaying || isProcessing) && !analysisDataReady;
+  const AnalysisStatusIcon = analysisDataReady
     ? CheckCircle2
     : isCollectingFrames
       ? Loader2
       : AlertCircle;
-  const analysisTitle = captureStats.ready
-    ? "Analysis frames ready"
+  const analysisTitle = analysisDataReady
+    ? "Analysis data ready"
+    : captureStats.ready && requiresTemporal && !temporalStats.ready
+      ? "Motion sequence needs more frames"
     : isAutoAnalyzing
       ? "Analyzing full video"
       : isAutoError
@@ -559,8 +633,10 @@ export default function PoseAnalysisView({
       : captureStats.samples > 0
         ? "Analysis needs a full pass"
         : "Waiting for video frames";
-  const analysisDescription = captureStats.ready
-    ? "The report will use the captured MediaPipe timeline from this clip."
+  const analysisDescription = analysisDataReady
+    ? "The report will use a full-video MediaPipe timeline with enough scoring data."
+    : captureStats.ready && requiresTemporal && !temporalStats.ready
+      ? "This mode needs continuous motion frames for dynamic metrics. Let auto analysis finish or play the clip once manually."
     : isAutoAnalyzing
       ? "The uploaded clip is being scanned frame by frame. View Analysis unlocks when it finishes."
       : isAutoError
@@ -573,12 +649,14 @@ export default function PoseAnalysisView({
       ? `${autoAnalysisProgress.processedFrames}/${autoAnalysisProgress.totalFrames} frames · ${autoAnalysisProgress.currentTime.toFixed(1)}s / ${autoAnalysisProgress.duration.toFixed(1)}s`
       : isAutoAnalyzing
         ? autoAnalysisProgress.message ?? "Preparing full-video analysis"
+        : requiresTemporal
+          ? `${captureStats.samples} pose frames / ${temporalStats.samples} motion frames`
         : duration > 0
           ? `${captureStats.coveredSeconds.toFixed(1)}s / ${duration.toFixed(1)}s covered`
           : `${captureStats.samples} frames captured`;
   const reportButtonLabel = isGeneratingReport
     ? "Saving..."
-    : captureStats.ready
+    : analysisDataReady
       ? "View Analysis Report"
       : "Collecting frames";
 

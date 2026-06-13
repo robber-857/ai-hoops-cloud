@@ -1,6 +1,6 @@
 # AI 篮球训练营开发状态说明
 
-最后更新：2026-06-02
+最后更新：2026-06-13
 
 本文档只保留当前仍然有指导价值的开发状态。早期已经完成、已经被后续实现覆盖，或与当前产品状态矛盾的历史内容已清理。下一轮具体任务见 `docs/training-camp-backend-next-iteration-task-breakdown.md`。
 
@@ -22,10 +22,15 @@
 - Admin announcement 发布/通知生成/归档流程补齐后端回归测试第一版：覆盖班级公告发布后给活跃成员生成通知、Admin 列表返回 notification_count，以及归档公告不删除既有通知。
 - Student Weekly tasks 详情弹窗修复长内容可用性：弹窗正文增加内部滚动区，提交历史单独限制高度，底部 `Start task upload` / `Submit selected report` 操作区固定在弹窗底部，避免提交记录过多时看不到提交按钮。
 - Student `Growth trends` 完成第二版 UI 和数据口径优化：趋势图优先展示最近报告的单次 `0-100` 分数，不再优先用后端日聚合 best score；图表改为折线 + 分数柱组合，增加 Latest / Best / Change 摘要、明确非累计说明和可访问 tooltip。
-- Student `Growth trends` 完成第三步周视图拆分：趋势图按日级别固定展示 7 天窗口，顶部提供上一周 / 下一周 / This week 筛选；Shooting、Dribbling、Training 分成三个独立图表，不再把运球、投篮和训练混在同一条趋势线中；前端优先并行读取三类 `/me/trends?analysis_type=...` 日聚合数据，缺失时用最近报告按日期/类型聚合兜底。
+- Student `Growth trends` 完成第三步周视图与训练类型切换：趋势图按日级别固定展示 7 天窗口，顶部提供上一周 / 下一周 / This week 筛选；Shooting、Dribbling、Training 改为分段按钮切换同一张趋势图，不再把三类趋势图依次堆叠或混在同一条趋势线中；前端优先并行读取三类 `/me/trends?analysis_type=...` 日聚合数据，缺失时用最近报告按日期/类型聚合兜底；日期槽位、柱子、节点和命中区已统一按格子中点对齐。
+- Student `Growth trends` 完成第四步 7D / 30D 折线图切换：图表从“折线 + 分数柱”改为单一折线/节点/淡色面积表达，移除柱状图；新增 7 天与 30 天日级窗口切换，30 天横轴按每日 slot 生成；训练类型切换加入用户手动选择保护，避免点击 Shooting / Training 后又被自动切回有数据的 Dribbling；横轴日期 label 使用日 slot 中心点作为理想位置，并对首尾可见范围做 `clamp()` 限制，降低窄屏裁切；顶部 header 已删除 `Live reports` badge，标题/说明和 7D/30D/日期选择控件分区排列，避免在右侧窄栏或移动端被日期控件挤压折叠。
+- Student `Weekly tasks` 区域完成固定面板与内部滚动第一版：任务很多时不再无限撑高个人中心页面，任务列表在自适应高度容器中滚动；桌面端与 `Growth trends` 使用同一套视口高度节奏对齐，移动端按钮、标题和任务元数据会自动换行。
+- Student 个人中心移动端自适应收口完成第一轮：外层 shell、Profile、Announcements、Recent reports 补齐 `min-w-0`、断词/截断、移动端按钮全宽和更紧凑的圆角/内边距，降低窄屏下边框重叠和内容横向溢出的概率。
 - Pose2D 上传/端侧分析链路完成第二步增强：在等待/分析中状态、循环播放数据保护基础上，新增隐藏自动整段 MediaPipe 采集组件；上传完成进入分析页后会自动从 0 到结尾抽帧生成整段 timeline，`View Analysis Report` 使用自动采集完成的数据进行评分，自动分析失败时仍保留手动播放采集兜底；自动分析已补 metadata、seek 和首帧 decodable frame 等待 timeout，隐藏分析视频改为 `preload="auto"`，避免 0 秒首帧或视频解码等待卡死；上传页提示文案已改为上传后自动分析；报告保存时会在 `summary_data` 记录 `capture_source`、timeline 帧数/覆盖率和自动分析帧统计，并写入自动分析起止时间，方便后续排查评分是否来自整段自动采集；视频时间轴 Scrubber 已修复单击 seek 需要双击才生效的问题，单击或键盘调整都会提交一次明确的 seek 请求。
+- Pose2D 上传后画质“被压缩”问题完成代码层排查与预览层修复：当前上传链路前端直接上传原始 `File` 到 Supabase，本地代理也原样上传文件，后端只登记 metadata，不存在转码/压缩逻辑；此前分析页把视频帧重绘到 canvas 且隐藏原生 video，导致大分辨率视频在预览框内二次采样后看起来变糊；现在原生 `<video>` 负责显示画面，canvas 只覆盖骨架与角度。
+- Pose2D 上传完成时补充原始视频 metadata 记录：前端在上传完成前读取本地视频 `duration_seconds`、`width`、`height` 并随 `/uploads/complete` 提交，写入后端 `videos` 记录，方便后续用 `file_size`、分辨率和时长对比确认文件是否真的被压缩。
 - Admin Task / Announcement / Notification 筛选区完成 UI 修复第一步：三页筛选控件已从标题右侧拆出，改为独立可换行筛选栏，所有筛选项增加明确标签，keyword 输入并入同一表单，避免在带右侧详情栏或中等宽度视口下被挤压遮挡。
-- Task 进度规则已确认：默认 `target_sessions=1` 且 `target_score=0` 时，学生提交一个 completed report 会让 assignment 达到 100%；如果 Coach 配置了更高 `target_sessions` 或 `target_score`，进度会按完成次数和最佳分数取较高进度，不是简单一提交就 100%。
+- Task 进度规则已调整为严格完成度：默认 `target_sessions=1` 且 `target_score=0` 时，学生提交一个 completed report 会让 assignment 达到 100%；如果 Coach 配置了 `target_sessions` 和/或 `target_score`，进度会按已配置目标中最低的达成率计算，避免高分但次数不足时显示 100%；完成状态仍要求所有配置目标同时达标。
 
 用户已在 2026-05-03 手动验证：
 
@@ -64,9 +69,9 @@
 
 当前剩余问题：
 
-- Student 个人中心 `Growth trends` 已完成视觉升级；后续重点转为真实数据边界、前端自动化测试和浏览器视觉回归。
+- Student 个人中心 `Growth trends` 已完成单图训练类型切换、7D/30D 日级折线视图和柱状图移除；后续重点转为真实数据边界、前端自动化测试和浏览器视觉回归。
 - Student announcement 目前是个人中心内聚合入口，尚未建设独立消息中心页面、批量已读和更完整的前端自动化测试。
-- Student Weekly tasks 已接真实数据并补齐任务提交链路第一版：可从任务卡进入对应训练上传页，或在任务详情弹窗中选择匹配报告提交到任务并刷新状态；提交历史、失败重试、API handler 边界测试、刷新策略、长内容滚动和固定底部提交操作区也已完成第一版；后续仍需要更完整的页面/浏览器端到端测试。
+- Student Weekly tasks 已接真实数据并补齐任务提交链路第一版：可从任务卡进入对应训练上传页，或在任务详情弹窗中选择匹配报告提交到任务并刷新状态；提交历史、失败重试、API handler 边界测试、刷新策略、详情弹窗长内容滚动、固定底部提交操作区、任务列表固定面板和内部滚动也已完成第一版；后续仍需要更完整的页面/浏览器端到端测试。
 
 ### 3. Coach 初版能力
 
@@ -175,7 +180,7 @@ Admin 当前已经可以进行训练营后台管理：
 ### P1 / P2 缺口
 
 - Student 个人中心增强已完成第一版：`Growth trends` 时间-分数折线图、`Weekly tasks` 接真实任务、任务提交历史/失败重试/刷新策略、announcement 消息提醒入口；后续重点是测试和独立详情页。
-- Student `Growth trends` line chart 已完成周视图和三板块拆分：现在按 7 天日级别窗口分别展示 Shooting / Dribbling / Training，顶部可切换周；后续重点是浏览器视觉回归、移动端边界和前端自动化测试。
+- Student `Growth trends` line chart 已完成 7D / 30D 日级视图和训练类型切换：现在按单张折线图展示 Shooting / Dribbling / Training，用户可切换训练类型和时间范围；图表已移除柱状图，节点、tooltip 命中区和日期槽位按日 slot 对齐；后续重点是真机/浏览器视觉回归和前端自动化测试。
 - Admin class 成员添加体验已完成第一版：从填写 `user public id` 改为按用户名添加，并支持批量添加；后续重点是搜索选择器、上传名单和更完整测试。
 - Admin announcement 起止时间填写体验需要优化：从手写 `ISO datetime` 改为日期 + 小时/分钟选择，避免运营人员不知道该按什么格式填写。
 - Admin 用户创建/编辑重复字段错误需要优化：当用户名、邮箱或手机号重复时，必须指出具体重复项，而不是返回笼统错误。
@@ -187,9 +192,9 @@ Admin 当前已经可以进行训练营后台管理：
 ### 技术债与后续增强
 
 - 后端测试覆盖仍不足，尤其是模板同步、任务/通知监督、Coach 公告和更多权限边界等后台能力。
-- 上传链路还需要接入 Supabase signed upload。
+- 上传链路当前使用 Supabase 直接上传/本地代理兜底，未发现转码压缩；后续仍需要推进更安全的 signed upload 策略。
 - AI 分析链路仍需要从前端/同步流程逐步演进为后端异步任务。
-- 当前视频上传/分析仍是端侧计算，但已经从必须手动播放到底推进为上传后自动整段 MediaPipe 抽帧采集第一版；后续目标是补浏览器端真实视频回归，并逐步迁移为后端异步分析任务。
+- 当前视频上传/分析仍是端侧计算，但已经从必须手动播放到底推进为上传后自动整段 MediaPipe 抽帧采集第一版；分析预览已改为原生 video 显示 + canvas 覆盖层，上传完成会记录本地视频宽高/时长 metadata；后续目标是补浏览器端真实视频回归，并逐步迁移为后端异步分析任务。
 - 模板示例视频仍需要后台上传、可见性控制和发布审核流程。
 
 ## 最近验证记录
@@ -217,7 +222,11 @@ Admin 当前已经可以进行训练营后台管理：
 - 本轮追加验证：`npm.cmd run build` 通过；`git diff --check` 通过，仅有 Windows 换行提示；覆盖 Pose2D 报告保存自动/手动采样来源、timeline 覆盖率和自动分析时间元数据。
 - 本轮追加验证：`npx.cmd tsc --noEmit --pretty false --incremental false` 通过；`npm.cmd run lint` 通过，仅有既存 warning；`npm.cmd run build` 通过；`git diff --check` 通过，仅有 Windows 换行提示；覆盖 Admin Task / Announcement / Notification 筛选区独立可换行布局修复。
 - 本轮追加验证：`npx.cmd tsc --noEmit --pretty false --incremental false` 通过；`npm.cmd run lint` 通过，仅有既存 warning；`npm.cmd run build` 通过；`git diff --check` 通过，仅有 Windows 换行提示；覆盖 Pose2D Scrubber 单击/键盘 seek 请求修复。
-- 本轮追加验证：`npx.cmd tsc --noEmit --pretty false --incremental false` 通过；`npm.cmd run lint` 通过，仅有既存 warning；`npm.cmd run build` 通过；`git diff --check` 通过，仅有 Windows 换行提示；覆盖 Student `Growth trends` 7 天周视图、周切换和 Shooting / Dribbling / Training 三板块拆分。
+- 本轮追加验证：`npx.cmd tsc --noEmit --pretty false --incremental false` 通过；`npm.cmd run lint` 通过，仅有既存 warning；`npm.cmd run build` 通过；`git diff --check` 通过，仅有 Windows 换行提示；覆盖 Student `Growth trends` 7 天周视图、周切换和 Shooting / Dribbling / Training 分段按钮切换。
+- 本轮追加验证：`python -m unittest server.tests.test_camp_operations_service` 通过，新增覆盖 Task progress 严格完成度规则；`npx.cmd tsc --noEmit --pretty false --incremental false` 通过；`npm.cmd run lint` 通过，仅有既存 warning；`npm.cmd run build` 通过；`git diff --check` 通过，仅有 Windows 换行提示。
+- 本轮追加验证：`npx.cmd tsc --noEmit --pretty false --incremental false` 通过；`npm.cmd run lint` 通过，仅有既存 warning；`npm.cmd run build` 通过；`git diff --check` 通过，仅有 Windows 换行提示；覆盖 Growth trends 7D/30D 日级折线图、任务区固定高度滚动、个人中心移动端收口、Pose2D 原生 video 预览和上传视频 metadata 记录。
+- 本轮追加验证：`npx.cmd tsc --noEmit --pretty false --incremental false` 通过；`npm.cmd run lint` 通过，仅有既存 warning；`npm.cmd run build` 通过；`git diff --check -- web\src\components\account\GrowthTrendsSection.tsx` 通过，仅有 Windows 换行提示；覆盖 Growth trends 横轴日期 label 首尾可见范围加固。
+- 本轮追加验证：`npx.cmd tsc --noEmit --pretty false --incremental false` 通过；`npm.cmd run lint` 通过，仅有既存 warning；覆盖 Growth trends 顶部 header 响应式布局优化和 `Live reports` badge 删除。
 
 未完成验证：
 
@@ -230,8 +239,8 @@ Admin 当前已经可以进行训练营后台管理：
 1. Student 任务提交链路继续打磨：提交历史、失败重试、API handler 边界测试、刷新策略和长内容滚动已完成第一版，下一步补页面测试和浏览器端到端流程。
 2. 测试补齐：Admin 用户管理权限/禁用历史保护、Admin announcement 发布/通知生成/归档已补第一版；继续补 Coach class announcement 读取/发布/批量更新、任务监督、通知监督、模板同步 dry-run/import、非 Admin 访问其他 Admin 能力的拒绝测试。
 3. Coach 聚合入口继续打磨：为 `/coach/announcements`、`/coach/notifications` 补前端页面测试、批量已读和跳转到关联 class/task/report 的上下文。
-4. Student 个人中心视觉回归：为升级后的 `Growth trends` 7 天周视图和三板块图表补浏览器视觉验证和移动端边界检查。
+4. Student 个人中心视觉回归：为升级后的 `Growth trends` 7D/30D 日级折线图、训练类型切换按钮、任务区滚动面板和移动端自适应布局补浏览器视觉验证。
 5. Student 个人中心后续增强：补独立消息中心、批量已读、任务详情独立页和页面测试。
 6. Admin class 成员添加继续打磨：补用户搜索/autocomplete、上传名单和更完整的批量添加测试。
-7. 视频上传/分析链路继续打磨：端侧等待/分析中状态、循环播放数据保护、采集完成后再解锁 View analysis、上传后自动整段 MediaPipe 抽帧采集、报告保存采样来源/timeline 覆盖率/自动分析时间元数据，以及 Scrubber 单击 seek 修复已完成第一版；下一步补真实视频浏览器回归并推进后端异步 AI 分析。
+7. 视频上传/分析链路继续打磨：端侧等待/分析中状态、循环播放数据保护、采集完成后再解锁 View analysis、上传后自动整段 MediaPipe 抽帧采集、报告保存采样来源/timeline 覆盖率/自动分析时间元数据、Scrubber 单击 seek 修复、原生 video 预览和上传视频宽高/时长 metadata 记录已完成第一版；下一步补真实视频浏览器回归并推进后端异步 AI 分析。
 8. 技术增强继续排期：Supabase signed upload、后端异步 AI 分析、模板示例视频审核发布流程。

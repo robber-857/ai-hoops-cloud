@@ -1,6 +1,6 @@
 # AI 篮球训练营下一轮开发任务拆解
 
-最后更新：2026-06-02
+最后更新：2026-06-13
 
 本文档是下一轮开发的执行清单。已经完成或明显过时的旧任务已清理，只保留当前产品真正需要推进的内容。
 
@@ -69,7 +69,7 @@
 - 公告发布可生成通知；Coach 发布 class task / class announcement 时也会写入通知表，方便 Admin 监督。
 - Admin 新增 `/admin/announcements`、`/admin/tasks`、`/admin/notifications` 三个页面，并加入左侧导航。
 - Admin Task / Announcement / Notification 筛选区已完成 UI 修复第一步：筛选控件从标题右侧拆出，统一改为独立可换行筛选栏，并为所有筛选项增加标签；keyword 输入并入同一表单，避免中等宽度视口和右侧详情栏下按钮或输入被遮挡。
-- Task 进度规则已确认：默认 `target_sessions=1` 且 `target_score=0` 时，提交一个 completed report 会让 assignment 达到 100%；如果 Coach 配置了更高目标次数或目标分，进度按完成次数和最佳分数计算，不是无条件一提交就满进度。
+- Task 进度规则已调整为严格完成度：默认 `target_sessions=1` 且 `target_score=0` 时，提交一个 completed report 会让 assignment 达到 100%；如果 Coach 配置了目标次数和/或目标分，进度按已配置目标中最低的达成率计算，高分但次数不足或次数够但分数不足都不会提前显示 100%；完成状态仍要求所有目标同时达标。
 
 ### Admin / Coach 公告链路状态更新
 
@@ -101,19 +101,29 @@
 - Student 个人中心 Weekly tasks 提交失败体验改为页面内错误提示和 Try again 重试，不再只依赖浏览器 `alert`。
 - Student 个人中心 Weekly tasks 新增刷新策略第一版：任务区支持手动 Refresh，页面会每 60 秒静默刷新 dashboard/tasks/reports，并刷新已加载过的任务详情缓存。
 - Student 个人中心 Weekly tasks 详情弹窗新增内部滚动区和固定底部操作区，提交历史过多时仍能看到 `Submit selected report`。
+- Student 个人中心 Weekly tasks 新增固定面板与内部滚动第一版：Coach 发布很多任务时，任务区不再无限撑高页面；桌面端任务区与趋势图按同一套视口高度节奏对齐，移动端按钮和任务元数据自动换行。
 
 ### Student Growth trends 第二版
 
 - 趋势图优先展示最近报告的单次 `0-100` 分数，避免把后端日聚合 best score 误读成累计总分。
 - 前端 fallback 的趋势点保留报告模板名，后端 trend fallback 改为优先使用 average score，并在 tooltip 中显示 session 数。
-- 图表 UI 改为折线 + 分数柱组合，增加 Latest / Best / Change 摘要、明确“not cumulative points”的说明和可访问 tooltip。
+- 图表 UI 最终改为单一折线/节点/淡色面积表达，增加 Latest / Best / Change 摘要、明确“not cumulative points”的说明和可访问 tooltip；此前的分数柱已移除，避免柱状图与日期槽位视觉误读。
 
-### Student Growth trends 第三步：7 天周视图和三板块拆分
+### Student Growth trends 第三步：7 天周视图和训练类型切换
 
 - 趋势图现在按日级别固定展示 7 天窗口，横轴每天一个固定槽位，避免日期标签挤压重叠。
 - 图表顶部新增上一周 / 下一周 / This week 筛选，用户可以按周切换查看历史趋势。
-- Shooting、Dribbling、Training 已拆为三个独立图表，不再把运球、投篮和训练共享到同一条趋势图。
+- Shooting、Dribbling、Training 改为分段按钮切换同一张趋势图，不再把三张趋势图依次堆叠，也不把运球、投篮和训练共享到同一条趋势线。
+- 每天的柱子、折线节点、tooltip 命中区和日期标签已统一对齐到日期格子的中点，而不是贴在格子左端点。
 - 前端优先并行读取三类 `/me/trends?analysis_type=...` 的后端日聚合数据；如果后端趋势为空，则用最近报告按日期和训练类型聚合兜底。
+
+### Student Growth trends 第四步：7D / 30D 日级折线图
+
+- 新增 7D / 30D 时间范围切换，30 天视图横轴按每日 slot 生成，保留日级趋势而不是按周或月聚合。
+- 训练类型切换加入用户手动选择保护：首次加载仍可优先选择有数据的类型，但用户点击 Shooting / Dribbling / Training 后不会再被自动切回 Dribbling。
+- 图表已从柱状图切换为折线图，节点、tooltip 命中区和日期标签统一使用日 slot 中心点定位。
+- 30 天模式只显示必要日期标签，避免移动端横轴文字挤压；首尾日期 label 使用 CSS `clamp()` 保持可见，分数点和点击命中区仍对齐日 slot 中心。
+- 顶部 header 已删除 `Live reports` badge，标题/说明独立占位，7D/30D 与日期选择控件使用响应式控制区，避免右侧窄栏和移动端把标题挤成逐词折行。
 
 ### Pose2D 上传/端侧分析状态第一版
 
@@ -132,6 +142,8 @@
 - 自动分析已补 metadata、seek 和首帧 decodable frame 等待 timeout，隐藏分析视频改为 `preload="auto"`，避免 0 秒首帧或视频解码等待卡死。
 - 上传页提示文案已改为上传后自动分析，避免用户误以为仍必须手动播放到底才能生成报告。
 - 保存报告时会在 `summary_data` 记录 `capture_source`、timeline 帧数/覆盖率和自动分析帧统计，并写入自动分析起止时间，后续可以直接确认评分来自整段自动采集还是手动播放兜底。
+- 分析页预览已修复“画质像被压缩”的视觉问题：原生 `<video>` 负责显示上传视频，canvas 只覆盖骨架和角度，不再把视频帧重绘到 canvas 后作为可见画面。
+- 上传完成时前端会读取原始本地视频的 `duration_seconds`、`width`、`height` 并随 `/uploads/complete` 提交，后端 `videos` 记录可用于和源文件对比确认是否发生真实压缩。
 
 ### Admin class 成员添加体验第一版
 
@@ -184,7 +196,11 @@
 - 本轮追加验证：`npm.cmd run build` 通过；`git diff --check` 通过，仅有 Windows 换行提示；新增覆盖 Pose2D 报告保存自动/手动采样来源、timeline 覆盖率和自动分析时间元数据。
 - 本轮追加验证：`npx.cmd tsc --noEmit --pretty false --incremental false` 通过；`npm.cmd run lint` 通过，仅有既存 warning；`npm.cmd run build` 通过；`git diff --check` 通过，仅有 Windows 换行提示；新增覆盖 Admin Task / Announcement / Notification 筛选区独立可换行布局修复。
 - 本轮追加验证：`npx.cmd tsc --noEmit --pretty false --incremental false` 通过；`npm.cmd run lint` 通过，仅有既存 warning；`npm.cmd run build` 通过；`git diff --check` 通过，仅有 Windows 换行提示；新增覆盖 Pose2D Scrubber 单击/键盘 seek 请求修复。
-- 本轮追加验证：`npx.cmd tsc --noEmit --pretty false --incremental false` 通过；`npm.cmd run lint` 通过，仅有既存 warning；`npm.cmd run build` 通过；`git diff --check` 通过，仅有 Windows 换行提示；新增覆盖 Student `Growth trends` 7 天周视图、周切换和 Shooting / Dribbling / Training 三板块拆分。
+- 本轮追加验证：`npx.cmd tsc --noEmit --pretty false --incremental false` 通过；`npm.cmd run lint` 通过，仅有既存 warning；`npm.cmd run build` 通过；`git diff --check` 通过，仅有 Windows 换行提示；新增覆盖 Student `Growth trends` 7 天周视图、周切换和 Shooting / Dribbling / Training 分段按钮切换。
+- 本轮追加验证：`python -m unittest server.tests.test_camp_operations_service` 通过，新增覆盖 Task progress 严格完成度规则；`npx.cmd tsc --noEmit --pretty false --incremental false` 通过；`npm.cmd run lint` 通过，仅有既存 warning；`npm.cmd run build` 通过；`git diff --check` 通过，仅有 Windows 换行提示。
+- 本轮追加验证：`npx.cmd tsc --noEmit --pretty false --incremental false` 通过；`npm.cmd run lint` 通过，仅有既存 warning；`npm.cmd run build` 通过；`git diff --check` 通过，仅有 Windows 换行提示；新增覆盖 Growth trends 7D/30D 日级折线图、任务区固定高度滚动、个人中心移动端收口、Pose2D 原生 video 预览和上传视频 metadata 记录。
+- 本轮追加验证：`npx.cmd tsc --noEmit --pretty false --incremental false` 通过；`npm.cmd run lint` 通过，仅有既存 warning；`npm.cmd run build` 通过；`git diff --check -- web\src\components\account\GrowthTrendsSection.tsx` 通过，仅有 Windows 换行提示；新增覆盖 Growth trends 横轴日期 label 首尾可见范围加固。
+- 本轮追加验证：`npx.cmd tsc --noEmit --pretty false --incremental false` 通过；`npm.cmd run lint` 通过，仅有既存 warning；新增覆盖 Growth trends 顶部 header 响应式布局优化和 `Live reports` badge 删除。
 
 未完成验证：
 
@@ -446,13 +462,13 @@ Admin announcement 和 Coach class announcement 不再作为下一轮阻塞修�
 
 ### Growth trends 图表重做
 
-状态：图表视觉和数据口径第二版已完成，后续重点是前端自动化测试、浏览器视觉回归和真实数据空态持续打磨。
+状态：图表视觉、数据口径、训练类型切换和 7D/30D 日级折线图已完成，后续重点是前端自动化测试、浏览器视觉回归和真实数据空态持续打磨。
 
 当前 Student 个人中心 `Growth trends` 已按前端技能要求重做为更清晰的折线图：
 
 - 横轴为时间。
 - 纵轴固定为 `0-100 score`。
-- 使用折线 + 分数柱表达最近报告的单次分数变化趋势，避免误读为累计分。
+- 使用折线、节点和淡色面积表达最近报告的单次/日聚合分数变化趋势，避免误读为累计分。
 - 保持原本个人中心页面布局和信息层级，不新增大面积 hero 或扰乱现有 UI。
 - 适配移动端与桌面端，坐标轴、tooltip、空状态都要清晰。
 
@@ -464,8 +480,8 @@ Admin announcement 和 Coach class announcement 不再作为下一轮阻塞修�
 
 本轮视觉升级：
 
-- line chart 视觉升级已完成第三步：已改为低噪音数据面板、7 天周视图、Shooting / Dribbling / Training 三板块、Latest / Best / Change 摘要和 hover/focus tooltip，让图表明确表达每天单次/日聚合 `0-100` 分数，不展示累计分。
-- 后续仍需补浏览器视觉回归、移动端边界检查和前端自动化测试。
+- line chart 视觉升级已完成第四步：已改为低噪音数据面板、7D/30D 日级折线图、Shooting / Dribbling / Training 分段按钮切换、Latest / Best / Change 摘要和 hover/focus tooltip，让图表明确表达每天单次/日聚合 `0-100` 分数，不展示累计分。
+- 移动端边界收口已完成第一轮，后续仍需补真实浏览器视觉回归和前端自动化测试。
 
 ### Weekly tasks 接真实任务
 
@@ -483,6 +499,7 @@ Admin announcement 和 Coach class announcement 不再作为下一轮阻塞修�
 - Student task submit/detail API handler 已补提交历史返回和学生隔离边界测试。
 - 任务状态刷新策略已完成第一版：Weekly tasks 支持手动刷新和 60 秒静默轮询，刷新任务列表、可提交报告选项、dashboard 统计和已缓存的任务详情。
 - 任务详情弹窗长内容滚动已完成第一版：提交历史过多时正文滚动，底部上传/提交按钮固定可见。
+- 任务列表固定面板和内部滚动已完成第一版：任务过多时只滚动任务列表，不继续撑开个人中心双栏布局。
 - 后续仍需要补更多页面测试和真实浏览器端到端流程。
 - 任务上传的真实浏览器端到端流程仍需要用户手动测试和后续自动化覆盖。
 
@@ -499,7 +516,7 @@ Admin announcement 和 Coach class announcement 不再作为下一轮阻塞修�
 
 - 建设独立消息中心页面、批量已读、全部/未读筛选。
 - 补 Student Weekly tasks 和 announcement 前端页面测试；任务轮询/手动刷新已完成第一版，后续可再演进为 SSE/WebSocket。
-- 上传视频/端侧分析链路仍需继续打磨：等待/分析中状态、循环播放数据保护、采集完成后再解锁 View analysis、上传后自动整段 MediaPipe 抽帧采集、报告保存采样来源/timeline 覆盖率/自动分析时间元数据，以及 Scrubber 单击 seek 修复已完成第一版；下一步补真实视频浏览器回归，并迁移到后端异步分析任务。
+- 上传视频/端侧分析链路仍需继续打磨：等待/分析中状态、循环播放数据保护、采集完成后再解锁 View analysis、上传后自动整段 MediaPipe 抽帧采集、报告保存采样来源/timeline 覆盖率/自动分析时间元数据、Scrubber 单击 seek 修复、原生 video 预览和上传视频宽高/时长 metadata 记录已完成第一版；下一步补真实视频浏览器回归，并迁移到后端异步分析任务。
 
 验收标准：
 
@@ -562,11 +579,11 @@ Admin announcement 和 Coach class announcement 不再作为下一轮阻塞修�
 
 ## 建议下一轮执行顺序
 
-1. 继续打磨视频上传/端侧分析链路：端侧等待/分析中状态、循环播放数据保护、采集完成后再解锁 View analysis、上传后自动整段 MediaPipe 抽帧采集、报告保存采样来源/timeline 覆盖率/自动分析时间元数据，以及 Scrubber 单击 seek 修复已完成第一版；下一步补真实视频浏览器回归并推进后端异步 AI 分析。
-2. 继续打磨 Student 任务提交链路：提交历史、失败重试、API handler 边界测试、刷新策略和长内容滚动已完成第一版，下一步补页面测试和浏览器端到端流程。
+1. 继续打磨视频上传/端侧分析链路：端侧等待/分析中状态、循环播放数据保护、采集完成后再解锁 View analysis、上传后自动整段 MediaPipe 抽帧采集、报告保存采样来源/timeline 覆盖率/自动分析时间元数据、Scrubber 单击 seek 修复、原生 video 预览和上传视频宽高/时长 metadata 记录已完成第一版；下一步补真实视频浏览器回归并推进后端异步 AI 分析。
+2. 继续打磨 Student 任务提交链路：提交历史、失败重试、API handler 边界测试、刷新策略、长内容滚动、任务列表固定面板和内部滚动已完成第一版，下一步补页面测试和浏览器端到端流程。
 3. 继续补公告链路回归测试：Admin announcement 发布/归档/通知生成已完成第一版，下一步覆盖 Admin 更新/空列表/权限边界，以及 Coach class announcements 空列表/发布/读取/批量更新。
 4. 补 Admin 后台测试：用户管理权限和禁用历史保护已补第一版，下一步继续补模板同步、任务监督和通知监督的后端自动化测试。
 5. 继续打磨 Coach 聚合入口：为 `/coach/announcements`、`/coach/notifications` 补页面测试、批量已读和关联 class/task/report 的上下文跳转。
-6. 继续打磨 Student 个人中心：独立消息中心、真实任务/公告页面测试、`Growth trends` 周视图三板块浏览器视觉回归和刷新策略。
+6. 继续打磨 Student 个人中心：独立消息中心、真实任务/公告页面测试、`Growth trends` 7D/30D 日级折线图、训练类型切换、任务滚动面板和移动端自适应布局的浏览器视觉回归。
 7. 继续打磨 Admin class 成员添加：用户搜索/autocomplete、上传名单、API 层/页面测试。
 8. 继续推进 Supabase signed upload、后端异步 AI 分析和模板示例视频审核发布流程。

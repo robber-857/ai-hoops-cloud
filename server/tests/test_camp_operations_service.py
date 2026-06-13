@@ -374,6 +374,44 @@ class CampOperationsServiceTests(unittest.TestCase):
         self.assertEqual(session.class_id, self.class_row.id)
         self.assertEqual(session.source_type, "coach_task")
 
+    def test_task_progress_is_limited_by_unmet_session_target(self) -> None:
+        assignment, _session, report = self._seed_student_task_with_report(
+            base_id=50,
+            report_score=95,
+            target_config={"target_sessions": 3, "target_score": 80},
+        )
+
+        service = MeService(self.db)
+        result = service.submit_task_report(
+            self.student,
+            assignment.public_id,
+            SubmitTaskReportRequest(report_public_id=report.public_id),
+        )
+
+        self.assertEqual(result.status, "in_progress")
+        self.assertEqual(result.completed_sessions, 1)
+        self.assertEqual(result.best_score, 95)
+        self.assertEqual(result.progress_percent, 33.33)
+
+    def test_task_progress_is_limited_by_unmet_score_target(self) -> None:
+        assignment, _session, report = self._seed_student_task_with_report(
+            base_id=51,
+            report_score=40,
+            target_config={"target_score": 80},
+        )
+
+        service = MeService(self.db)
+        result = service.submit_task_report(
+            self.student,
+            assignment.public_id,
+            SubmitTaskReportRequest(report_public_id=report.public_id),
+        )
+
+        self.assertEqual(result.status, "in_progress")
+        self.assertEqual(result.completed_sessions, 1)
+        self.assertEqual(result.best_score, 40)
+        self.assertEqual(result.progress_percent, 50)
+
     def _seed_student_task_with_report(
         self,
         *,
@@ -382,6 +420,7 @@ class CampOperationsServiceTests(unittest.TestCase):
         analysis_type: AnalysisType = AnalysisType.shooting,
         template_code: str = "shoot_front_form_close",
         report_score: int = 86,
+        target_config: dict | None = None,
     ) -> tuple[TrainingTaskAssignment, TrainingSession, AnalysisReport]:
         task_student = student or self.student
         membership = ClassMember(
@@ -401,7 +440,7 @@ class CampOperationsServiceTests(unittest.TestCase):
             description="Hit the target score with a fresh report.",
             analysis_type=analysis_type,
             template_code=template_code,
-            target_config={"target_sessions": 1, "target_score": 80},
+            target_config=target_config or {"target_sessions": 1, "target_score": 80},
             status="published",
             publish_at=self.now,
         )

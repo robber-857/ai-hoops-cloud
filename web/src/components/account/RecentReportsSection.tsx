@@ -39,13 +39,13 @@ export function RecentReportsSection({
   isLoading = false,
 }: RecentReportsSectionProps) {
   return (
-    <section className="analysis-surface rounded-[32px] border border-white/10 p-5 sm:p-6">
+    <section className="analysis-surface min-w-0 rounded-[28px] border border-white/10 p-4 sm:rounded-[32px] sm:p-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+        <div className="min-w-0">
           <div className="text-[0.72rem] uppercase tracking-[0.28em] text-white/42">
             Recent reports
           </div>
-          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.05em] text-white">
+          <h2 className="mt-2 text-xl font-semibold text-white sm:text-2xl">
             Your latest analysis snapshots
           </h2>
         </div>
@@ -122,27 +122,29 @@ export function RecentReportsSection({
             {reports.map((report) => (
               <article
                 key={report.id}
-                className="rounded-[24px] border border-white/10 bg-white/[0.03] p-4"
+                className="min-w-0 rounded-[22px] border border-white/10 bg-white/[0.03] p-3 sm:rounded-[24px] sm:p-4"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
+                <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <Dot className={cn("h-5 w-5", toneMap[report.analysisType])} />
+                      <Dot className={cn("h-5 w-5 shrink-0", toneMap[report.analysisType])} />
                       <span className="capitalize text-white">{report.analysisType}</span>
                     </div>
-                    <div className="mt-2 text-sm text-white/52">{report.templateName}</div>
+                    <div className="mt-2 break-words text-sm leading-5 text-white/52">
+                      {report.templateName}
+                    </div>
                   </div>
-                  <Badge className={cn("border", badgeMap[report.analysisType])}>
+                  <Badge className={cn("w-fit shrink-0 border", badgeMap[report.analysisType])}>
                     {report.grade}
                   </Badge>
                 </div>
 
-                <div className="mt-4 flex items-end justify-between">
-                  <div>
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                  <div className="min-w-0">
                     <div className="text-2xl font-semibold tracking-[-0.04em] text-white">
                       {Math.round(report.score)}
                     </div>
-                    <div className="mt-1 text-xs uppercase tracking-[0.22em] text-white/36">
+                    <div className="mt-1 text-xs uppercase tracking-[0.16em] text-white/36 sm:tracking-[0.22em]">
                       {formatDateLabel(report.createdAt)}
                     </div>
                   </div>
@@ -150,7 +152,7 @@ export function RecentReportsSection({
                   {report.linkable ? (
                     <Link
                       href={`${routes.pose2d.report}?id=${report.id}`}
-                      className="inline-flex items-center gap-1 text-sm font-medium text-[#d8ff5d]"
+                      className="inline-flex min-h-9 w-fit items-center gap-1 rounded-full border border-[#d8ff5d]/20 bg-[#d8ff5d]/10 px-3 text-sm font-medium text-[#d8ff5d]"
                     >
                       Open
                       <ArrowUpRight className="h-4 w-4" />

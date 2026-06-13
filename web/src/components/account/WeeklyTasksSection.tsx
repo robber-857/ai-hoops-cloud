@@ -99,45 +99,46 @@ export function WeeklyTasksSection({
   };
 
   return (
-    <section className="analysis-surface rounded-[32px] border border-white/10 p-5 sm:p-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+    <section className="analysis-surface flex max-h-[min(44rem,calc(100dvh-2rem))] min-w-0 flex-col overflow-hidden rounded-[28px] border border-white/10 p-4 sm:rounded-[32px] sm:p-6 xl:h-[min(42rem,calc(100dvh-6rem))]">
+      <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <div className="text-[0.72rem] uppercase tracking-[0.28em] text-white/42">
             Weekly tasks
           </div>
-          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.05em] text-white">
+          <h2 className="mt-2 text-xl font-semibold text-white sm:text-2xl">
             Keep your training rhythm visible
           </h2>
           {refreshLabel ? (
-            <div className="mt-2 text-xs uppercase tracking-[0.2em] text-white/36">
+            <div className="mt-2 truncate text-xs uppercase tracking-[0.16em] text-white/36 sm:tracking-[0.2em]">
               {refreshLabel}
             </div>
           ) : null}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
           <Button
             type="button"
             variant="outline"
             disabled={isRefreshing}
             onClick={onRefresh}
-            className="min-h-9 rounded-full border-white/10 bg-white/[0.03] px-3 text-xs text-white hover:bg-white/[0.08]"
+            className="min-h-10 flex-1 rounded-full border-white/10 bg-white/[0.03] px-3 text-xs text-white hover:bg-white/[0.08] sm:flex-none"
           >
             <RefreshCw className={cn("h-4 w-4", isRefreshing ? "animate-spin" : null)} />
             {isRefreshing ? "Refreshing" : "Refresh"}
           </Button>
-          <Badge className="border border-[#d8ff5d]/20 bg-[#d8ff5d]/12 text-[#e8ff9a]">
+          <Badge className="min-h-10 justify-center border border-[#d8ff5d]/20 bg-[#d8ff5d]/12 px-3 text-[#e8ff9a]">
             Live tasks
           </Badge>
         </div>
       </div>
       {refreshError ? (
-        <div className="mt-4 flex items-start gap-2 rounded-2xl border border-rose-300/20 bg-rose-500/10 px-3 py-2 text-xs leading-5 text-rose-100/80">
+        <div className="mt-4 flex shrink-0 items-start gap-2 rounded-2xl border border-rose-300/20 bg-rose-500/10 px-3 py-2 text-xs leading-5 text-rose-100/80">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{refreshError}</span>
         </div>
       ) : null}
 
-      <div className="mt-6 grid gap-4">
+      <div className="mt-5 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable] sm:mt-6">
+        <div className="grid gap-3 sm:gap-4">
         {tasks.map((task) => {
           const tone = statusMap[task.status];
           const progress = Math.max(0, Math.min(100, Math.round(task.progress * 100)));
@@ -146,19 +147,22 @@ export function WeeklyTasksSection({
           return (
             <article
               key={task.id}
-              className="rounded-[24px] border border-white/10 bg-white/[0.03] p-4 transition-all duration-200 hover:border-white/16 hover:bg-white/[0.05]"
+              className="min-w-0 rounded-[22px] border border-white/10 bg-white/[0.03] p-3 transition-all duration-200 hover:border-white/16 hover:bg-white/[0.05] sm:rounded-[24px] sm:p-4"
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
-                  <div className="text-lg font-medium text-white">{task.title}</div>
+                  <div className="break-words text-base font-medium text-white sm:text-lg">
+                    {task.title}
+                  </div>
                   <p className="mt-1 text-sm leading-6 text-white/56">{task.description}</p>
-                  <div className="mt-3 flex flex-wrap gap-2 text-[0.68rem] uppercase tracking-[0.2em] text-white/38">
+                  <div className="mt-3 flex flex-wrap gap-x-2 gap-y-1 text-[0.62rem] uppercase tracking-[0.12em] text-white/38 sm:text-[0.68rem] sm:tracking-[0.18em]">
                     <span>{task.className}</span>
                     <span>{task.analysisType}</span>
                     <span>{task.targetLabel}</span>
+                    {task.scoreGateLabel ? <span>{task.scoreGateLabel}</span> : null}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
                   <Badge className={cn("border", tone.className)}>{tone.label}</Badge>
                   <span className="text-sm font-semibold text-white/76">{task.valueLabel}</span>
                 </div>
@@ -171,7 +175,7 @@ export function WeeklyTasksSection({
                 />
               </div>
 
-              <div className="mt-3 flex items-center justify-between text-xs uppercase tracking-[0.22em] text-white/36">
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs uppercase tracking-[0.22em] text-white/36">
                 <span>{progress}% complete</span>
                 <span>{task.dueLabel}</span>
               </div>
@@ -179,7 +183,7 @@ export function WeeklyTasksSection({
               <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
                 <Button
                   asChild
-                  className="min-h-10 rounded-full border border-[#d8ff5d]/20 bg-[#d8ff5d] px-4 text-slate-950 hover:bg-[#e8ff9a]"
+                  className="min-h-10 w-full justify-center rounded-full border border-[#d8ff5d]/20 bg-[#d8ff5d] px-4 text-slate-950 hover:bg-[#e8ff9a] sm:w-auto"
                 >
                   <Link href={task.actionHref}>
                     <UploadCloud className="h-4 w-4" />
@@ -190,7 +194,7 @@ export function WeeklyTasksSection({
                   type="button"
                   variant="outline"
                   onClick={() => handleOpenDetail(task)}
-                  className="min-h-10 rounded-full border-white/10 bg-white/[0.03] px-4 text-white hover:bg-white/[0.08]"
+                  className="min-h-10 w-full justify-center rounded-full border-white/10 bg-white/[0.03] px-4 text-white hover:bg-white/[0.08] sm:w-auto"
                 >
                   <Eye className="h-4 w-4" />
                   Details
@@ -200,7 +204,7 @@ export function WeeklyTasksSection({
                   variant="outline"
                   disabled={!task.candidateReportId || submittingTaskId === task.id}
                   onClick={() => handleSubmit(task)}
-                  className="min-h-10 rounded-full border-white/10 bg-white/[0.03] px-4 text-white hover:bg-white/[0.08]"
+                  className="min-h-10 w-full justify-center rounded-full border-white/10 bg-white/[0.03] px-4 text-white hover:bg-white/[0.08] sm:w-auto"
                   title={task.candidateReportLabel ?? "No matching report found"}
                 >
                   <CheckCircle2 className="h-4 w-4" />
@@ -229,6 +233,7 @@ export function WeeklyTasksSection({
             </p>
           </div>
         ) : null}
+        </div>
       </div>
 
       {selectedTask ? (
@@ -294,8 +299,13 @@ export function WeeklyTasksSection({
                     Progress
                   </div>
                   <div className="mt-2 text-sm font-medium text-white">
-                    {Math.round(selectedTask.progress * 100)}% / {selectedTask.completedSessions} sessions
+                    {Math.round(selectedTask.progress * 100)}% / {selectedTask.progressDetailLabel}
                   </div>
+                  {selectedTask.scoreGateLabel ? (
+                    <div className="mt-1 text-xs leading-5 text-white/48">
+                      {selectedTask.scoreGateLabel}
+                    </div>
+                  ) : null}
                 </div>
               </div>
 

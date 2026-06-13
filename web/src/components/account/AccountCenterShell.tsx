@@ -38,16 +38,16 @@ export function AccountCenterShell({
   username,
 }: AccountCenterShellProps) {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#090b0f] text-white">
+    <main className="relative min-h-screen overflow-x-clip bg-[#090b0f] text-white">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(216,255,93,0.06),transparent_24%),radial-gradient(circle_at_18%_22%,rgba(216,255,93,0.05),transparent_18%),linear-gradient(180deg,#06080b_0%,#0b0f14_42%,#090b0f_100%)]" />
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:64px_64px] opacity-20" />
       <div className="pointer-events-none absolute left-[-8rem] top-24 h-72 w-72 rounded-full bg-[#d8ff5d]/10 blur-3xl" />
       <div className="pointer-events-none absolute right-[-6rem] top-60 h-80 w-80 rounded-full bg-emerald-400/8 blur-3xl" />
 
       <header className="sticky top-0 z-40 border-b border-white/8 bg-[#05070bcc]/85 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-3 px-3 sm:gap-4 sm:px-6 lg:px-8">
           <div className="min-w-0">
-            <div className="font-[var(--font-display)] text-[0.72rem] uppercase tracking-[0.32em] text-[#d8ff5d]/72">
+            <div className="truncate font-[var(--font-display)] text-[0.68rem] uppercase tracking-[0.24em] text-[#d8ff5d]/72 sm:text-[0.72rem] sm:tracking-[0.32em]">
               AI Hoops
             </div>
             <div className="truncate text-sm font-semibold text-white/86 sm:text-base">
@@ -77,7 +77,7 @@ export function AccountCenterShell({
             })}
           </nav>
 
-          <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2">
+          <div className="flex min-w-0 shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-2 py-2 sm:gap-3 sm:px-3">
             <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[#d8ff5d]/25 bg-[#d8ff5d]/12 text-sm font-semibold text-[#d8ff5d]">
               {username.slice(0, 1).toUpperCase()}
             </span>
@@ -89,7 +89,7 @@ export function AccountCenterShell({
         </div>
       </header>
 
-      <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <div className="relative mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-5 px-3 py-5 sm:gap-6 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
         {children}
       </div>
     </main>

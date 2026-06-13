@@ -147,7 +147,6 @@ export default function Pose2DCanvas({ videoUrl, isPlaying, onVideoEnd, onTime, 
       const H = canvas.height;
 
       ctx.clearRect(0, 0, W, H);
-      ctx.drawImage(video, 0, 0, W, H);
       const landmarks = results.poseLandmarks;
       if (landmarks && drawingUtils && connections) {
         //过滤掉脸部的关键点和连线
@@ -181,8 +180,8 @@ export default function Pose2DCanvas({ videoUrl, isPlaying, onVideoEnd, onTime, 
     };
 
     //推理结果回调
-    //绘制顺序：清屏 → 画视频帧 → 画骨架 → 画角度注释。
-    //坐标体系：canvas.width/height 使用设备像素，因此 drawImage 和骨架覆盖都与像素一一对应（不会因 CSS 缩放模糊）。
+    // 绘制顺序：原生 video 负责显示画面，canvas 只负责覆盖骨架和角度。
+    // 坐标体系：canvas.width/height 使用设备像素，覆盖层不会因 CSS 缩放模糊。
     //归一化 vs 像素：MediaPipe 的 poseLandmarks 通常是 0~1 的归一化值；你的角度计算函数若吃归一化坐标就直接传，否则先映射到像素再传。
     
     pose.onResults(handleResults);
@@ -255,11 +254,11 @@ export default function Pose2DCanvas({ videoUrl, isPlaying, onVideoEnd, onTime, 
         </div>
       )}
 
-      {/* video 只是帧源，隐藏；object-contain 保证不变形 */}
+      {/* Native video stays visible so playback quality is not limited by canvas redraw size. */}
       <video
         ref={videoRef}
         src={videoUrl}
-        className="absolute inset-0 w-full h-full object-contain opacity-0"
+        className="absolute inset-0 h-full w-full object-contain"
         playsInline
         muted
         preload="metadata"
