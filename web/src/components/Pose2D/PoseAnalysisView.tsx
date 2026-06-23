@@ -503,8 +503,7 @@ export default function PoseAnalysisView({
             unit: "calc",
           }));
 
-        const staticMetrics = aggregateFrames(allFramesRef.current);
-        finalInputForScoring = [...staticMetrics, ...dynamicMetrics];
+        finalInputForScoring = dynamicMetrics;
       } else {
         finalInputForScoring = aggregateFrames(allFramesRef.current);
       }

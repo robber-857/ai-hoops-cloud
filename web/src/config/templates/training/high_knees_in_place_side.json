@@ -13,7 +13,7 @@
       "type": "target",
       "computeKey": "torsoLeanDegSide",
       "params": { "target": 0, "tol": 12, "margin": 20 },
-      "hint_bad": "上身前后晃动：保持躯干直立，不要为了抬腿而弯腰驼背。"
+      "hint_bad": "Torso is rocking: keep the trunk upright, and avoid bending forward or rounding the back just to lift the knees."
     },
     {
       "metricId": "P_landing_position",
@@ -22,7 +22,7 @@
       "type": "range",
       "computeKey": "footStrikeOffsetXUnderHip",
       "params": { "L": -0.1, "U": 0.10, "margin": 0.20 },
-      "hint_bad": "落脚点偏移：尝试将脚落在臀部正下方，避免向前踢腿。"
+      "hint_bad": "Foot landing is drifting: try to land the foot directly under the hips, and avoid kicking the leg forward."
     },
     {
       "metricId": "E_knee_height",
@@ -31,7 +31,7 @@
       "type": "target",
       "computeKey": "kneeToHipHeightRatioSide",
       "params": { "target": 1.00, "tol": 0.20, "margin": 0.35 },
-      "hint_bad": "抬腿高度不够：膝盖要抬到接近髋部的高度（大腿平行地面）。"
+      "hint_bad": "Knee lift is too low: raise the knee close to hip height, with the thigh nearly parallel to the floor."
     },
     {
       "metricId": "E_cadence",
@@ -40,7 +40,7 @@
       "type": "target",
       "computeKey": "cadenceSPM",
       "params": { "target": 160, "tol": 30, "margin": 50 },
-      "hint_bad": "频率太慢：在保证高度的前提下，加快换腿频率。"
+      "hint_bad": "Cadence is too slow: keep the knee height first, then increase the speed of alternating legs."
     },
     {
       "metricId": "C_height_consistency",
@@ -49,7 +49,7 @@
       "type": "target",
       "computeKey": "stdKneeToHipHeightRatioSide",
       "params": { "target": 0.30, "tol": 0.1, "margin": 0.15 },
-      "hint_bad": "高度不稳定：体力下降时也要咬牙保持每一次抬腿的高度。"
+      "hint_bad": "Knee height is inconsistent: even when tired, try to keep every knee lift at the same height."
     },
     {
       "metricId": "C_rhythm_stability",
@@ -58,7 +58,7 @@
       "type": "target",
       "computeKey": "stepIntervalCV",
       "params": { "target": 0.2, "tol": 0.1, "margin": 0.17 },
-      "hint_bad": "节奏有点不稳：保持像节拍器一样稳定的跑步节奏。"
+      "hint_bad": "Rhythm is unstable: keep a steady running rhythm, like following a metronome."
     }
   ]
 }

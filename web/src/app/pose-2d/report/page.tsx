@@ -245,6 +245,9 @@ function ReportContent() {
   const [loading, setLoading] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const persistedReportSignatureRef = useRef<string | null>(null);
+  const performanceCurveRef = useRef<HTMLDivElement | null>(null);
+  const findingsColumnRef = useRef<HTMLDivElement | null>(null);
+  const [findingsCardHeight, setFindingsCardHeight] = useState<number | null>(null);
 
   useEffect(() => setIsMounted(true), []);
 
@@ -276,7 +279,11 @@ function ReportContent() {
     if (!reportId && currentAngles && currentAngles.length > 0) {
         const template = getTemplateById(selectedTemplateId);
         if (template) {
-          setResult(calculateRealScore(template, currentAngles, { ageGroup, handedness: "right" }));
+          const metricsForScoring =
+            template.mode === "training"
+              ? currentAngles.filter((metric) => metric.unit === "calc")
+              : currentAngles;
+          setResult(calculateRealScore(template, metricsForScoring, { ageGroup, handedness: "right" }));
         }
     }
     
@@ -284,7 +291,11 @@ function ReportContent() {
     if (reportId && dbSavedMetrics && selectedTemplateId) {
         const template = getTemplateById(selectedTemplateId);
         if (template) {
-          setDbResult(calculateRealScore(template, dbSavedMetrics, { ageGroup, handedness: "right" }));
+          const metricsForScoring =
+            template.mode === "training"
+              ? dbSavedMetrics.filter((metric) => metric.unit === "calc")
+              : dbSavedMetrics;
+          setDbResult(calculateRealScore(template, metricsForScoring, { ageGroup, handedness: "right" }));
         }
     }
   }, [selectedTemplateId, currentAngles, ageGroup, reportId, dbSavedMetrics]);
@@ -425,6 +436,10 @@ function ReportContent() {
   const finalResult = reportId ? dbResult : result;
   const finalVideoUrl = reportId ? dbVideoUrl : currentVideoUrl;
   const finalTimeline = reportId ? dbTimeline : currentTimeline;
+  const finalSavedMetrics = reportId ? dbSavedMetrics : currentAngles;
+  const hasPerformanceCurves =
+    Boolean(finalTimeline && finalTimeline.length > 0) ||
+    Boolean(finalSavedMetrics && finalSavedMetrics.length > 0);
   const trainingBackHref =
     selectedMode === "dribbling"
       ? routes.pose2d.dribbling
@@ -441,6 +456,71 @@ function ReportContent() {
 
   // 数据异常提示逻辑
   const isDataMissing = useMemo(() => !finalResult || finalResult.overall <= 0, [finalResult]);
+
+  useEffect(() => {
+    const performanceEl = performanceCurveRef.current;
+    const findingsEl = findingsColumnRef.current;
+
+    if (!performanceEl || !findingsEl || !hasPerformanceCurves) {
+      setFindingsCardHeight(null);
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(min-width: 1024px)");
+    let frameId = 0;
+
+    const updateHeight = () => {
+      if (!mediaQuery.matches) {
+        setFindingsCardHeight(null);
+        return;
+      }
+
+      const performanceBottom = performanceEl.getBoundingClientRect().bottom;
+      const findingsTop = findingsEl.getBoundingClientRect().top;
+      const nextHeight = Math.max(360, Math.round(performanceBottom - findingsTop));
+
+      setFindingsCardHeight((current) => (current === nextHeight ? current : nextHeight));
+    };
+
+    const scheduleUpdate = () => {
+      window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(updateHeight);
+    };
+
+    updateHeight();
+    window.addEventListener("resize", scheduleUpdate);
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", scheduleUpdate);
+    } else {
+      mediaQuery.addListener(scheduleUpdate);
+    }
+
+    const resizeObserver =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(scheduleUpdate);
+    resizeObserver?.observe(performanceEl);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.removeEventListener("resize", scheduleUpdate);
+      if (typeof mediaQuery.removeEventListener === "function") {
+        mediaQuery.removeEventListener("change", scheduleUpdate);
+      } else {
+        mediaQuery.removeListener(scheduleUpdate);
+      }
+      resizeObserver?.disconnect();
+    };
+  }, [
+    finalResult?.findings.length,
+    finalSavedMetrics?.length,
+    finalTimeline?.length,
+    hasPerformanceCurves,
+    selectedTemplateId,
+  ]);
+
+  const findingsCardStyle = findingsCardHeight
+    ? ({ height: `${findingsCardHeight}px` } as React.CSSProperties)
+    : undefined;
 
   if (!isMounted) return null;
 
@@ -738,15 +818,25 @@ function ReportContent() {
                   </div>
                 </Card>
 
-                {finalTimeline && finalTimeline.length > 0 && (
-                  <div className="lightify-timeline report-module rounded-2xl p-0 overflow-visible">
-                    <MetricTimelineCard timeline={finalTimeline} templateId={selectedTemplateId} />
+                {hasPerformanceCurves && (
+                  <div
+                    ref={performanceCurveRef}
+                    className="lightify-timeline report-module rounded-2xl p-0 overflow-visible"
+                  >
+                    <MetricTimelineCard
+                      timeline={finalTimeline}
+                      templateId={selectedTemplateId}
+                      savedMetrics={finalSavedMetrics}
+                    />
                   </div>
                 )}
               </div>
 
-              <div className="lg:col-span-1">
-                <Card className="report-module rounded-2xl h-full flex flex-col overflow-hidden min-h-[400px]">
+              <div ref={findingsColumnRef} className="lg:col-span-1 flex min-h-0">
+                <Card
+                  className="report-module rounded-2xl flex min-h-[400px] min-w-0 flex-1 flex-col overflow-hidden lg:min-h-0"
+                  style={findingsCardStyle}
+                >
                   <CardHeader className="report-module-header pb-3 px-4 pt-4">
                     <CardTitle className="text-base font-semibold text-white flex items-center justify-between">
                       <span>Top Findings</span>
@@ -755,22 +845,25 @@ function ReportContent() {
                           variant="secondary"
                           className="text-[10px] bg-white/[0.08] text-slate-200 border border-white/10"
                         >
-                          {finalResult.findings.length} Issues
+                          {finalResult.findings.length} Checks
                         </Badge>
                       )}
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-0 flex-1 overflow-y-auto max-h-[500px] lg:max-h-[600px] custom-scrollbar">
+                  <CardContent className="report-findings-scroll min-h-0 p-0 flex-1 overflow-y-auto overscroll-contain max-h-[500px] lg:max-h-none custom-scrollbar">
                     <div className="space-y-3 p-3">
                       {finalResult?.findings.map((finding, idx) => {
+                        const isMissing = Boolean(finding.isMissing);
                         const isBad = finding.score < 60;
-                        const isPositive = finding.isPositive;
+                        const isPositive = finding.isPositive && !isMissing;
                         return (
                           <div
                             key={idx}
                             className={cn(
                               "report-findings-item rounded-2xl border p-3 sm:p-4 transition-all",
-                              isPositive
+                              isMissing
+                                ? "border-amber-400/18 bg-[linear-gradient(180deg,rgba(251,191,36,0.08),rgba(251,191,36,0.02))]"
+                                : isPositive
                                 ? "border-emerald-400/18 bg-[linear-gradient(180deg,rgba(16,185,129,0.08),rgba(16,185,129,0.02))]"
                                 : isBad
                                   ? "border-red-400/18 bg-[linear-gradient(180deg,rgba(248,113,113,0.08),rgba(248,113,113,0.02))]"
@@ -792,21 +885,31 @@ function ReportContent() {
                                   <span
                                     className={cn(
                                       "inline-flex h-5 items-center rounded-full px-2 text-[10px] font-bold uppercase tracking-[0.12em]",
-                                      isPositive
+                                      isMissing
+                                        ? "bg-amber-400/12 text-amber-300"
+                                        : isPositive
                                         ? "bg-emerald-400/12 text-emerald-300"
                                         : isBad
                                           ? "bg-red-400/12 text-red-300"
                                           : "bg-amber-400/12 text-amber-300"
                                     )}
                                   >
-                                    {isPositive ? "Stable" : isBad ? "Needs Work" : "Watch"}
+                                    {isMissing
+                                      ? "Data Missing"
+                                      : isPositive
+                                        ? "Stable"
+                                        : isBad
+                                          ? "Needs Work"
+                                          : "Watch"}
                                   </span>
                                 </div>
                               </div>
                               <div
                                 className={cn(
                                   "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border",
-                                  isPositive
+                                  isMissing
+                                    ? "border-amber-400/25 bg-amber-400/10"
+                                    : isPositive
                                     ? "border-emerald-400/25 bg-emerald-400/10"
                                     : isBad
                                       ? "border-red-400/25 bg-red-400/10"
@@ -819,7 +922,7 @@ function ReportContent() {
                                   <AlertCircle
                                     className={cn(
                                       "w-4 h-4 shrink-0",
-                                      isBad ? "text-red-300" : "text-amber-300"
+                                      isMissing || !isBad ? "text-amber-300" : "text-red-300"
                                     )}
                                   />
                                 )}
@@ -830,7 +933,9 @@ function ReportContent() {
                               <span
                                 className={cn(
                                   "text-xs font-extrabold",
-                                  isPositive
+                                  isMissing
+                                    ? "text-amber-300"
+                                    : isPositive
                                     ? "text-emerald-300"
                                     : isBad
                                       ? "text-red-300"
@@ -934,6 +1039,32 @@ function ReportContent() {
           box-shadow:
             inset 0 1px 0 rgba(255, 255, 255, 0.03),
             0 10px 24px rgba(0, 0, 0, 0.16);
+        }
+
+        .report-findings-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(148, 163, 184, 0.28) transparent;
+        }
+
+        .report-findings-scroll::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        .report-findings-scroll::-webkit-scrollbar-track {
+          background: transparent;
+          margin: 12px 0;
+        }
+
+        .report-findings-scroll::-webkit-scrollbar-thumb {
+          border: 2px solid transparent;
+          border-radius: 999px;
+          background: rgba(148, 163, 184, 0.28);
+          background-clip: padding-box;
+        }
+
+        .report-findings-scroll:hover::-webkit-scrollbar-thumb {
+          background: rgba(203, 213, 225, 0.42);
+          background-clip: padding-box;
         }
 
         .tech-grid {

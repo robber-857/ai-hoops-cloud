@@ -59,7 +59,7 @@
       "weight": 0.5,
       "type": "target",
       "computeKey": "stdWristXAtContactPerCycleNormByST",
-      "params": { "target": 0.06, "tol": 0.03, "margin": 0.08 },
+      "params": { "target": 0.09, "tol": 0.07, "margin": 0.095 },
       "hint_bad": "Unstable ball landing point: Ensure wrist stability while dribbling. Practice slow, consistent ball landing points first, then increase speed."
     },
     {
