@@ -9,25 +9,16 @@
     {
       "metricId": "P_body_line",
       "category": "posture",
-      "weight": 0.45,
+      "weight": 0.65,
       "type": "target",
       "computeKey": "plankBodyLineDeg",
       "params": { "target": 172, "tol": 8, "margin": 15 },
       "hint_bad": "Body line is not straight: tighten the core and glutes, avoid sagging or lifting the hips, and keep the shoulders, hips, and ankles aligned."
     },
     {
-      "metricId": "P_shoulder_stack",
-      "category": "posture",
-      "weight": 0.30,
-      "type": "range",
-      "computeKey": "shoulderOverWristOffsetX",
-      "params": { "L": -0.08, "U": 0.08, "margin": 0.12 },
-      "hint_bad": "Shoulders are not stacked over the wrists: shift the body weight so the shoulders sit directly above the wrists."
-    },
-    {
       "metricId": "P_elbow_lockout",
       "category": "posture",
-      "weight": 0.25,
+      "weight": 0.35,
       "type": "target",
       "computeKey": "avgElbowAngleDeg",
       "params": { "target": 85, "tol": 10, "margin": 15 },

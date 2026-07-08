@@ -2396,7 +2396,6 @@ function PushupPlankPerformanceCard({
   savedMetrics?: AngleData[] | null;
 }) {
   const bodyLineSaved = getSavedMetric(savedMetrics, "plankBodyLineDeg");
-  const shoulderSaved = getSavedMetric(savedMetrics, "shoulderOverWristOffsetX");
   const elbowSaved = getSavedMetric(savedMetrics, "avgElbowAngleDeg");
   const goodFormSaved = getSavedMetric(savedMetrics, "goodFormFrameRatio");
   const stabilitySaved = getSavedMetric(savedMetrics, "stdPlankBodyLineDeg");
@@ -2406,7 +2405,6 @@ function PushupPlankPerformanceCard({
     ["plankBodyLineDeg", "bodyLineDeg"],
     bodyLineSaved
   );
-  const shoulderPoints = buildSeries(timeline, "shoulderOverWristOffsetX");
   const elbowPoints = chooseClosestSeries(
     timeline,
     ["avgElbowAngleDeg", "elbowAngleDeg", "rightElbowAngleDeg", "leftElbowAngleDeg"],
@@ -2422,11 +2420,6 @@ function PushupPlankPerformanceCard({
     "plankBodyLineDeg",
     { min: 160, max: 184, domain: [120, 200] },
     { toleranceMultiplier: 1.5 }
-  );
-  const shoulderRange = buildRangeFromTemplateMetric(
-    TRAINING_PUSHUP_PLANK_TEMPLATE_ID,
-    "shoulderOverWristOffsetX",
-    { min: -0.08, max: 0.08, domain: [-0.3, 0.3] }
   );
   const elbowRange = buildRangeFromTemplateMetric(
     TRAINING_PUSHUP_PLANK_TEMPLATE_ID,
@@ -2472,22 +2465,6 @@ function PushupPlankPerformanceCard({
         "Shows whether shoulders, hips, and ankles stay in one line. The target band avoids sagging hips or piking up.",
       advice:
         "Squeeze the glutes, brace the core, and keep the body long from shoulders to ankles.",
-    }),
-    makeLineChartItem({
-      title: "Shoulder Stack",
-      helper: `Target offset ${formatRangeText(shoulderRange, 2)}`,
-      metricKey: "shoulderOverWristOffsetX",
-      valueLabel: "Offset",
-      points: shoulderPoints,
-      savedValue: shoulderSaved,
-      decimals: 3,
-      range: shoulderRange,
-      label: "Shoulder-wrist offset",
-      accent: "#60a5fa",
-      explanation:
-        "Shows whether the shoulder stays stacked over the wrist. Good stacking makes the plank safer and easier to hold.",
-      advice:
-        "Shift the shoulders directly over the wrists and avoid drifting too far forward or backward.",
     }),
     makeLineChartItem({
       title: "Elbow Lockout",

@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import globalConfig from "@/config/templates/global.json";
 import { getAllTemplates, getTemplateById, ActionTemplate } from "@/config/templates";
 import { calculateRealScore, ScoreResult, Grade, AngleData } from "@/lib/scoring";
+import { mergeTrainingTimelineMetrics } from "@/lib/trainingCalculator";
 import { useAnalysisStore, FrameSample } from "@/store/analysisStore";
 import MetricTimelineCard from "@/components/Pose2D/MetricTimelineCard";
 import { ChevronLeft, Download, Activity, CheckCircle2, AlertCircle, Check, Link as LinkIcon, AlertTriangle } from "lucide-react";
@@ -281,7 +282,11 @@ function ReportContent() {
         if (template) {
           const metricsForScoring =
             template.mode === "training"
-              ? currentAngles.filter((metric) => metric.unit === "calc")
+              ? mergeTrainingTimelineMetrics(
+                  currentAngles.filter((metric) => metric.unit === "calc"),
+                  currentTimeline,
+                  template
+                )
               : currentAngles;
           setResult(calculateRealScore(template, metricsForScoring, { ageGroup, handedness: "right" }));
         }
@@ -293,12 +298,16 @@ function ReportContent() {
         if (template) {
           const metricsForScoring =
             template.mode === "training"
-              ? dbSavedMetrics.filter((metric) => metric.unit === "calc")
+              ? mergeTrainingTimelineMetrics(
+                  dbSavedMetrics.filter((metric) => metric.unit === "calc"),
+                  dbTimeline,
+                  template
+                )
               : dbSavedMetrics;
           setDbResult(calculateRealScore(template, metricsForScoring, { ageGroup, handedness: "right" }));
         }
     }
-  }, [selectedTemplateId, currentAngles, ageGroup, reportId, dbSavedMetrics]);
+  }, [selectedTemplateId, currentAngles, currentTimeline, ageGroup, reportId, dbSavedMetrics, dbTimeline]);
 
   // 4. Load report detail from the backend by public id.
   useEffect(() => {
@@ -359,6 +368,10 @@ function ReportContent() {
       return;
     }
 
+    const metricsToSave =
+      template.mode === "training"
+        ? mergeTrainingTimelineMetrics(dbSavedMetrics, dbTimeline, template)
+        : dbSavedMetrics;
     const nextSignature = buildReportSignature(selectedTemplateId, ageGroup, dbResult.overall);
     if (persistedReportSignatureRef.current === nextSignature) {
       return;
@@ -376,7 +389,7 @@ function ReportContent() {
           grade: dbResult.grade,
           score_data: {
             ...dbResult,
-            saved_metrics: dbSavedMetrics,
+            saved_metrics: metricsToSave,
             score_context: {
               age_group: ageGroup,
               handedness: "right",
@@ -387,7 +400,7 @@ function ReportContent() {
           summary_data: {
             analysis_type: template.mode,
             handedness: "right",
-            metrics_count: dbSavedMetrics.length,
+            metrics_count: metricsToSave.length,
             template_name: template.displayName,
             age_group: ageGroup,
             source: "report_template_selection",
@@ -436,7 +449,18 @@ function ReportContent() {
   const finalResult = reportId ? dbResult : result;
   const finalVideoUrl = reportId ? dbVideoUrl : currentVideoUrl;
   const finalTimeline = reportId ? dbTimeline : currentTimeline;
-  const finalSavedMetrics = reportId ? dbSavedMetrics : currentAngles;
+  const rawFinalSavedMetrics = reportId ? dbSavedMetrics : currentAngles;
+  const selectedTemplate = useMemo(
+    () => (selectedTemplateId ? getTemplateById(selectedTemplateId) : null),
+    [selectedTemplateId]
+  );
+  const finalSavedMetrics = useMemo(() => {
+    if (selectedTemplate?.mode !== "training") {
+      return rawFinalSavedMetrics;
+    }
+
+    return mergeTrainingTimelineMetrics(rawFinalSavedMetrics, finalTimeline, selectedTemplate);
+  }, [rawFinalSavedMetrics, finalTimeline, selectedTemplate]);
   const hasPerformanceCurves =
     Boolean(finalTimeline && finalTimeline.length > 0) ||
     Boolean(finalSavedMetrics && finalSavedMetrics.length > 0);

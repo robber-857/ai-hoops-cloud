@@ -1,6 +1,7 @@
 // src/lib/trainingCalculator.ts
 
-import { ActionTemplate } from "@/config/templates";
+import { ActionTemplate, Metric } from "@/config/templates";
+import type { AngleData } from "@/lib/scoring";
 import { DribbleFrame } from "./dribbleTemporal"; 
 import { 
   smoothSeries, 
@@ -38,6 +39,181 @@ function average(arr: number[]): number {
   return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
 }
 
+type TimelineFrame = {
+  time: number;
+  angles: AngleData[];
+};
+
+type TimedValue = {
+  time: number;
+  value: number;
+};
+
+const TIMELINE_METRIC_ALIASES: Record<string, string[]> = {
+  plankBodyLineDeg: ["plankBodyLineDeg", "bodyLineDeg"],
+  avgElbowAngleDeg: ["avgElbowAngleDeg", "elbowAngleDeg", "rightElbowAngleDeg", "leftElbowAngleDeg"],
+  avgKneeAngleDeg: ["avgKneeAngleDeg", "kneeAngleDeg"],
+  trunkLeanDegSide: ["trunkLeanDegSide", "torsoLeanDegSide"],
+  torsoLeanDegSide: ["torsoLeanDegSide", "trunkLeanDegSide"],
+};
+
+function getTimelineMetric(frame: TimelineFrame, computeKey: string): number | null {
+  const keys = TIMELINE_METRIC_ALIASES[computeKey] ?? [computeKey];
+
+  for (const key of keys) {
+    const match = frame.angles.find((angle) => angle.name === key);
+    if (typeof match?.value === "number" && Number.isFinite(match.value)) {
+      return match.value;
+    }
+  }
+
+  return null;
+}
+
+function buildTimelineSeries(
+  timelineFrames: TimelineFrame[] | null | undefined,
+  computeKey: string
+): TimedValue[] {
+  if (!timelineFrames?.length) return [];
+
+  return timelineFrames
+    .map((frame) => {
+      const value = getTimelineMetric(frame, computeKey);
+      return value === null || !Number.isFinite(frame.time) ? null : { time: frame.time, value };
+    })
+    .filter((point): point is TimedValue => point !== null)
+    .sort((a, b) => a.time - b.time);
+}
+
+function getEffectiveWindow(metric: Metric, toleranceMultiplier = 1.5) {
+  if (metric.type === "target" && typeof metric.params.target === "number") {
+    const tolerance = (metric.params.tol ?? 5) * toleranceMultiplier;
+    return {
+      min: metric.params.target - tolerance,
+      max: metric.params.target + tolerance,
+    };
+  }
+
+  if (
+    (metric.type === "range" || metric.type === "rangeByOption") &&
+    typeof metric.params.L === "number" &&
+    typeof metric.params.U === "number"
+  ) {
+    return {
+      min: metric.params.L,
+      max: metric.params.U,
+    };
+  }
+
+  return null;
+}
+
+function calculateTimeInWindow(points: TimedValue[], min: number, max: number) {
+  if (points.length === 0) return { duration: 0, ratio: 0 };
+
+  if (points.length === 1) {
+    const isGood = points[0].value >= min && points[0].value <= max;
+    return { duration: 0, ratio: isGood ? 1 : 0 };
+  }
+
+  let totalDuration = 0;
+  let goodDuration = 0;
+
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const current = points[index];
+    const next = points[index + 1];
+    const interval = Math.max(0, next.time - current.time);
+    totalDuration += interval;
+
+    if (current.value >= min && current.value <= max) {
+      goodDuration += interval;
+    }
+  }
+
+  if (totalDuration <= 0) {
+    const goodCount = points.filter((point) => point.value >= min && point.value <= max).length;
+    return { duration: 0, ratio: goodCount / points.length };
+  }
+
+  return {
+    duration: goodDuration,
+    ratio: Math.max(0, Math.min(1, goodDuration / totalDuration)),
+  };
+}
+
+function cleanComputedResult(result: ComputedResult): ComputedResult {
+  Object.keys(result).forEach((key) => {
+    const value = result[key];
+    if (typeof value === "number" && !Number.isFinite(value)) {
+      delete result[key];
+    }
+  });
+
+  return result;
+}
+
+export function aggregateTrainingTimelineMetrics(
+  timelineFrames: TimelineFrame[] | null | undefined,
+  template: ActionTemplate
+): ComputedResult {
+  const result: ComputedResult = {};
+  if (!timelineFrames?.length) return result;
+
+  const bodyLinePoints = buildTimelineSeries(timelineFrames, "plankBodyLineDeg");
+  if (bodyLinePoints.length > 0) {
+    const bodyLineValues = bodyLinePoints.map((point) => point.value);
+    result["plankBodyLineDeg"] = median(bodyLineValues);
+    result["stdPlankBodyLineDeg"] = calculateStdDev(bodyLineValues);
+  }
+
+  const primaryPostureMetric = template.metrics
+    .filter((metric) => metric.category === "posture")
+    .sort((a, b) => b.weight - a.weight)[0];
+  const goodFormMetric = template.metrics.find(
+    (metric) => metric.computeKey === "goodFormFrameRatio"
+  );
+
+  if (primaryPostureMetric && goodFormMetric) {
+    const posturePoints =
+      primaryPostureMetric.computeKey === "plankBodyLineDeg"
+        ? bodyLinePoints
+        : buildTimelineSeries(timelineFrames, primaryPostureMetric.computeKey);
+    const effectiveWindow = getEffectiveWindow(primaryPostureMetric);
+
+    if (posturePoints.length > 0 && effectiveWindow) {
+      const { duration, ratio } = calculateTimeInWindow(
+        posturePoints,
+        effectiveWindow.min,
+        effectiveWindow.max
+      );
+      result["holdDurationSec"] = duration;
+      result["goodFormFrameRatio"] = ratio;
+    }
+  }
+
+  return cleanComputedResult(result);
+}
+
+export function mergeTrainingTimelineMetrics(
+  metrics: AngleData[] | null | undefined,
+  timelineFrames: TimelineFrame[] | null | undefined,
+  template: ActionTemplate
+): AngleData[] {
+  const merged = new Map<string, AngleData>();
+  (metrics ?? []).forEach((metric) => {
+    merged.set(metric.name, metric);
+  });
+
+  const timelineMetrics = aggregateTrainingTimelineMetrics(timelineFrames, template);
+  Object.entries(timelineMetrics).forEach(([name, value]) => {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      merged.set(name, { name, value, unit: "calc" });
+    }
+  });
+
+  return Array.from(merged.values());
+}
+
 // 核心特征流数据结构
 interface StreamData {
   t: number;
@@ -61,9 +237,11 @@ export type ComputedResult = Record<string, number | undefined>;
  */
 export function aggregateTrainingSequence(
   frames: DribbleFrame[], 
-  template: ActionTemplate 
+  template: ActionTemplate,
+  timelineFrames?: TimelineFrame[] | null
 ): ComputedResult {
-  if (!frames || frames.length === 0) return {};
+  const timelineMetrics = aggregateTrainingTimelineMetrics(timelineFrames, template);
+  if (!frames || frames.length === 0) return timelineMetrics;
 
   const result: ComputedResult = {};
   
@@ -188,10 +366,8 @@ export function aggregateTrainingSequence(
   result["holdDurationSec"] = goodTime;
   result["goodFormFrameRatio"] = totalDur > 0 ? goodTime / totalDur : 0;
 
-  // 清理 NaN 值防止 DB 报错
-  Object.keys(result).forEach(k => {
-    if (typeof result[k] === 'number' && !Number.isFinite(result[k])) delete result[k];
-  });
+  Object.assign(result, timelineMetrics);
 
-  return result;
+  // 清理 NaN 值防止 DB 报错
+  return cleanComputedResult(result);
 }

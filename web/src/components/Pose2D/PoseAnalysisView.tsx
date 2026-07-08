@@ -493,7 +493,11 @@ export default function PoseAnalysisView({
         const trainingFrames = trainingFramesRef.current;
 
         console.log("Analyzing Training Data:", trainingFrames.length, "frames");
-        const computedStats = aggregateTrainingSequence(trainingFrames, activeTemplate);
+        const computedStats = aggregateTrainingSequence(
+          trainingFrames,
+          activeTemplate,
+          allFramesRef.current
+        );
 
         const dynamicMetrics: AngleData[] = Object.entries(computedStats)
           .filter(([, value]) => value !== undefined)
