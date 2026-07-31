@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BarChart3, CircleUserRound, Dumbbell, Sparkles } from "lucide-react";
 
+import { WorkspaceMobileMenu } from "@/components/navigation/WorkspaceMobileMenu";
 import { routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +34,12 @@ const navItems = [
   },
 ];
 
+const mobileNavItems = navItems.map((item) => ({
+  href: item.href,
+  label: item.label,
+  exact: item.href === routes.user.me,
+}));
+
 export function AccountCenterShell({
   children,
   username,
@@ -44,7 +51,7 @@ export function AccountCenterShell({
       <div className="pointer-events-none absolute left-[-8rem] top-24 h-72 w-72 rounded-full bg-[#d8ff5d]/10 blur-3xl" />
       <div className="pointer-events-none absolute right-[-6rem] top-60 h-80 w-80 rounded-full bg-emerald-400/8 blur-3xl" />
 
-      <header className="sticky top-0 z-40 border-b border-white/8 bg-[#05070bcc]/85 backdrop-blur-xl">
+      <header className="sticky top-0 z-[60] border-b border-white/8 bg-[#05070bcc]/85 backdrop-blur-xl">
         <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-3 px-3 sm:gap-4 sm:px-6 lg:px-8">
           <div className="min-w-0">
             <div className="truncate font-[var(--font-display)] text-[0.68rem] uppercase tracking-[0.24em] text-[#d8ff5d]/72 sm:text-[0.72rem] sm:tracking-[0.32em]">
@@ -55,7 +62,7 @@ export function AccountCenterShell({
             </div>
           </div>
 
-          <nav className="hidden items-center gap-2 md:flex">
+          <nav className="hidden items-center gap-2 lg:flex">
             {navItems.map((item) => {
               const Icon = item.icon;
 
@@ -77,14 +84,20 @@ export function AccountCenterShell({
             })}
           </nav>
 
-          <div className="flex min-w-0 shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-2 py-2 sm:gap-3 sm:px-3">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[#d8ff5d]/25 bg-[#d8ff5d]/12 text-sm font-semibold text-[#d8ff5d]">
-              {username.slice(0, 1).toUpperCase()}
-            </span>
-            <div className="hidden min-w-0 sm:block">
-              <div className="truncate text-sm font-medium text-white">{username}</div>
-              
+          <div className="flex min-w-0 shrink-0 items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-2 sm:gap-3 sm:px-3">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#d8ff5d]/25 bg-[#d8ff5d]/12 text-sm font-semibold text-[#d8ff5d]">
+                {username.slice(0, 1).toUpperCase()}
+              </span>
+              <div className="hidden min-w-0 sm:block">
+                <div className="max-w-36 truncate text-sm font-medium text-white">{username}</div>
+              </div>
             </div>
+            <WorkspaceMobileMenu
+              items={mobileNavItems}
+              eyebrow="Athlete workspace"
+              accent="lime"
+            />
           </div>
         </div>
       </header>

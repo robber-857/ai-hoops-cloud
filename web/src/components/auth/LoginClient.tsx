@@ -15,6 +15,7 @@ import {
   UserRound,
 } from "lucide-react";
 
+import { BackToLandingLink } from "@/components/auth/BackToLandingLink";
 import { normalizeAuthRole, resolveLoginRedirect } from "@/lib/authRedirect";
 import { routes } from "@/lib/routes";
 import { authService } from "@/services/auth";
@@ -152,14 +153,16 @@ export function LoginClient() {
 
   return (
     <main
-      className="min-h-screen bg-[#0e0e0e] px-5 py-8 text-white sm:px-8 lg:px-10"
+      className="relative flex min-h-screen min-h-[100svh] flex-col bg-[#0e0e0e] px-5 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(5.25rem+env(safe-area-inset-top))] text-white sm:px-8 sm:pb-10 sm:pt-[calc(6rem+env(safe-area-inset-top))] lg:px-10"
       style={{
         backgroundImage: `linear-gradient(to bottom, rgba(14,14,14,0.84), rgba(14,14,14,0.78), rgba(14,14,14,0.92)), url(${heroImage})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
     >
-      <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl flex-col justify-center">
+      <BackToLandingLink />
+
+      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center">
         <div className="mb-10 text-center">
           <h1 className="mb-2 text-4xl font-black uppercase tracking-[-0.08em] text-[#ff9f4a] sm:text-5xl">
             IFSPORT AI CLUB

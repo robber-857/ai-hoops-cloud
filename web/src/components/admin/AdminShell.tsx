@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { LogoutButton } from "@/components/account/LogoutButton";
+import { WorkspaceMobileMenu } from "@/components/navigation/WorkspaceMobileMenu";
 import { routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import type { AuthUser } from "@/types/auth";
@@ -37,6 +38,12 @@ const navItems = [
   { href: routes.admin.tasks, label: "Tasks", icon: ClipboardList },
   { href: routes.admin.notifications, label: "Notifications", icon: Bell },
 ];
+
+const mobileNavItems = navItems.map((item, index) => ({
+  href: item.href,
+  label: item.label,
+  exact: index === 0,
+}));
 
 export function AdminLoadingSurface() {
   return (
@@ -123,7 +130,7 @@ export function AdminShell({ children, user, title, breadcrumb }: AdminShellProp
       </aside>
 
       <section className="relative z-10 lg:pl-[16rem]">
-        <header className="sticky top-0 z-20 border-b border-white/10 bg-[#05070c]/70 backdrop-blur-2xl">
+        <header className="sticky top-0 z-[60] border-b border-white/10 bg-[#05070c]/70 backdrop-blur-2xl">
           <div className="flex min-h-16 items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1 text-[0.68rem] uppercase tracking-[0.18em] text-white/46">
@@ -139,10 +146,17 @@ export function AdminShell({ children, user, title, breadcrumb }: AdminShellProp
                 {title}
               </h1>
             </div>
-            <LogoutButton
-              label="Log out"
-              className="min-h-10 rounded-lg border-white/10 bg-white/[0.045] px-3 text-xs text-white/72 hover:bg-white/[0.08]"
-            />
+            <div className="flex shrink-0 items-center gap-2">
+              <LogoutButton
+                label="Log out"
+                className="hidden min-h-10 rounded-lg border-white/10 bg-white/[0.045] px-3 text-xs text-white/72 hover:bg-white/[0.08] lg:inline-flex"
+              />
+              <WorkspaceMobileMenu
+                items={mobileNavItems}
+                eyebrow="Admin workspace"
+                accent="cyan"
+              />
+            </div>
           </div>
         </header>
 

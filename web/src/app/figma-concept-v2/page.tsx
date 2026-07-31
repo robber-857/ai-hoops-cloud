@@ -2,6 +2,7 @@ import {
   HeroInsightPanel,
   InteractiveMotionStage,
 } from "./ConceptInteractions";
+import { MobileNavigation } from "./MobileNavigation";
 
 const capabilities = [
   {
@@ -114,21 +115,7 @@ export default function FigmaConceptV2Page() {
           />
         </svg>
 
-        <header className="nav">
-          <a className="brand" href="#top" aria-label="Apex Sport AI home">
-            APEX <span>SPORT AI</span>
-            <small>SYDNEY</small>
-          </a>
-          <nav aria-label="Concept navigation">
-            <a href="#analysis">HOW IT WORKS</a>
-            <a href="#modes">ANALYSIS</a>
-            <a href="#report">REPORT</a>
-            <a href="#beta">PRIVATE BETA</a>
-          </nav>
-          <a className="nav-cta" href="/auth/login">
-            LOG IN
-          </a>
-        </header>
+        <MobileNavigation />
 
         <section id="top" className="hero">
           <div className="hero-image" />
@@ -400,11 +387,12 @@ export default function FigmaConceptV2Page() {
           font-weight: 700;
         }
 
-        .nav nav { display: flex; align-items: center; gap: 34px; }
-        .nav nav a {
+        .desktop-nav { display: flex; align-items: center; gap: 34px; }
+        .desktop-nav a {
           font-size: 8px;
           font-weight: 800;
-          letter-spacing: .18em;
+          letter-spacing: 0;
+          text-transform: uppercase;
           color: rgba(255,255,255,.48);
         }
         .nav-cta {
@@ -417,8 +405,13 @@ export default function FigmaConceptV2Page() {
           background: var(--orange);
           font-size: 8px;
           font-weight: 900;
-          letter-spacing: .16em;
+          letter-spacing: 0;
+          text-transform: uppercase;
           box-shadow: 0 0 24px rgba(255, 126, 43, .26);
+        }
+        .mobile-menu-trigger,
+        .mobile-menu-layer {
+          display: none;
         }
 
         .hero {
@@ -1235,18 +1228,194 @@ export default function FigmaConceptV2Page() {
           }
           .continuum { display: none; }
           .nav {
+            position: fixed;
             top: 12px;
             left: 16px;
             right: 16px;
             height: 56px;
-            border-radius: 12px;
+            border-radius: 8px;
             padding: 0 10px 0 16px;
+            transition:
+              border-color .2s ease,
+              background-color .2s ease,
+              box-shadow .2s ease;
           }
-          .nav nav { display: none; }
-          .nav-cta {
-            min-height: 34px;
-            padding: 0 12px;
-            font-size: 7px;
+          .nav-is-open {
+            border-color: rgba(255,138,50,.46);
+            background: rgba(2,7,14,.94);
+            box-shadow: 0 12px 40px rgba(0,0,0,.42);
+          }
+          .desktop-nav,
+          .desktop-nav-cta {
+            display: none;
+          }
+          .mobile-menu-trigger {
+            display: inline-flex;
+            width: 44px;
+            height: 44px;
+            flex: 0 0 44px;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255,255,255,.16);
+            border-radius: 8px;
+            color: #f6f7f3;
+            background: rgba(255,255,255,.06);
+            cursor: pointer;
+            transition:
+              color .2s ease,
+              border-color .2s ease,
+              background-color .2s ease;
+          }
+          .mobile-menu-trigger:hover,
+          .mobile-menu-trigger:focus-visible {
+            border-color: rgba(255,138,50,.62);
+            color: var(--orange);
+            background: rgba(255,138,50,.1);
+          }
+          .mobile-menu-trigger:focus-visible {
+            outline: 2px solid #ffb071;
+            outline-offset: 3px;
+          }
+          .mobile-menu-trigger svg {
+            width: 21px;
+            height: 21px;
+            stroke-width: 1.8;
+          }
+          .mobile-menu-layer {
+            position: fixed;
+            z-index: 19;
+            inset: 0;
+            display: block;
+            min-height: 100svh;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            padding:
+              calc(94px + env(safe-area-inset-top))
+              max(20px, env(safe-area-inset-right))
+              max(22px, env(safe-area-inset-bottom))
+              max(20px, env(safe-area-inset-left));
+            color: #f6f7f3;
+            background:
+              linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px),
+              linear-gradient(180deg, rgba(3,10,18,.99), rgba(2,6,13,1));
+            background-size: 48px 48px, 48px 48px, auto;
+          }
+          .mobile-menu-content {
+            display: flex;
+            width: min(100%, 520px);
+            min-height: calc(100svh - 116px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+            margin: 0 auto;
+            flex-direction: column;
+          }
+          .mobile-menu-kicker {
+            margin: 0 0 18px;
+            color: rgba(255,138,50,.78);
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0;
+            text-transform: uppercase;
+          }
+          .mobile-nav-list {
+            display: flex;
+            flex-direction: column;
+            border-top: 1px solid rgba(255,255,255,.14);
+            border-bottom: 1px solid rgba(255,255,255,.14);
+          }
+          .mobile-nav-list a {
+            display: grid;
+            min-width: 0;
+            min-height: 66px;
+            grid-template-columns: 28px minmax(0, 1fr) 24px;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid rgba(255,255,255,.1);
+            color: #f6f7f3;
+            text-decoration: none;
+            transition:
+              color .2s ease,
+              background-color .2s ease;
+          }
+          .mobile-nav-list a:last-child {
+            border-bottom: 0;
+          }
+          .mobile-nav-list a:hover,
+          .mobile-nav-list a:focus-visible {
+            color: var(--orange);
+            background: rgba(255,138,50,.055);
+          }
+          .mobile-nav-list a:focus-visible {
+            outline: 2px solid #ffb071;
+            outline-offset: -2px;
+          }
+          .mobile-nav-list a > span:nth-child(2) {
+            min-width: 0;
+            overflow-wrap: anywhere;
+            font-family: Arial, sans-serif;
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 0;
+            line-height: 1.05;
+            text-transform: uppercase;
+          }
+          .mobile-nav-index {
+            color: rgba(255,255,255,.34);
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0;
+          }
+          .mobile-nav-list svg {
+            width: 19px;
+            height: 19px;
+            justify-self: end;
+            color: rgba(255,255,255,.42);
+            stroke-width: 1.6;
+          }
+          .mobile-login-cta {
+            display: flex;
+            width: 100%;
+            min-height: 48px;
+            margin-top: 22px;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            border-radius: 8px;
+            padding: 0 16px;
+            color: #190b03;
+            background: var(--orange);
+            font-size: 12px;
+            font-weight: 900;
+            letter-spacing: 0;
+            text-decoration: none;
+            text-transform: uppercase;
+            box-shadow: 0 12px 34px rgba(255,126,43,.2);
+          }
+          .mobile-login-cta:hover,
+          .mobile-login-cta:focus-visible {
+            background: #ffa05e;
+          }
+          .mobile-login-cta:focus-visible {
+            outline: 2px solid #ffd0ae;
+            outline-offset: 3px;
+          }
+          .mobile-login-cta svg {
+            width: 18px;
+            height: 18px;
+            stroke-width: 1.8;
+          }
+          .mobile-menu-footer {
+            display: flex;
+            margin-top: auto;
+            padding-top: 28px;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 16px;
+            color: rgba(255,255,255,.34);
+            font-size: 8px;
+            font-weight: 800;
+            letter-spacing: 0;
+            line-height: 1.4;
+            text-transform: uppercase;
           }
           .hero {
             height: 940px;
@@ -1354,7 +1523,6 @@ export default function FigmaConceptV2Page() {
 
         @media (max-width: 600px) {
           .brand small { display: none; }
-          .nav-cta { max-width: 112px; text-align: center; }
           .hero {
             height: 940px;
           }
@@ -1505,6 +1673,31 @@ export default function FigmaConceptV2Page() {
             flex-wrap: wrap;
             gap: 8px 20px;
             padding: 22px 20px;
+          }
+        }
+
+        @media (max-width: 360px) {
+          .nav {
+            left: 10px;
+            right: 10px;
+            padding-left: 13px;
+          }
+          .brand {
+            min-width: 0;
+            font-size: 14px;
+            letter-spacing: 0;
+          }
+          .mobile-menu-layer {
+            padding-right: 16px;
+            padding-left: 16px;
+          }
+          .mobile-nav-list a > span:nth-child(2) {
+            font-size: 20px;
+          }
+          .mobile-menu-footer {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: 5px;
           }
         }
       `}</style>

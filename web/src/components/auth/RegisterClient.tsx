@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Activity, Bolt, Eye, EyeOff, Mail, Trophy, UserPlus } from "lucide-react";
 
+import { BackToLandingLink } from "@/components/auth/BackToLandingLink";
 import { routes } from "@/lib/routes";
 import { authService } from "@/services/auth";
 
@@ -110,7 +111,9 @@ export function RegisterClient() {
   };
 
   return (
-    <main className="min-h-screen bg-[#0e0e0e] text-white">
+    <main className="relative min-h-screen min-h-[100svh] bg-[#0e0e0e] text-white">
+      <BackToLandingLink />
+
       <div className="flex min-h-screen flex-col md:flex-row">
         <section className="relative flex min-h-[420px] w-full items-center justify-center overflow-hidden md:min-h-screen md:w-1/2">
           <div
@@ -124,7 +127,7 @@ export function RegisterClient() {
           <div className="absolute left-[-4rem] top-1/4 h-72 w-72 rounded-full bg-[#ff9f4a]/20 blur-[120px]" />
           <div className="absolute bottom-1/4 right-[-4rem] h-72 w-72 rounded-full bg-[#ff7162]/20 blur-[120px]" />
 
-          <div className="relative z-10 max-w-xl px-8 py-14 md:px-12 lg:px-16">
+          <div className="relative z-10 max-w-xl px-6 pb-14 pt-28 sm:px-8 sm:pb-16 sm:pt-32 md:px-12 md:py-14 lg:px-16">
             <div className="mb-12">
               <span className="mb-3 block text-xl font-black uppercase italic tracking-[-0.08em] text-[#ff9f4a]">
                 AI Hoops
