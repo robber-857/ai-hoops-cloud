@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from app.models.enums import AnalysisType
 from app.models.training_template import TrainingTemplate
 from app.schemas.template import (
     TemplateExampleVideoRead,
@@ -16,6 +17,7 @@ def _template_read(template: TrainingTemplate) -> TrainingTemplateRead:
     active_example_videos = [
         video for video in template.example_videos if video.status == "active"
     ]
+    active_versions = [version for version in template.versions if version.status == "active"]
 
     return TrainingTemplateRead(
         public_id=template.public_id,
@@ -39,7 +41,7 @@ def _template_read(template: TrainingTemplate) -> TrainingTemplateRead:
                 is_default=version.is_default,
                 published_at=version.published_at,
             )
-            for version in template.versions
+            for version in active_versions
         ],
         example_videos=[
             TemplateExampleVideoRead(
@@ -66,7 +68,11 @@ class TemplateService:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def list_templates(self, include_inactive: bool = False) -> list[TrainingTemplateRead]:
+    def list_templates(
+        self,
+        include_inactive: bool = False,
+        analysis_type: AnalysisType | None = None,
+    ) -> list[TrainingTemplateRead]:
         stmt = (
             select(TrainingTemplate)
             .options(
@@ -77,8 +83,16 @@ class TemplateService:
         )
         if not include_inactive:
             stmt = stmt.where(TrainingTemplate.status == "active")
+        if analysis_type:
+            stmt = stmt.where(TrainingTemplate.analysis_type == analysis_type)
 
         templates = self.db.scalars(stmt).all()
+        if not include_inactive:
+            templates = [
+                template
+                for template in templates
+                if any(version.status == "active" for version in template.versions)
+            ]
         return [_template_read(template) for template in templates]
 
     def get_template_by_code(self, template_code: str) -> TrainingTemplateRead:
@@ -88,8 +102,11 @@ class TemplateService:
                 selectinload(TrainingTemplate.versions),
                 selectinload(TrainingTemplate.example_videos),
             )
-            .where(TrainingTemplate.template_code == template_code)
+            .where(
+                TrainingTemplate.template_code == template_code,
+                TrainingTemplate.status == "active",
+            )
         )
-        if not template:
+        if not template or not any(version.status == "active" for version in template.versions):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Training template not found.")
         return _template_read(template)

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
+from app.models.enums import AnalysisType
 from app.schemas.template import TrainingTemplateRead
 from app.services.template_service import TemplateService
 
@@ -11,10 +12,14 @@ router = APIRouter()
 @router.get("", response_model=list[TrainingTemplateRead], status_code=status.HTTP_200_OK)
 def list_templates(
     include_inactive: bool = Query(default=False),
+    analysis_type: AnalysisType | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> list[TrainingTemplateRead]:
     service = TemplateService(db)
-    return service.list_templates(include_inactive=include_inactive)
+    return service.list_templates(
+        include_inactive=include_inactive,
+        analysis_type=analysis_type,
+    )
 
 
 @router.get("/{template_code}", response_model=TrainingTemplateRead, status_code=status.HTTP_200_OK)

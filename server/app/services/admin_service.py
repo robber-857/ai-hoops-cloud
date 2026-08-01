@@ -65,6 +65,36 @@ from app.schemas.admin import (
 )
 
 
+FORBIDDEN_TRAINING_COMPUTE_KEYS = {
+    "repCount",
+    "holdDurationSec",
+    "goodFormFrameRatio",
+    "cadenceSPM",
+    "repTempoSec",
+}
+
+
+def _normalize_json_numbers(value):
+    if isinstance(value, dict):
+        return {key: _normalize_json_numbers(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_normalize_json_numbers(item) for item in value]
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    return value
+
+
+def _local_template_content_hash(raw_template: dict) -> str:
+    canonical_json = json.dumps(
+        _normalize_json_numbers(raw_template),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    )
+    return hashlib.sha256(canonical_json.encode("utf-8")).hexdigest()
+
+
 def _ensure_admin_access(current_user: User) -> None:
     if current_user.role != UserRole.admin:
         raise HTTPException(
@@ -1728,10 +1758,10 @@ class AdminService:
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail=f"Unsupported local template mode: {mode}.",
                 )
+            if mode == AnalysisType.training.value:
+                self._validate_local_training_template(raw_template, template_path)
 
-            content_hash = hashlib.sha256(
-                json.dumps(raw_template, ensure_ascii=False, sort_keys=True).encode("utf-8")
-            ).hexdigest()
+            content_hash = _local_template_content_hash(raw_template)
             relative_source_path = template_path.relative_to(Path(__file__).resolve().parents[3]).as_posix()
             metrics = raw_template.get("metrics") if isinstance(raw_template.get("metrics"), list) else []
             metric_summary = [
@@ -1770,12 +1800,16 @@ class AdminService:
                     },
                     "mediapipe_config": {
                         "camera": raw_template.get("camera"),
+                        "camera_instructions": raw_template.get("cameraInstructions"),
                         "options": raw_template.get("options") or {},
                         "age_groups": raw_template.get("ageGroups") or [],
                     },
                     "summary_template": {
                         "display_name": raw_template.get("displayName"),
                         "mode": mode,
+                        "camera": raw_template.get("camera"),
+                        "camera_instructions": raw_template.get("cameraInstructions"),
+                        "version": version,
                         "rules_note": raw_template.get("rulesNote"),
                         "source_path": relative_source_path,
                         "content_hash": content_hash,
@@ -1784,6 +1818,82 @@ class AdminService:
             )
 
         return payloads
+
+    def _validate_local_training_template(self, raw_template: dict, template_path: Path) -> None:
+        def invalid(detail: str) -> None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Invalid local training template {template_path.name}: {detail}",
+            )
+
+        required_text_fields = (
+            "templateId",
+            "displayName",
+            "version",
+            "camera",
+            "cameraInstructions",
+        )
+        for field_name in required_text_fields:
+            value = raw_template.get(field_name)
+            if not isinstance(value, str) or not value.strip():
+                invalid(f"{field_name} is required.")
+
+        if raw_template.get("version") != "v1":
+            invalid("version must be v1.")
+        if raw_template.get("camera") not in {"front", "side"}:
+            invalid("camera must be front or side.")
+
+        category_weights = raw_template.get("categoryWeights")
+        if not isinstance(category_weights, dict):
+            invalid("categoryWeights is required.")
+        expected_weights = {"posture": 0.4, "execution": 0.4, "consistency": 0.2}
+        for category, expected_weight in expected_weights.items():
+            actual_weight = category_weights.get(category)
+            if (
+                not isinstance(actual_weight, (int, float))
+                or abs(actual_weight - expected_weight) > 0.0001
+            ):
+                invalid(f"{category} category weight must be {expected_weight}.")
+
+        metrics = raw_template.get("metrics")
+        if not isinstance(metrics, list) or not metrics:
+            invalid("metrics must be a non-empty list.")
+
+        metric_ids: set[str] = set()
+        categories: set[str] = set()
+        for index, metric in enumerate(metrics):
+            if not isinstance(metric, dict):
+                invalid(f"metric {index + 1} must be an object.")
+            metric_id = metric.get("metricId")
+            if not isinstance(metric_id, str) or not metric_id.strip():
+                invalid(f"metric {index + 1} is missing metricId.")
+            if metric_id in metric_ids:
+                invalid(f"metricId {metric_id} is duplicated.")
+            metric_ids.add(metric_id)
+
+            category = metric.get("category")
+            if category not in expected_weights:
+                invalid(f"metric {metric_id} has an unsupported category.")
+            categories.add(category)
+
+            compute_key = metric.get("computeKey")
+            if not isinstance(compute_key, str) or not compute_key.strip():
+                invalid(f"metric {metric_id} is missing computeKey.")
+            if compute_key in FORBIDDEN_TRAINING_COMPUTE_KEYS:
+                invalid(f"metric {metric_id} uses forbidden computeKey {compute_key}.")
+
+            for field_name in ("displayName", "targetText", "hint_good"):
+                value = metric.get(field_name)
+                if not isinstance(value, str) or not value.strip():
+                    invalid(f"metric {metric_id} is missing {field_name}.")
+            if not any(
+                isinstance(metric.get(field_name), str) and metric[field_name].strip()
+                for field_name in ("hint_low", "hint_high")
+            ):
+                invalid(f"metric {metric_id} needs a low or high correction hint.")
+
+        if not {"posture", "execution"}.issubset(categories):
+            invalid("posture and execution metrics are required.")
 
     def _local_template_version_matches(
         self,

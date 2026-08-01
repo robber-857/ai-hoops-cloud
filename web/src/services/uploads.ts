@@ -22,6 +22,11 @@ export type UploadInitResponse = {
   object_key: string;
   upload_strategy: string;
   upload_expires_at: string | null;
+  template_code: string | null;
+  template_version: string | null;
+  template_public_id: string | null;
+  template_version_public_id: string | null;
+  template_content_hash: string | null;
 };
 
 export type VideoRead = {
@@ -59,6 +64,8 @@ export type UploadCompletePayload = {
 export type UploadCompleteResponse = {
   session_public_id: string;
   upload_task_public_id: string;
+  template_code: string | null;
+  template_version: string | null;
   video: VideoRead;
 };
 
@@ -69,6 +76,11 @@ export type CompletedUploadSession = {
   objectKey: string;
   videoUrl: string;
   videoPublicId: string;
+  templateCode: string | null;
+  templateVersion: string | null;
+  templatePublicId: string | null;
+  templateVersionPublicId: string | null;
+  templateContentHash: string | null;
 };
 
 export const uploadService = {

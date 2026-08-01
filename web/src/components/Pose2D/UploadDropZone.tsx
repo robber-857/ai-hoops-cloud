@@ -25,6 +25,9 @@ interface UploadDropzoneProps {
   taskAssignmentPublicId?: string | null;
   templateCode?: string | null;
   templateVersion?: string | null;
+  templateContentHash?: string | null;
+  uploadDisabled?: boolean;
+  disabledReason?: string | null;
   onFileSelect: (
     file: File | null,
     videoUrl?: string,
@@ -166,6 +169,9 @@ export default function UploadDropzone({
   taskAssignmentPublicId,
   templateCode,
   templateVersion,
+  templateContentHash,
+  uploadDisabled = false,
+  disabledReason,
   onFileSelect,
 }: UploadDropzoneProps) {
   const [uploading, setUploading] = useState(false);
@@ -182,19 +188,43 @@ export default function UploadDropzone({
       try {
         const metadataPromise = readLocalVideoMetadata(file);
         const templates = getAllTemplates(analysisType);
+        const selectedTemplate = templates.find(
+          (template) => template.templateId === templateCode,
+        );
         const activeTemplate =
-          templates.find((template) => template.templateId === templateCode) ?? templates[0];
+          selectedTemplate ?? (analysisType === 'training' ? undefined : templates[0]);
+        if (!activeTemplate) {
+          throw new Error('Choose an available training exercise before uploading.');
+        }
+
+        const requestedVersion =
+          templateVersion ?? activeTemplate.version ?? undefined;
         const uploadInit = await uploadService.init({
           analysis_type: analysisType,
           file_name: file.name,
           content_type: getContentType(file),
           file_size: file.size,
-          template_code: activeTemplate?.templateId,
-          template_version: templateVersion ?? 'v1',
+          template_code: activeTemplate.templateId,
+          template_version: requestedVersion,
           class_public_id: classPublicId ?? undefined,
           task_assignment_public_id: taskAssignmentPublicId ?? undefined,
           source_type: taskAssignmentPublicId ? 'coach_task' : 'free_practice',
         });
+
+        if (analysisType === 'training') {
+          if (
+            uploadInit.template_code !== activeTemplate.templateId
+            || uploadInit.template_version !== requestedVersion
+          ) {
+            throw new Error('The server resolved a different training template. Refresh and try again.');
+          }
+          if (
+            templateContentHash
+            && uploadInit.template_content_hash !== templateContentHash
+          ) {
+            throw new Error('The training rules changed. Refresh the template catalog before uploading.');
+          }
+        }
 
         const storageUpload = await uploadVideoToStorage(file, uploadInit);
         const localVideoMetadata = await metadataPromise;
@@ -208,6 +238,12 @@ export default function UploadDropzone({
 
         const videoUrl =
           completedUpload.video.cdn_url ?? completedUpload.video.url ?? storageUpload.signedUrl;
+        if (
+          completedUpload.template_code !== uploadInit.template_code
+          || completedUpload.template_version !== uploadInit.template_version
+        ) {
+          throw new Error('The completed upload did not preserve its selected template.');
+        }
         const uploadSession: CompletedUploadSession = {
           sessionPublicId: completedUpload.session_public_id,
           uploadTaskPublicId: completedUpload.upload_task_public_id,
@@ -215,6 +251,11 @@ export default function UploadDropzone({
           objectKey: completedUpload.video.object_key,
           videoUrl,
           videoPublicId: completedUpload.video.public_id,
+          templateCode: uploadInit.template_code,
+          templateVersion: uploadInit.template_version,
+          templatePublicId: uploadInit.template_public_id,
+          templateVersionPublicId: uploadInit.template_version_public_id,
+          templateContentHash: uploadInit.template_content_hash,
         };
 
         console.log('Upload completed through backend session:', uploadSession);
@@ -233,6 +274,7 @@ export default function UploadDropzone({
       onFileSelect,
       taskAssignmentPublicId,
       templateCode,
+      templateContentHash,
       templateVersion,
     ]
   );
@@ -241,7 +283,7 @@ export default function UploadDropzone({
     onDrop,
     accept: { 'video/*': [] },
     maxFiles: 1,
-    disabled: uploading,
+    disabled: uploading || uploadDisabled,
   });
 
   return (
@@ -290,7 +332,7 @@ export default function UploadDropzone({
             'group relative min-h-[420px] cursor-pointer overflow-hidden rounded-[26px] border border-dashed p-5 transition-all duration-300 sm:p-6',
             'border-white/14 bg-white/[0.03] hover:border-white/24 hover:bg-white/[0.05]',
             isDragActive ? 'border-sky-300/40 bg-sky-300/10' : '',
-            uploading ? 'pointer-events-none opacity-70' : '',
+            uploading || uploadDisabled ? 'pointer-events-none opacity-60' : '',
           ].join(' ')}
         >
           <input {...getInputProps()} />
@@ -324,11 +366,17 @@ export default function UploadDropzone({
               </div>
 
               <h3 className="mt-6 font-[var(--font-display)] text-3xl font-semibold tracking-[-0.05em] text-white sm:text-4xl">
-                {uploading ? 'Uploading to cloud workspace' : 'Drop your video here'}
+                {uploading
+                  ? 'Uploading to cloud workspace'
+                  : uploadDisabled
+                    ? 'Choose a ready exercise first'
+                    : 'Drop your video here'}
               </h3>
               <p className="mt-3 max-w-lg text-sm leading-7 text-white/60 sm:text-base">
                 {uploading
                   ? 'Please keep this page open while the secure upload finishes.'
+                  : uploadDisabled
+                    ? disabledReason || 'Select an exercise whose rules are synced and ready.'
                   : 'Drag in a clip or tap to browse. The existing upload behavior stays the same, but the layout now feels more intentional on mobile and desktop.'}
               </p>
             </div>
@@ -356,7 +404,7 @@ export default function UploadDropzone({
                   State
                 </div>
                 <div className="mt-2 text-sm text-white/72">
-                  Ready for upload
+                  {uploadDisabled ? 'Waiting for exercise' : 'Ready for upload'}
                 </div>
               </div>
             </div>

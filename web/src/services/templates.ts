@@ -77,8 +77,14 @@ export function resolveTemplateExampleVideoSource(video: TemplateExampleVideoRea
 }
 
 export const templateService = {
-  listTemplates(includeInactive = false) {
-    const query = includeInactive ? "?include_inactive=true" : "";
+  listTemplates(
+    includeInactive = false,
+    analysisType?: ReportAnalysisType,
+  ) {
+    const searchParams = new URLSearchParams();
+    if (includeInactive) searchParams.set("include_inactive", "true");
+    if (analysisType) searchParams.set("analysis_type", analysisType);
+    const query = searchParams.size > 0 ? `?${searchParams.toString()}` : "";
     return apiRequest<TrainingTemplateRead[]>(`/training-templates${query}`, {
       method: "GET",
     });

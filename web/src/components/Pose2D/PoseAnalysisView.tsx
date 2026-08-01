@@ -452,11 +452,13 @@ export default function PoseAnalysisView({
 
     try {
       const templates = getAllTemplates(analysisType);
+      const lockedTemplateCode = uploadSession?.templateCode ?? templateCode;
       const activeTemplate =
-        templates.find((template) => template.templateId === templateCode) ?? templates[0];
+        templates.find((template) => template.templateId === lockedTemplateCode)
+        ?? (analysisType === "training" ? undefined : templates[0]);
 
       if (!activeTemplate) {
-        alert("No analysis template is available for this mode.");
+        alert("The uploaded session does not have a matching analysis template.");
         setIsGeneratingReport(false);
         return;
       }
@@ -469,6 +471,7 @@ export default function PoseAnalysisView({
 
       let finalInputForScoring: AngleData[] = [];
       let detectedHandness = "right";
+      let trainingCameraMatch: boolean | null = null;
 
       if (analysisType === "dribbling") {
         const dribbleFrames = dribbleFramesRef.current;
@@ -493,13 +496,23 @@ export default function PoseAnalysisView({
         const trainingFrames = trainingFramesRef.current;
 
         console.log("Analyzing Training Data:", trainingFrames.length, "frames");
-        const computedStats = aggregateTrainingSequence(
+        const trainingAggregation = aggregateTrainingSequence(
           trainingFrames,
           activeTemplate,
           allFramesRef.current
         );
+        trainingCameraMatch = trainingAggregation.cameraMatch;
 
-        const dynamicMetrics: AngleData[] = Object.entries(computedStats)
+        if (trainingAggregation.analysisStatus !== "ready") {
+          setAnalysisWarning(
+            trainingAggregation.reason ||
+              "The clip did not contain enough clear posture and movement data to score this action."
+          );
+          setIsGeneratingReport(false);
+          return;
+        }
+
+        const dynamicMetrics: AngleData[] = Object.entries(trainingAggregation.metrics)
           .filter(([, value]) => value !== undefined)
           .map(([key, value]) => ({
             name: key,
@@ -512,9 +525,10 @@ export default function PoseAnalysisView({
         finalInputForScoring = aggregateFrames(allFramesRef.current);
       }
 
-      if (finalInputForScoring.length < MIN_SCORING_METRICS) {
+      const minimumScoringMetrics = analysisType === "training" ? 2 : MIN_SCORING_METRICS;
+      if (finalInputForScoring.length < minimumScoringMetrics) {
         setAnalysisWarning(
-          `Only ${finalInputForScoring.length}/${MIN_SCORING_METRICS} scoring metrics were collected. Use a clearer full-body clip and try again.`
+          `Only ${finalInputForScoring.length}/${minimumScoringMetrics} scoring metrics were collected. Use a clearer full-body clip and try again.`
         );
         setIsGeneratingReport(false);
         return;
@@ -523,6 +537,22 @@ export default function PoseAnalysisView({
       const realScoreResult = calculateRealScore(activeTemplate, finalInputForScoring, {
         handedness: detectedHandness,
       });
+
+      if (realScoreResult.analysisStatus !== "ready") {
+        setAnalysisWarning(
+          "The clip does not contain enough clear posture and movement data for a fair score."
+        );
+        setIsGeneratingReport(false);
+        return;
+      }
+
+      const lockedTemplateVersion =
+        uploadSession.templateVersion ?? templateVersion ?? activeTemplate.version;
+      if (!lockedTemplateVersion) {
+        alert("The uploaded session does not have a locked template version.");
+        setIsGeneratingReport(false);
+        return;
+      }
 
       let longTermVideoUrl = videoUrl;
 
@@ -536,6 +566,13 @@ export default function PoseAnalysisView({
       const scoreDataToSave = {
         ...realScoreResult,
         saved_metrics: finalInputForScoring,
+        score_context: {
+          handedness: detectedHandness,
+          camera_match: trainingCameraMatch,
+          expected_camera: analysisType === "training" ? activeTemplate.camera : null,
+          camera_instructions:
+            analysisType === "training" ? activeTemplate.cameraInstructions ?? null : null,
+        },
       };
       const captureSource =
         autoAnalysisProgress.status === "ready" ? "auto_full_video" : "manual_playback";
@@ -547,7 +584,7 @@ export default function PoseAnalysisView({
       const savedReport = await reportService.saveReport({
         session_public_id: uploadSession.sessionPublicId,
         template_code: activeTemplate.templateId,
-        template_version: templateVersion ?? "v1",
+        template_version: lockedTemplateVersion,
         overall_score: realScoreResult.overall,
         grade: realScoreResult.grade,
         score_data: scoreDataToSave,
@@ -557,6 +594,12 @@ export default function PoseAnalysisView({
           handedness: detectedHandness,
           metrics_count: finalInputForScoring.length,
           template_name: activeTemplate.displayName,
+          template_version: lockedTemplateVersion,
+          template_content_hash: uploadSession.templateContentHash,
+          camera_match: trainingCameraMatch,
+          expected_camera: analysisType === "training" ? activeTemplate.camera : null,
+          camera_instructions:
+            analysisType === "training" ? activeTemplate.cameraInstructions ?? null : null,
           capture_source: captureSource,
           timeline_frames: allFramesRef.current.length,
           timeline_duration_seconds: duration,
@@ -570,7 +613,7 @@ export default function PoseAnalysisView({
           analysis_data_ready:
             latestStats.ready &&
             (!needsTemporalTimeline(analysisType) || latestTemporalStats.ready) &&
-            finalInputForScoring.length >= MIN_SCORING_METRICS,
+            finalInputForScoring.length >= minimumScoringMetrics,
           auto_analysis_status: autoAnalysisProgress.status,
           auto_analysis_processed_frames: autoAnalysisProgress.processedFrames,
           auto_analysis_total_frames: autoAnalysisProgress.totalFrames,
