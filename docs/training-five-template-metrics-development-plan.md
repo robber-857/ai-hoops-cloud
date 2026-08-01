@@ -112,10 +112,13 @@
 - 低于 `L`：在 `margin` 范围内线性下降到 0 分。
 - 高于 `U`：在 `margin` 范围内线性下降到 0 分。
 
-继续复用当前 `target` 评分：
+继续复用当前 `target` 评分，不修改定义：
 
-- 实际值接近 `target` 且在 `tol` 内：90-100 分。
-- 超出 `tol` 后，在 `margin` 范围内线性下降到 0 分。
+- 实际值在 `[target - tol, target + tol]` 内：从容差边缘的 90 分线性提高到目标点的 100 分。
+- 超出该区间后，以 90 分为起点，在 `margin` 范围内线性下降到 0 分。
+- `margin` 是 90-100 分目标区间外的降分缓冲，不属于该目标区间。
+
+图表改造只能让显示区间与现有评分参数同源，不能将 `target ± tol` 改成整段 100 分，也不能改变旧 Training、Shooting 或 Dribbling 的发布结果。
 
 首版总分只使用模板聚合指标。每项指标保存：
 
@@ -126,7 +129,48 @@
 
 对于 `range` 指标，低于范围和高于范围必须使用不同建议。例如俯卧撑底部肘角过大提示“下降不够深”，过小则提示“下降过深，先保持控制”。不得只显示“Needs work”这类笼统文字。
 
-### 3.6 现有五个 Training 模板同步清理
+### 3.6 指标、评分卡与图表一一对应
+
+每一个被模板版本定义为评分项的指标，都必须同时对应：
+
+1. 一条 `Finding` 评分结果。
+2. Top Findings 中的一张指标卡。
+3. Performance Curves 中的一张指标图表或聚合摘要图。
+
+三者的数量、顺序、名称、单位和目标区间必须来自同一个锁定模板版本，不允许分别维护三套列表。
+
+#### 图表数量规则
+
+- `chartCount === lockedTemplate.metrics.length`。
+- `findingCount === lockedTemplate.metrics.length`。
+- `chartCount === findingCount`。
+- 图表顺序与 JSON 中 `metrics` 数组顺序一致。
+- 指标数据不足时仍保留对应图表位置，显示 `N/A` 和目标区间，不允许直接省略导致数量不一致。
+- 删除指标后，新版本报告不再生成该评分卡和图表。
+- 历史版本报告如果包含已删除指标，必须继续使用历史版本快照显示对应评分卡和图表，不能用当前模板替换。
+
+#### 评分目标区间唯一来源
+
+图表组件不得手写目标值或复制 JSON 阈值。必须使用与评分器共享的区间解析函数，例如 `resolveMetricScoreBand(metric, scoringContext)`：
+
+| 指标类型 | 图表目标区间 | 现有评分语义 |
+| --- | --- | --- |
+| `range` | `[params.L, params.U]` | 区间内 100 分，区间外使用 `margin` 降分 |
+| `target` | `[params.target - effectiveTol, params.target + effectiveTol]` | 区间内 90-100 分，目标点 100 分，区间外使用 `margin` 降分 |
+| `rangeByOption` | 当前 option 对应的 `[L, U]` | 区间内 100 分，区间外使用该 option 的 `margin` 降分 |
+
+`effectiveTol` 必须与评分器实际使用的年龄或上下文容差一致。图表和评分器必须调用同一个 resolver，不能一个读取原始 `tol`、另一个读取放宽后的 `tol`。
+
+#### 历史报告版本规则
+
+- 报告渲染必须读取报告锁定版本的模板快照，而不是只通过 `templateId` 读取当前前端 JSON。
+- 模板快照至少包含 `templateId`、`version`、`metrics`、`categoryWeights` 和 content hash。
+- 历史报告的 Findings 和图表必须由同一快照生成。
+- 如果找不到锁定版本快照，报告应显示“模板版本数据不完整”，不能静默用当前模板生成不同数量的图表。
+
+截图中“7 Checks 但只有 6 张图表”的情况属于版本与展示源不一致，必须作为回归用例固定下来。
+
+### 3.7 现有五个 Training 模板同步清理
 
 本次开发不能只约束五个新模板。现有模板中依赖保持时长、动作速度或正确帧比例的指标也要一并删除或替换：
 
@@ -138,7 +182,7 @@
 | `wall_sit_half_hold` | 删除 `E_hold_duration` / `holdDurationSec`，并删除 `targetHoldSec` | 将膝角从 Posture 移到 Execution，直接评价下蹲深度是否到位 |
 | `wall_sit_quarter_hold` | 删除 `E_hold_duration` / `holdDurationSec`，并删除 `targetHoldSec` | 将膝角从 Posture 移到 Execution，直接评价下蹲深度是否到位 |
 
-上述删除必须覆盖模板 JSON、聚合结果、曲线说明和报告文案，避免已删除指标继续以 0 分或旧提示出现在界面中。
+上述删除必须覆盖模板 JSON、聚合结果、曲线说明和报告文案，避免已删除指标继续以 0 分或旧提示出现在新版本界面中。历史报告则按其锁定版本完整显示，不能出现旧评分卡仍存在但对应图表消失的混合状态。
 
 ## 4. 通用几何定义
 
@@ -449,7 +493,7 @@ Training 聚合结果只向报告提供动作质量所需字段：
 - `web/src/config/templates/training/wall_sit_half_hold.json`
 - `web/src/config/templates/training/wall_sit_quarter_hold.json`
 
-五个新模板都使用明确的 `camera`、`categoryWeights`、指标权重、目标范围，以及 `hint_good`、`hint_low`、`hint_high`。同时按 3.6 节清理现有五个模板。
+五个新模板都使用明确的 `camera`、`categoryWeights`、指标权重、目标范围，以及 `hint_good`、`hint_low`、`hint_high`。同时按 3.7 节清理现有五个模板。
 
 ### 阶段 5：模板选择和报告
 
@@ -467,6 +511,10 @@ Training 聚合结果只向报告提供动作质量所需字段：
 - 上传前显示正面或侧面拍摄要求。
 - 报告显示实际表现、简单目标和具体正反向建议。
 - 报告不显示保持时长、动作次数、标准动作次数、问题动作比例或内部统计术语。
+- 每个锁定版本指标对应一张评分卡和一张图表或聚合摘要，数量与顺序完全一致。
+- 图表目标区间只通过共享 resolver 读取锁定版本 JSON 的 `target/tol` 或 `L/U`，不得在组件中硬编码。
+- `target ± tol` 必须保持现有 90-100 分目标区间，`[L,U]` 必须保持现有 100 分区间；图表不得改变两者的评分语义。
+- 历史报告使用保存时的模板快照，不使用当前本地 JSON 拼接图表。
 
 ### 阶段 6：验证
 
@@ -483,6 +531,9 @@ Training 聚合结果只向报告提供动作质量所需字段：
 9. 跳绳速度较快但仍在 12 FPS 可识别范围。
 10. 同一段标准动作前后增加准备时间，质量得分基本不变。
 11. 所有模板报告同时覆盖 `good`、`low`、`high` 和 `N/A` 文案。
+12. 每个模板逐项断言 `metrics.length === findings.length === charts.length`。
+13. 修改当前 JSON 后重新打开旧报告，旧报告的指标卡和图表数量、阈值及版本保持不变。
+14. 对每个 `range` 和 `target` 指标断言图表目标区间及其 90-100/100 分语义等于共享评分 resolver 的结果。
 
 运行：
 
@@ -506,7 +557,10 @@ Training 聚合结果只向报告提供动作质量所需字段：
 - 只有一个完整动作时 Consistency 显示 N/A，不自动给 0 分或 100 分。
 - 报告提示包含儿童可读的实际表现、目标、做得好的反馈和具体改进建议。
 - 报告不显示动作次数、保持秒数、CV、标准差、computeKey 或公式。
-- 现有五个 Training 模板完成 3.6 节的有意调整，其他仍保留的指标不发生回归。
+- 每个评分指标都有且只有一张对应图表或聚合摘要，指标卡数量与图表数量相同。
+- `range` 图表 100 分区间严格等于 `[L,U]`；`target` 图表 90-100 分目标区间严格等于 `target ± effectiveTol`，且只有目标点为 100 分。
+- 图表、评分器和反馈共用同一锁定模板版本及同一区间 resolver。
+- 现有五个 Training 模板完成 3.7 节的有意调整，其他仍保留的指标不发生回归。
 
 ## 15. 开发检查清单
 
@@ -522,4 +576,8 @@ Training 聚合结果只向报告提供动作质量所需字段：
 - [ ] 新增并注册五个 JSON 模板。
 - [ ] 接通 Training 模板选择和拍摄提示。
 - [ ] 增加报告实际值、简单目标及 `good`、`low`、`high` 具体文案。
+- [ ] 建立指标、Finding、评分卡和图表的一一映射。
+- [ ] 移除 Training 图表中的硬编码目标区间，改为共享 resolver。
+- [ ] 保存并读取报告锁定版本的模板快照。
+- [ ] 增加 7 Checks/6 Charts 历史报告不一致回归测试。
 - [ ] 完成测试、构建和本地模板同步验证。
