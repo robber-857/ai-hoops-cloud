@@ -12,7 +12,12 @@ import { Badge } from "@/components/ui/badge";
 import { routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import globalConfig from "@/config/templates/global.json";
-import { getAllTemplates, getTemplateById, ActionTemplate } from "@/config/templates";
+import {
+  getAllTemplates,
+  getTemplateById,
+  parseActionTemplateSnapshot,
+  ActionTemplate,
+} from "@/config/templates";
 import { calculateRealScore, ScoreResult, Grade, AngleData } from "@/lib/scoring";
 import { mergeTrainingTimelineMetrics } from "@/lib/trainingCalculator";
 import { useAnalysisStore, FrameSample } from "@/store/analysisStore";
@@ -35,6 +40,7 @@ interface ScoreCardProps {
   title: string;
   score: number;
   weight?: number;
+  available?: boolean;
   icon: React.ComponentType<{ className?: string }>;
 }
 
@@ -48,11 +54,21 @@ type Tone = {
 
 type SavedScoreData = ScoreResult & {
   saved_metrics?: AngleData[];
+  template_snapshot?: unknown;
   score_context?: {
     age_group?: string;
     handedness?: string;
+    camera_match?: boolean | null;
+    expected_camera?: "front" | "side" | null;
+    camera_instructions?: string | null;
     [key: string]: unknown;
   };
+};
+
+type TrainingCameraContext = {
+  match: boolean | null;
+  expected: "front" | "side" | null;
+  instructions: string | null;
 };
 
 type ReportSyncState = "idle" | "saving" | "saved" | "error";
@@ -139,10 +155,33 @@ function getLocalGrade(score: number): Grade {
 
 // --- 3. 内部组件 ---
 
-const ScoreCard: React.FC<ScoreCardProps> = ({ title, score, weight, icon: Icon }) => {
+const ScoreCard: React.FC<ScoreCardProps> = ({
+  title,
+  score,
+  weight,
+  available = true,
+  icon: Icon,
+}) => {
   const grade = getLocalGrade(score);
   const tone = getGradeTone(grade);
   const num = Math.round(score);
+
+  if (!available) {
+    return (
+      <Card className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] text-white shadow-sm">
+        <CardContent className="flex h-full flex-col justify-between p-3 sm:p-4">
+          <span className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.22em] text-white/55 sm:text-[10px]">
+            <Icon className="h-3 w-3 opacity-70 sm:h-3.5 sm:w-3.5" />
+            {title}
+          </span>
+          <div className="mt-4 text-2xl font-black text-white/70 sm:text-3xl">N/A</div>
+          <p className="mt-2 text-[10px] leading-4 text-white/42">
+            More clear movement samples are needed for this category.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card
@@ -240,6 +279,9 @@ function ReportContent() {
   const [dbSavedMetrics, setDbSavedMetrics] = useState<AngleData[] | null>(null);
   const [dbSessionPublicId, setDbSessionPublicId] = useState<string | null>(null);
   const [dbTemplateVersion, setDbTemplateVersion] = useState<string | null>("v1");
+  const [dbTemplateSnapshot, setDbTemplateSnapshot] = useState<ActionTemplate | null>(null);
+  const [dbTemplateSnapshotError, setDbTemplateSnapshotError] = useState<string | null>(null);
+  const [dbCameraContext, setDbCameraContext] = useState<TrainingCameraContext | null>(null);
   const [reportSyncState, setReportSyncState] = useState<ReportSyncState>("idle");
 
   const [isMounted, setIsMounted] = useState(false);
@@ -296,14 +338,9 @@ function ReportContent() {
     if (reportId && dbSavedMetrics && selectedTemplateId) {
         const template = getTemplateById(selectedTemplateId);
         if (template) {
+          if (template.mode === "training") return;
           const metricsForScoring =
-            template.mode === "training"
-              ? mergeTrainingTimelineMetrics(
-                  dbSavedMetrics.filter((metric) => metric.unit === "calc"),
-                  dbTimeline,
-                  template
-                )
-              : dbSavedMetrics;
+            dbSavedMetrics;
           setDbResult(calculateRealScore(template, metricsForScoring, { ageGroup, handedness: "right" }));
         }
     }
@@ -328,18 +365,49 @@ function ReportContent() {
         setDbVideoUrl(data.video_url);
         setDbSessionPublicId(data.session_public_id);
         setDbTemplateVersion(data.template_version ?? "v1");
+        const templateSnapshot = parseActionTemplateSnapshot(
+          data.template_snapshot ?? scoreData.template_snapshot,
+          {
+            templateId: data.template_code,
+            version: data.template_version ?? "v1",
+          },
+        );
+        setDbTemplateSnapshot(templateSnapshot);
+        setDbTemplateSnapshotError(
+          data.analysis_type === "training" && !templateSnapshot
+            ? "This report cannot load its locked template version. Performance charts are hidden to avoid mixing historical scores with current template rules."
+            : null,
+        );
+        setDbCameraContext({
+          match:
+            typeof scoreData.score_context?.camera_match === "boolean"
+              ? scoreData.score_context.camera_match
+              : null,
+          expected:
+            scoreData.score_context?.expected_camera === "front" ||
+            scoreData.score_context?.expected_camera === "side"
+              ? scoreData.score_context.expected_camera
+              : null,
+          instructions:
+            typeof scoreData.score_context?.camera_instructions === "string"
+              ? scoreData.score_context.camera_instructions
+              : null,
+        });
         setAgeGroup(persistedAgeGroup);
 
         if (Array.isArray(scoreData.saved_metrics)) {
           setDbSavedMetrics(scoreData.saved_metrics);
         }
 
+        if (
+          data.analysis_type === "shooting" ||
+          data.analysis_type === "dribbling" ||
+          data.analysis_type === "training"
+        ) {
+          setSelectedMode(data.analysis_type);
+        }
         if (data.template_code) {
-          const t = getTemplateById(data.template_code);
-          if (t) {
-            setSelectedMode(t.mode);
-            setSelectedTemplateId(data.template_code);
-          }
+          setSelectedTemplateId(data.template_code);
         }
 
         if (data.template_code) {
@@ -367,11 +435,11 @@ function ReportContent() {
     if (!template) {
       return;
     }
+    if (template.mode === "training") {
+      return;
+    }
 
-    const metricsToSave =
-      template.mode === "training"
-        ? mergeTrainingTimelineMetrics(dbSavedMetrics, dbTimeline, template)
-        : dbSavedMetrics;
+    const metricsToSave = dbSavedMetrics;
     const nextSignature = buildReportSignature(selectedTemplateId, ageGroup, dbResult.overall);
     if (persistedReportSignatureRef.current === nextSignature) {
       return;
@@ -451,19 +519,40 @@ function ReportContent() {
   const finalTimeline = reportId ? dbTimeline : currentTimeline;
   const rawFinalSavedMetrics = reportId ? dbSavedMetrics : currentAngles;
   const selectedTemplate = useMemo(
-    () => (selectedTemplateId ? getTemplateById(selectedTemplateId) : null),
-    [selectedTemplateId]
+    () => {
+      if (reportId && selectedMode === "training") {
+        return dbTemplateSnapshot;
+      }
+      return selectedTemplateId ? getTemplateById(selectedTemplateId) ?? null : null;
+    },
+    [dbTemplateSnapshot, reportId, selectedMode, selectedTemplateId],
   );
   const finalSavedMetrics = useMemo(() => {
-    if (selectedTemplate?.mode !== "training") {
+    if (reportId || selectedTemplate?.mode !== "training") {
       return rawFinalSavedMetrics;
     }
 
     return mergeTrainingTimelineMetrics(rawFinalSavedMetrics, finalTimeline, selectedTemplate);
-  }, [rawFinalSavedMetrics, finalTimeline, selectedTemplate]);
-  const hasPerformanceCurves =
+  }, [reportId, rawFinalSavedMetrics, finalTimeline, selectedTemplate]);
+  const trainingTemplateContractError = useMemo(() => {
+    if (!reportId || selectedMode !== "training") return null;
+    if (dbTemplateSnapshotError) return dbTemplateSnapshotError;
+    if (!dbTemplateSnapshot || !finalResult) return null;
+
+    const expectedMetricIds = dbTemplateSnapshot.metrics.map((metric) => metric.metricId);
+    const findingIds = finalResult.findings.map((finding) => finding.id);
+    if (
+      expectedMetricIds.length !== findingIds.length ||
+      expectedMetricIds.some((metricId, index) => metricId !== findingIds[index])
+    ) {
+      return `This report saved ${findingIds.length} findings, but locked template ${dbTemplateSnapshot.version} defines ${expectedMetricIds.length} metrics. Performance charts are hidden until the historical template data is repaired.`;
+    }
+    return null;
+  }, [dbTemplateSnapshot, dbTemplateSnapshotError, finalResult, reportId, selectedMode]);
+  const hasPerformanceData =
     Boolean(finalTimeline && finalTimeline.length > 0) ||
     Boolean(finalSavedMetrics && finalSavedMetrics.length > 0);
+  const hasPerformanceCurves = hasPerformanceData && !trainingTemplateContractError;
   const trainingBackHref =
     selectedMode === "dribbling"
       ? routes.pose2d.dribbling
@@ -479,7 +568,15 @@ function ReportContent() {
   const backHref = returnTo ?? (isSharedView ? routes.home : roleBackHref);
 
   // 数据异常提示逻辑
-  const isDataMissing = useMemo(() => !finalResult || finalResult.overall <= 0, [finalResult]);
+  const isDataMissing = useMemo(
+    () =>
+      !finalResult ||
+      finalResult.analysisStatus === "insufficient_data" ||
+      finalResult.overall <= 0,
+    [finalResult],
+  );
+  const hasCameraMismatch =
+    selectedTemplate?.mode === "training" && dbCameraContext?.match === false;
 
   useEffect(() => {
     const performanceEl = performanceCurveRef.current;
@@ -663,10 +760,13 @@ function ReportContent() {
               </label>
               <div className="relative">
                 <select
-                  className="report-select w-full appearance-none text-sm rounded-xl p-2.5 pr-9 outline-none cursor-pointer transition-all"
+                  className="report-select w-full appearance-none text-sm rounded-xl p-2.5 pr-9 outline-none cursor-pointer transition-all disabled:cursor-not-allowed disabled:opacity-60"
                   value={selectedTemplateId}
                   onChange={(e) => setSelectedTemplateId(e.target.value)}
-                  disabled={!!reportId && !dbSavedMetrics} 
+                  disabled={
+                    Boolean(reportId) &&
+                    (!dbSavedMetrics || selectedTemplate?.mode === "training")
+                  }
                 >
                   {templates.map((t) => (
                     <option key={t.templateId} value={t.templateId}>
@@ -686,9 +786,10 @@ function ReportContent() {
               </label>
               <div className="relative">
                 <select
-                  className="report-select w-full appearance-none text-sm rounded-xl p-2.5 pr-9 outline-none cursor-pointer transition-all"
+                  className="report-select w-full appearance-none text-sm rounded-xl p-2.5 pr-9 outline-none cursor-pointer transition-all disabled:cursor-not-allowed disabled:opacity-60"
                   value={ageGroup}
                   onChange={(e) => setAgeGroup(e.target.value)}
+                  disabled={Boolean(reportId) && selectedTemplate?.mode === "training"}
                 >
                   {Object.keys(globalConfig.ageToleranceScale).map((age) => (
                     <option key={age} value={age}>
@@ -718,15 +819,44 @@ function ReportContent() {
           </div>
         </section>
 
+        {hasCameraMismatch && (
+          <div className="flex items-start gap-3 rounded-lg border border-sky-300/25 bg-sky-300/10 p-4 text-sky-50">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-sky-300" />
+            <div>
+              <h5 className="text-sm font-semibold">Check the camera view</h5>
+              <p className="mt-1 text-xs leading-5 text-sky-100/85 sm:text-sm">
+                This movement is designed for a {dbCameraContext?.expected ?? selectedTemplate?.camera} view.
+                {dbCameraContext?.instructions
+                  ? ` ${dbCameraContext.instructions}`
+                  : " Keep the full body and required joints visible."}
+              </p>
+              <p className="mt-1 text-xs text-sky-100/65">
+                This is a filming tip only and does not change the score.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {trainingTemplateContractError && (
+          <div className="flex items-start gap-3 rounded-lg border border-amber-300/25 bg-amber-300/10 p-4 text-amber-50">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" />
+            <div>
+              <h5 className="text-sm font-semibold">Template version data needs attention</h5>
+              <p className="mt-1 text-xs leading-5 text-amber-100/85 sm:text-sm">
+                {trainingTemplateContractError}
+              </p>
+            </div>
+          </div>
+        )}
+
         {isDataMissing && (
           <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 text-amber-900 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
             <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
             <div>
               <h5 className="text-amber-800 font-semibold text-sm">Insufficient Data</h5>
               <p className="text-amber-700/90 mt-1 text-xs sm:text-sm">
-                The analysis could not calculate key metrics for this template. 
-                <br/>
-                Possible causes: Video too short, not enough repetitions detected, or switching templates without raw data support.
+                The clip did not contain a complete, clearly visible movement for this exercise.
+                Check the required camera view and keep the full body and required joints visible.
               </p>
             </div>
           </div>
@@ -798,18 +928,21 @@ function ReportContent() {
                 title="POSTURE"
                 score={finalResult.breakdown.posture}
                 weight={finalResult.weights.posture}
+                available={finalResult.availability?.posture !== false}
                 icon={Activity}
               />
               <ScoreCard
                 title="EXECUTION"
                 score={finalResult.breakdown.execution}
                 weight={finalResult.weights.execution}
+                available={finalResult.availability?.execution !== false}
                 icon={Activity}
               />
               <ScoreCard
                 title="CONSISTENCY"
                 score={finalResult.breakdown.consistency}
                 weight={finalResult.weights.consistency}
+                available={finalResult.availability?.consistency !== false}
                 icon={Activity}
               />
             </section>
@@ -850,7 +983,9 @@ function ReportContent() {
                     <MetricTimelineCard
                       timeline={finalTimeline}
                       templateId={selectedTemplateId}
+                      template={selectedTemplate}
                       savedMetrics={finalSavedMetrics}
+                      scoringContext={{ ageGroup, handedness: "right" }}
                     />
                   </div>
                 )}
@@ -919,8 +1054,12 @@ function ReportContent() {
                                     )}
                                   >
                                     {isMissing
-                                      ? "Data Missing"
-                                      : isPositive
+                                      ? "N/A"
+                                      : finding.state === "low"
+                                        ? "Try More"
+                                        : finding.state === "high"
+                                          ? "Reduce"
+                                          : isPositive
                                         ? "Stable"
                                         : isBad
                                           ? "Needs Work"
@@ -966,9 +1105,27 @@ function ReportContent() {
                                       : "text-amber-300"
                                 )}
                               >
-                                {finding.score} pts
+                                {isMissing ? "N/A" : `${finding.score} pts`}
                               </span>
                             </div>
+                            {(finding.actualValue || finding.targetText) && (
+                              <div className="mb-3 grid gap-2 rounded-xl border border-white/8 bg-black/15 p-2.5 text-xs sm:grid-cols-2">
+                                <div>
+                                  <div className="text-[9px] font-bold uppercase tracking-[0.16em] text-white/38">
+                                    Actual
+                                  </div>
+                                  <div className="mt-1 text-white/75">
+                                    {finding.actualValue || "Not enough data"}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className="text-[9px] font-bold uppercase tracking-[0.16em] text-white/38">
+                                    Simple target
+                                  </div>
+                                  <div className="mt-1 text-white/75">{finding.targetText}</div>
+                                </div>
+                              </div>
+                            )}
                             <p className="report-findings-note text-xs text-slate-200 leading-relaxed p-2.5 rounded-xl">
                               {finding.hint}
                             </p>

@@ -34,6 +34,7 @@ export type ReportRead = ReportListItem & {
   score_data: Record<string, unknown>;
   timeline_data: unknown[] | null;
   summary_data: Record<string, unknown> | null;
+  template_snapshot: Record<string, unknown> | null;
 };
 
 export type MyReportsResponse = {

@@ -4,7 +4,7 @@ import unittest
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
-from app.services.report_service import ReportService
+from app.services.report_service import ReportService, _template_snapshot_from_version
 
 
 class _ScalarResult:
@@ -28,6 +28,35 @@ class _FakeSession:
 
 
 class ReportServiceIdempotencyTests(unittest.TestCase):
+    def test_template_snapshot_uses_the_locked_version_rules(self) -> None:
+        raw_template = {
+            "templateId": "deep_squat_reps_side",
+            "mode": "training",
+            "camera": "side",
+            "displayName": "Historical Squat",
+            "metrics": [{"metricId": "E_rep_rhythm"}],
+        }
+        version = SimpleNamespace(
+            scoring_rules={
+                "content_hash": "historical-hash",
+                "template": raw_template,
+            }
+        )
+
+        snapshot = _template_snapshot_from_version(
+            version,  # type: ignore[arg-type]
+            template_code="deep_squat_reps_side",
+            template_version="v1",
+        )
+
+        self.assertIsNotNone(snapshot)
+        assert snapshot is not None
+        self.assertEqual(snapshot["version"], "v1")
+        self.assertEqual(snapshot["contentHash"], "historical-hash")
+        self.assertEqual(snapshot["metrics"], [{"metricId": "E_rep_rhythm"}])
+        snapshot["metrics"].append({"metricId": "new"})
+        self.assertEqual(raw_template["metrics"], [{"metricId": "E_rep_rhythm"}])
+
     def test_task_assignment_progress_counts_each_training_session_once(self) -> None:
         first_report_at = datetime(2026, 4, 29, 10, tzinfo=timezone.utc)
         latest_report_at = datetime(2026, 4, 30, 10, tzinfo=timezone.utc)

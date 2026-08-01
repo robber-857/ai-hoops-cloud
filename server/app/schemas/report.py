@@ -40,5 +40,6 @@ class ReportRead(ReportListItem):
     score_data: dict
     timeline_data: list | None = None
     summary_data: dict | None = None
+    template_snapshot: dict | None = None
 
     model_config = ConfigDict(from_attributes=True)
