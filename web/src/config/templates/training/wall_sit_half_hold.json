@@ -1,55 +1,65 @@
 {
+  "version": "v1",
   "templateId": "wall_sit_half_hold",
   "mode": "training",
   "camera": "side",
-  "displayName": "靠墙半蹲保持｜标准靠墙静蹲(侧面/约90°)",
-  "categoryWeights": { "posture": 0.5, "execution": 0.3, "consistency": 0.2 },
-  "options": { "targetHoldSec": 45 },
+  "cameraInstructions": "Film from the side with the back, hips, knees, ankles, and wall visible.",
+  "displayName": "Wall Sit",
+  "categoryWeights": { "posture": 0.4, "execution": 0.4, "consistency": 0.2 },
   "metrics": [
     {
-      "metricId": "P_knee_angle_90",
-      "category": "posture",
-      "weight": 0.50,
-      "type": "target",
-      "computeKey": "avgKneeAngleDeg",
-      "params": { "target": 90, "tol": 10, "margin": 15 },
-      "hint_bad": "Squat depth is not correct: the thighs should be parallel to the floor, with the knees close to a 90-degree angle."
-    },
-    {
       "metricId": "P_trunk_vertical",
+      "displayName": "Back Against the Wall",
       "category": "posture",
-      "weight": 0.30,
+      "weight": 0.6,
       "type": "target",
       "computeKey": "trunkLeanDegSide",
+      "unit": "deg",
       "params": { "target": 0, "tol": 5, "margin": 10 },
-      "hint_bad": "Back is not against the wall: keep the upper body fully vertical and pressed firmly against the wall."
+      "targetText": "Keep the upper body upright and supported by the wall.",
+      "hint_good": "Your upper body stayed upright against the wall.",
+      "hint_high": "Your body leaned away from the wall. Press the back gently into the wall."
     },
     {
       "metricId": "P_knee_position",
+      "displayName": "Knee Position",
       "category": "posture",
-      "weight": 0.20,
+      "weight": 0.4,
       "type": "range",
       "computeKey": "kneeOverToeOffsetXSide",
+      "unit": "norm",
       "params": { "L": -0.05, "U": 0.08, "margin": 0.12 },
-      "hint_bad": "Knee position is not ideal: adjust the distance between the feet and the wall so the knees do not move too far past the toes."
+      "targetText": "Place the feet so the knees stay comfortably over the ankles.",
+      "hint_good": "Your feet supported a balanced knee position.",
+      "hint_low": "The knees stayed too far behind the ankles. Move the feet slightly closer if comfortable.",
+      "hint_high": "The knees moved too far forward. Move the feet slightly farther from the wall."
     },
     {
-      "metricId": "E_hold_duration",
+      "metricId": "E_knee_angle_90",
+      "displayName": "Wall Sit Depth",
       "category": "execution",
-      "weight": 1.0,
+      "weight": 1,
       "type": "target",
-      "computeKey": "holdDurationSec",
-      "params": { "target": 30, "tol": 15, "margin": 30 },
-      "hint_bad": "Try to hold the position for the target time of about 30 seconds."
+      "computeKey": "avgKneeAngleDeg",
+      "unit": "deg",
+      "params": { "target": 90, "tol": 10, "margin": 15 },
+      "targetText": "Settle near a 90-degree knee angle.",
+      "hint_good": "You reached a strong wall sit depth.",
+      "hint_low": "The wall sit was very deep. Slide up slightly and keep control.",
+      "hint_high": "The wall sit was shallow. Slide down a little until the knees are closer to 90 degrees."
     },
     {
       "metricId": "C_depth_stability",
+      "displayName": "Stable Wall Sit Depth",
       "category": "consistency",
-      "weight": 1.0,
+      "weight": 1,
       "type": "target",
       "computeKey": "stdKneeAngleDeg",
-      "params": { "target": 3.0, "tol": 2.0, "margin": 5.0 },
-      "hint_bad": "Body is moving up and down: avoid sliding on the wall and hold the position firmly."
+      "unit": "deg",
+      "params": { "target": 3, "tol": 2, "margin": 5 },
+      "targetText": "Keep the knees at a steady angle.",
+      "hint_good": "Your wall sit depth stayed steady.",
+      "hint_high": "Your body slid up and down. Set the feet and keep one steady depth."
     }
   ]
 }

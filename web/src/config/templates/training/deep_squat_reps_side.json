@@ -1,73 +1,92 @@
 {
+  "version": "v1",
   "templateId": "deep_squat_reps_side",
   "mode": "training",
   "camera": "side",
-  "displayName": "深蹲｜徒手深蹲(侧面/重复次数)",
+  "cameraInstructions": "Film from the side with the full body, hips, knees, ankles, and toes visible.",
+  "displayName": "Bodyweight Squat",
   "categoryWeights": { "posture": 0.4, "execution": 0.4, "consistency": 0.2 },
-  "options": { "repTarget": 10 },
   "metrics": [
     {
       "metricId": "P_trunk_lean",
+      "displayName": "Chest Position",
       "category": "posture",
-      "weight": 0.50,
+      "weight": 0.5,
       "type": "range",
       "computeKey": "trunkLeanDegSide",
+      "unit": "deg",
       "params": { "L": 0, "U": 45, "margin": 15 },
-      "hint_bad": "Torso is leaning too far forward: keep the chest lifted during the squat and avoid folding down like a bow."
+      "targetText": "Keep the chest lifted with no more than 45 degrees of forward lean.",
+      "hint_good": "Your chest stayed controlled through the squat.",
+      "hint_high": "Your body folded too far forward. Lift your chest and brace your core."
     },
     {
       "metricId": "P_knee_travel",
+      "displayName": "Knee Position",
       "category": "posture",
-      "weight": 0.50,
+      "weight": 0.5,
       "type": "range",
       "computeKey": "kneeOverToeOffsetXSide",
+      "unit": "norm",
       "params": { "L": -0.05, "U": 0.15, "margin": 0.15 },
-      "hint_bad": "Knees are travelling too far forward, making balance unstable: sit the hips back first, then bend the knees so the hips lead the movement."
+      "targetText": "Keep a balanced foot position while the knees follow the toes.",
+      "hint_good": "Your knee position stayed balanced over the feet.",
+      "hint_low": "Your knees stayed too far back. Let them bend naturally as the hips lower.",
+      "hint_high": "Your knees travelled too far forward. Sit the hips back slightly and keep the heels grounded."
     },
     {
       "metricId": "E_squat_depth",
+      "displayName": "Squat Depth",
       "category": "execution",
-      "weight": 0.60,
+      "weight": 0.5,
       "type": "target",
       "computeKey": "hipBelowKneeRatioSide",
-      "params": { "target": -0.2, "tol": 0.32, "margin": 0.10 },
-      "hint_bad": "Squat depth is not enough: squat deeper and try to bring the hip crease below the knee line."
+      "unit": "ratio",
+      "params": { "target": -0.2, "tol": 0.32, "margin": 0.1 },
+      "targetText": "Lower the hips to around knee level while staying controlled.",
+      "hint_good": "You reached a useful squat depth.",
+      "hint_low": "You lowered very deep. Use a slightly smaller range if control starts to change.",
+      "hint_high": "The squat was shallow. Lower the hips a little more while keeping the heels down."
     },
     {
       "metricId": "E_full_extension",
+      "displayName": "Top Position",
       "category": "execution",
-      "weight": 0.20,
+      "weight": 0.5,
       "type": "target",
       "computeKey": "topKneeAngleDeg",
+      "unit": "deg",
       "params": { "target": 175, "tol": 10, "margin": 15 },
-      "hint_bad": "Full extension is incomplete: after each rep, fully straighten the hips and knees before starting the next squat."
-    },
-    {
-      "metricId": "E_rep_rhythm",
-      "category": "execution",
-      "weight": 0.20,
-      "type": "range",
-      "computeKey": "repTempoSec",
-      "params": { "L": 1.5, "U": 4.0, "margin": 2.0 },
-      "hint_bad": "Movement speed is uncontrolled: control the rhythm of lowering and standing, and avoid bouncing up with momentum."
+      "targetText": "Return to a tall position with the knees nearly straight.",
+      "hint_good": "You returned to a clear standing position.",
+      "hint_low": "Stand a little taller before starting the next squat.",
+      "hint_high": "Stand tall without forcing the knees backward."
     },
     {
       "metricId": "C_depth_consistency",
+      "displayName": "Repeatable Squat Depth",
       "category": "consistency",
-      "weight": 0.60,
+      "weight": 0.5,
       "type": "target",
       "computeKey": "stdHipBelowKneeRatioSidePerRep",
+      "unit": "ratio",
       "params": { "target": 0.03, "tol": 0.02, "margin": 0.05 },
-      "hint_bad": "Squat depth is inconsistent: make sure every rep reaches the same depth."
+      "targetText": "Reach a similar bottom position on each squat.",
+      "hint_good": "Your squats reached a similar depth.",
+      "hint_high": "The squat depth changed between movements. Choose one range you can repeat."
     },
     {
       "metricId": "C_form_consistency",
+      "displayName": "Stable Chest Position",
       "category": "consistency",
-      "weight": 0.40,
+      "weight": 0.5,
       "type": "target",
       "computeKey": "stdTrunkLeanDegSidePerRep",
-      "params": { "target": 4.0, "tol": 2.0, "margin": 5.0 },
-      "hint_bad": "Movement pattern is unstable: keep the core braced and maintain a consistent torso angle on every squat."
+      "unit": "deg",
+      "params": { "target": 4, "tol": 2, "margin": 5 },
+      "targetText": "Keep a similar chest angle on each squat.",
+      "hint_good": "Your chest position stayed consistent.",
+      "hint_high": "Your chest position changed between squats. Brace before each movement."
     }
   ]
 }

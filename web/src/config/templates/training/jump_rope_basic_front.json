@@ -1,0 +1,90 @@
+{
+  "version": "v1",
+  "templateId": "jump_rope_basic_front",
+  "mode": "training",
+  "camera": "front",
+  "cameraInstructions": "Film from the front with the full body, both feet, elbows, and wrists visible. Use basic two-foot jumps.",
+  "displayName": "Basic Two-Foot Jump Rope",
+  "categoryWeights": { "posture": 0.4, "execution": 0.4, "consistency": 0.2 },
+  "metrics": [
+    {
+      "metricId": "P_torso_upright",
+      "displayName": "Upright Body",
+      "category": "posture",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "jumpRopeTorsoLeanDeg",
+      "unit": "deg",
+      "params": { "L": 0, "U": 10, "margin": 15 },
+      "targetText": "Keep the upper body within 10 degrees of upright.",
+      "hint_good": "Your upper body stayed tall during the jumps.",
+      "hint_high": "Your body leaned or swung. Make the jump smaller and gently brace your core."
+    },
+    {
+      "metricId": "P_elbow_position",
+      "displayName": "Elbows Close to the Body",
+      "category": "posture",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "jumpRopeElbowDistanceNorm",
+      "unit": "norm",
+      "params": { "L": 0, "U": 0.45, "margin": 0.3 },
+      "targetText": "Keep both elbows comfortably near the sides of your body.",
+      "hint_good": "Your elbows stayed close to your sides.",
+      "hint_high": "Your elbows opened too wide. Bring the arms closer to your body."
+    },
+    {
+      "metricId": "E_foot_sync",
+      "displayName": "Two-Foot Take-Off",
+      "category": "execution",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "jumpRopeFootAsymmetryNorm",
+      "unit": "norm",
+      "params": { "L": 0, "U": 0.05, "margin": 0.1 },
+      "targetText": "Lift both feet to nearly the same height.",
+      "hint_good": "Both feet left the floor together.",
+      "hint_high": "One foot lifted higher than the other. Try to take off and land with both feet together."
+    },
+    {
+      "metricId": "E_jump_height",
+      "displayName": "Jump Height",
+      "category": "execution",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "jumpRopeJumpHeightRatio",
+      "unit": "ratio",
+      "params": { "L": 0.04, "U": 0.18, "margin": 0.12 },
+      "targetText": "Use a light jump about 4-18% of leg length.",
+      "hint_good": "Your jump height was light and controlled.",
+      "hint_low": "Jump just a little higher so both feet clearly leave the floor.",
+      "hint_high": "The jumps were higher than needed. Stay low and use quick, light jumps."
+    },
+    {
+      "metricId": "C_jump_height",
+      "displayName": "Repeatable Jump Height",
+      "category": "consistency",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "jumpRopeJumpHeightVariation",
+      "unit": "ratio",
+      "params": { "L": 0, "U": 0.2, "margin": 0.25 },
+      "targetText": "Make each jump about the same height.",
+      "hint_good": "Your jumps stayed at a similar height.",
+      "hint_high": "Some jumps were high and others were low. Keep each jump small and even."
+    },
+    {
+      "metricId": "C_cycle_rhythm",
+      "displayName": "Steady Jump Rhythm",
+      "category": "consistency",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "jumpRopeRhythmVariation",
+      "unit": "ratio",
+      "params": { "L": 0, "U": 0.2, "margin": 0.3 },
+      "targetText": "Keep an even rhythm from one jump to the next.",
+      "hint_good": "Your jumps followed a steady beat.",
+      "hint_high": "The rhythm changed between jumps. Keep a simple, even bounce."
+    }
+  ]
+}

@@ -1,64 +1,78 @@
 {
+  "version": "v1",
   "templateId": "high_knees_in_place_side",
   "mode": "training",
   "camera": "side",
-  "displayName": "高抬腿｜原地高抬腿(侧面)",
-  "categoryWeights": { "posture": 0.3, "execution": 0.5, "consistency": 0.2 },
-  "options": { "targetDurationSec": 20 },
+  "cameraInstructions": "Film from the side with the full body, hips, knees, and feet visible.",
+  "displayName": "High Knees",
+  "categoryWeights": { "posture": 0.4, "execution": 0.4, "consistency": 0.2 },
   "metrics": [
     {
       "metricId": "P_torso_upright",
+      "displayName": "Upright Body",
       "category": "posture",
-      "weight": 0.50,
+      "weight": 0.5,
       "type": "target",
       "computeKey": "torsoLeanDegSide",
+      "unit": "deg",
       "params": { "target": 0, "tol": 12, "margin": 20 },
-      "hint_bad": "Torso is rocking: keep the trunk upright, and avoid bending forward or rounding the back just to lift the knees."
+      "targetText": "Keep the upper body upright while lifting the knees.",
+      "hint_good": "Your upper body stayed tall while the legs moved.",
+      "hint_high": "Your body rocked forward. Look ahead and keep the chest lifted."
     },
     {
       "metricId": "P_landing_position",
+      "displayName": "Foot Landing Position",
       "category": "posture",
-      "weight": 0.50,
+      "weight": 0.5,
       "type": "range",
       "computeKey": "footStrikeOffsetXUnderHip",
-      "params": { "L": -0.1, "U": 0.10, "margin": 0.20 },
-      "hint_bad": "Foot landing is drifting: try to land the foot directly under the hips, and avoid kicking the leg forward."
+      "unit": "norm",
+      "params": { "L": -0.1, "U": 0.1, "margin": 0.2 },
+      "targetText": "Land each foot close to underneath the hips.",
+      "hint_good": "Your foot returned close to underneath the hips.",
+      "hint_low": "The foot landed too far behind. Keep the steps underneath your body.",
+      "hint_high": "The foot reached too far forward. Land softly underneath the hips."
     },
     {
       "metricId": "E_knee_height",
+      "displayName": "Knee Lift Height",
       "category": "execution",
-      "weight": 0.60,
+      "weight": 1,
       "type": "target",
       "computeKey": "kneeToHipHeightRatioSide",
-      "params": { "target": 1.00, "tol": 0.20, "margin": 0.35 },
-      "hint_bad": "Knee lift is too low: raise the knee close to hip height, with the thigh nearly parallel to the floor."
-    },
-    {
-      "metricId": "E_cadence",
-      "category": "execution",
-      "weight": 0.40,
-      "type": "target",
-      "computeKey": "cadenceSPM",
-      "params": { "target": 160, "tol": 30, "margin": 50 },
-      "hint_bad": "Cadence is too slow: keep the knee height first, then increase the speed of alternating legs."
+      "unit": "ratio",
+      "params": { "target": 1, "tol": 0.2, "margin": 0.35 },
+      "targetText": "Lift each knee close to hip height.",
+      "hint_good": "Your knees reached a clear height.",
+      "hint_low": "Lift the knee a little higher while keeping the body tall.",
+      "hint_high": "Keep the knee lift controlled instead of pulling it too high."
     },
     {
       "metricId": "C_height_consistency",
+      "displayName": "Repeatable Knee Height",
       "category": "consistency",
-      "weight": 0.50,
+      "weight": 0.5,
       "type": "target",
       "computeKey": "stdKneeToHipHeightRatioSide",
-      "params": { "target": 0.30, "tol": 0.1, "margin": 0.15 },
-      "hint_bad": "Knee height is inconsistent: even when tired, try to keep every knee lift at the same height."
+      "unit": "ratio",
+      "params": { "target": 0.3, "tol": 0.1, "margin": 0.15 },
+      "targetText": "Lift each knee to a similar height.",
+      "hint_good": "Your knee lifts reached a similar height.",
+      "hint_high": "The knee height changed between steps. Aim for one repeatable height."
     },
     {
       "metricId": "C_rhythm_stability",
+      "displayName": "Steady Step Rhythm",
       "category": "consistency",
-      "weight": 0.50,
+      "weight": 0.5,
       "type": "target",
       "computeKey": "stepIntervalCV",
+      "unit": "ratio",
       "params": { "target": 0.2, "tol": 0.1, "margin": 0.17 },
-      "hint_bad": "Rhythm is unstable: keep a steady running rhythm, like following a metronome."
+      "targetText": "Keep the alternating steps at an even rhythm.",
+      "hint_good": "Your steps followed a steady rhythm.",
+      "hint_high": "The rhythm changed between steps. Keep one comfortable beat."
     }
   ]
 }
