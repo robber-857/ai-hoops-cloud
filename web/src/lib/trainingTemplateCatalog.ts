@@ -127,7 +127,7 @@ export async function buildTrainingTemplateCatalog(
           remoteTemplate,
           remoteVersion,
           availability: "content_mismatch" as const,
-          availabilityMessage: "The database rules differ from this app build. Sync the template again.",
+          availabilityMessage: "The database rules differ from this app build. Publish a new template version instead of replacing published rules.",
           contentHash,
         };
       }

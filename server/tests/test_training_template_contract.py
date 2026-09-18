@@ -7,24 +7,29 @@ from collections import defaultdict
 from pathlib import Path
 from types import SimpleNamespace
 from uuid import uuid4
+from unittest.mock import patch
 
 from fastapi import HTTPException
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, func, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.models.base import Base
+from app.models.analysis_report import AnalysisReport
+from app.models.training_session import TrainingSession
 from app.models.enums import AnalysisType, UserRole
 from app.models.template_example_video import TemplateExampleVideo
 from app.models.training_template import TrainingTemplate
 from app.models.training_template_version import TrainingTemplateVersion
 from app.schemas.report import SaveReportRequest
+from app.schemas.admin import AdminUpdateTrainingTemplateVersionRequest
 from app.schemas.training import UploadInitRequest
 from app.services.admin_service import AdminService
 from app.services.report_service import ReportService
 from app.services.training_service import TrainingService
 from app.services.template_service import TemplateService
+from app.api.v1 import admin as admin_api
 
 
 @compiles(JSONB, "sqlite")
@@ -82,7 +87,7 @@ class _UploadDb:
 
 
 class TrainingTemplateContractTests(unittest.TestCase):
-    def test_local_training_templates_follow_v1_contract(self) -> None:
+    def test_local_training_templates_follow_versioned_contract(self) -> None:
         service = AdminService(SimpleNamespace())  # type: ignore[arg-type]
 
         payloads = service._load_local_template_payloads()  # noqa: SLF001
@@ -93,7 +98,8 @@ class TrainingTemplateContractTests(unittest.TestCase):
         ]
 
         self.assertEqual(len(training_payloads), 10)
-        self.assertEqual({payload["version"] for payload in training_payloads}, {"v1"})
+        self.assertEqual(sum(payload["version"] == "v1" for payload in training_payloads), 5)
+        self.assertEqual(sum(payload["version"] == "v2" for payload in training_payloads), 5)
         self.assertTrue(all(payload["content_hash"] for payload in training_payloads))
 
     def test_local_training_template_rejects_forbidden_metric(self) -> None:
@@ -234,6 +240,8 @@ class TrainingTemplateSyncTests(unittest.TestCase):
                 TrainingTemplate.__table__,
                 TrainingTemplateVersion.__table__,
                 TemplateExampleVideo.__table__,
+                TrainingSession.__table__,
+                AnalysisReport.__table__,
             ],
         )
         self.session_factory = sessionmaker(bind=engine, class_=Session, future=True)
@@ -260,6 +268,8 @@ class TrainingTemplateSyncTests(unittest.TestCase):
         )
 
         self.assertEqual(first_dry_run.created, len(first_dry_run.items))
+        self.assertEqual(len(first_dry_run.items), 10)
+        self.assertEqual(first_dry_run.analysis_type, AnalysisType.training)
         self.assertEqual(applied.created, len(applied.items))
         self.assertEqual(second_dry_run.skipped, len(second_dry_run.items))
 
@@ -276,6 +286,161 @@ class TrainingTemplateSyncTests(unittest.TestCase):
                 for version in item.versions
             )
         )
+
+    def test_sync_filters_codes_and_does_not_touch_other_modes(self) -> None:
+        service = AdminService(self.db)
+        result = service.sync_local_training_templates(
+            self.admin, dry_run=False, template_codes=["pushup_reps_side"],
+        )
+        self.assertEqual([item.template_code for item in result.items], ["pushup_reps_side"])
+        shooting = service.sync_local_training_templates(
+            self.admin, dry_run=True, analysis_type=AnalysisType.shooting,
+        )
+        self.assertEqual(len(shooting.items), 2)
+        self.assertEqual(self.db.scalar(select(func.count()).select_from(TrainingTemplate)), 1)
+        with self.assertRaises(HTTPException) as context:
+            service.sync_local_training_templates(self.admin, template_codes=["shoot_front_form_close"])
+        self.assertEqual(context.exception.status_code, 400)
+
+    def test_apply_rejects_stale_preview_before_writes(self) -> None:
+        service = AdminService(self.db)
+        preview = service.sync_local_training_templates(self.admin, template_codes=["pushup_reps_side"])
+        self.assertTrue(preview.preview_token)
+        with self.assertRaises(HTTPException) as context:
+            service.sync_local_training_templates(
+                self.admin, dry_run=False, preview_token=preview.preview_token,
+            )
+        self.assertEqual(context.exception.status_code, 409)
+        self.assertEqual(self.db.scalar(select(func.count()).select_from(TrainingTemplate)), 0)
+        service.sync_local_training_templates(
+            self.admin, dry_run=False, template_codes=["pushup_reps_side"], preview_token=preview.preview_token,
+        )
+        self.assertEqual(self.db.scalar(select(func.count()).select_from(TrainingTemplate)), 1)
+
+    def test_api_requires_preview_before_apply(self) -> None:
+        with self.assertRaises(HTTPException) as context:
+            admin_api.sync_local_training_templates(
+                dry_run=False, analysis_type=AnalysisType.training, template_codes=None,
+                preview_token=None, current_user=self.admin, db=self.db,
+            )
+        self.assertEqual(context.exception.status_code, 400)
+        preview = admin_api.sync_local_training_templates(
+            dry_run=True, analysis_type=AnalysisType.training, template_codes=["pushup_reps_side"],
+            preview_token=None, current_user=self.admin, db=self.db,
+        )
+        applied = admin_api.sync_local_training_templates(
+            dry_run=False, analysis_type=AnalysisType.training, template_codes=["pushup_reps_side"],
+            preview_token=preview.preview_token, current_user=self.admin, db=self.db,
+        )
+        self.assertEqual(applied.created, 1)
+
+    def test_conflicting_published_rules_block_entire_batch_even_if_hash_is_unchanged(self) -> None:
+        service = AdminService(self.db)
+        service.sync_local_training_templates(self.admin, dry_run=False, template_codes=["pushup_reps_side"])
+        version = self.db.scalar(select(TrainingTemplateVersion))
+        original_rules = copy.deepcopy(version.scoring_rules)
+        payloads = service._load_local_template_payloads()
+        changed = next(item for item in payloads if item["template_code"] == "pushup_reps_side")
+        changed["scoring_rules"]["template"]["metrics"][0]["params"]["U"] = 0.99
+        with patch.object(service, "_load_local_template_payloads", return_value=payloads):
+            preview = service.sync_local_training_templates(self.admin)
+            self.assertEqual(preview.blocked, 1)
+            self.assertEqual(preview.created, 9)
+            with self.assertRaises(HTTPException) as context:
+                service.sync_local_training_templates(self.admin, dry_run=False)
+        self.assertEqual(context.exception.status_code, 409)
+        self.assertEqual(self.db.scalar(select(func.count()).select_from(TrainingTemplate)), 1)
+        self.db.refresh(version)
+        self.assertEqual(version.scoring_rules, original_rules)
+
+    def test_new_version_preserves_old_published_rules(self) -> None:
+        service = AdminService(self.db)
+        code = "deep_squat_reps_side"
+        service.sync_local_training_templates(self.admin, dry_run=False, template_codes=[code])
+        template = self.db.scalar(select(TrainingTemplate))
+        old = self.db.scalar(select(TrainingTemplateVersion))
+        old.version = "v1"
+        rules = copy.deepcopy(old.scoring_rules)
+        rules["template"]["version"] = "v1"
+        rules["template"]["metrics"][0]["params"]["U"] = 99
+        old.scoring_rules = rules
+        template.current_version = "v1"
+        self.db.commit()
+        original_rules = copy.deepcopy(old.scoring_rules)
+        preview = service.sync_local_training_templates(self.admin, template_codes=[code])
+        self.assertEqual(preview.new_versions, 1)
+        applied = service.sync_local_training_templates(self.admin, dry_run=False, template_codes=[code])
+        self.assertEqual(applied.new_versions, 1)
+        self.db.refresh(old)
+        self.db.refresh(template)
+        self.assertEqual(old.scoring_rules, original_rules)
+        self.assertFalse(old.is_default)
+        self.assertEqual(template.current_version, "v2")
+        self.assertEqual(self.db.scalar(select(func.count()).select_from(TrainingTemplateVersion)), 2)
+
+    def test_manual_edit_cannot_bypass_published_version_lock(self) -> None:
+        service = AdminService(self.db)
+        service.sync_local_training_templates(self.admin, dry_run=False, template_codes=["pushup_reps_side"])
+        template = self.db.scalar(select(TrainingTemplate))
+        version = self.db.scalar(select(TrainingTemplateVersion))
+        version.status = "archived"
+        self.db.commit()
+        with self.assertRaises(HTTPException) as context:
+            service.update_training_template_version(
+                self.admin, template.public_id, version.public_id,
+                AdminUpdateTrainingTemplateVersionRequest(scoring_rules={"template": {}}),
+            )
+        self.assertEqual(context.exception.status_code, 409)
+
+    def test_unpublished_draft_referenced_by_session_is_locked(self) -> None:
+        service = AdminService(self.db)
+        service.sync_local_training_templates(self.admin, dry_run=False, template_codes=["pushup_reps_side"])
+        template = self.db.scalar(select(TrainingTemplate))
+        version = self.db.scalar(select(TrainingTemplateVersion))
+        version.status = "draft"
+        version.published_at = None
+        self.db.add(TrainingSession(
+            id=88, student_id=1, analysis_type=AnalysisType.training,
+            template_code=template.template_code, template_version=version.version,
+        ))
+        self.db.commit()
+        with self.assertRaises(HTTPException) as context:
+            service.update_training_template_version(
+                self.admin, template.public_id, version.public_id,
+                AdminUpdateTrainingTemplateVersionRequest(version="v9"),
+            )
+        self.assertEqual(context.exception.status_code, 409)
+
+    def test_unreferenced_draft_can_be_updated_then_published(self) -> None:
+        service = AdminService(self.db)
+        service.sync_local_training_templates(self.admin, dry_run=False, template_codes=["pushup_reps_side"])
+        version = self.db.scalar(select(TrainingTemplateVersion))
+        version.status = "draft"
+        version.published_at = None
+        version.scoring_rules = {"unpublished": True}
+        self.db.commit()
+        preview = service.sync_local_training_templates(self.admin, template_codes=["pushup_reps_side"])
+        self.assertEqual(preview.items[0].action, "draft_update")
+        service.sync_local_training_templates(self.admin, dry_run=False, template_codes=["pushup_reps_side"])
+        self.db.refresh(version)
+        self.assertEqual(version.status, "active")
+        self.assertIn("template", version.scoring_rules)
+
+    def test_metadata_reactivation_does_not_rewrite_published_rules(self) -> None:
+        service = AdminService(self.db)
+        service.sync_local_training_templates(self.admin, dry_run=False, template_codes=["pushup_reps_side"])
+        template = self.db.scalar(select(TrainingTemplate))
+        version = self.db.scalar(select(TrainingTemplateVersion))
+        rules = copy.deepcopy(version.scoring_rules)
+        template.status = "inactive"
+        self.db.commit()
+        preview = service.sync_local_training_templates(self.admin, template_codes=["pushup_reps_side"])
+        self.assertEqual(preview.items[0].action, "metadata_update")
+        service.sync_local_training_templates(self.admin, dry_run=False, template_codes=["pushup_reps_side"])
+        self.db.refresh(template)
+        self.db.refresh(version)
+        self.assertEqual(template.status, "active")
+        self.assertEqual(version.scoring_rules, rules)
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID
@@ -1134,21 +1135,37 @@ class AdminService:
         current_user: User,
         *,
         dry_run: bool = True,
+        analysis_type: AnalysisType = AnalysisType.training,
+        template_codes: list[str] | None = None,
+        preview_token: str | None = None,
     ) -> AdminLocalTemplateSyncResponse:
         _ensure_admin_access(current_user)
-        local_templates = self._load_local_template_payloads()
+        if analysis_type not in {AnalysisType.training, AnalysisType.dribbling, AnalysisType.shooting}:
+            raise HTTPException(status_code=400, detail="Select training, dribbling or shooting.")
+        local_templates = [
+            item for item in self._load_local_template_payloads(analysis_type)
+            if item["analysis_type"] == analysis_type
+        ]
+        if template_codes is not None:
+            requested = set(template_codes)
+            known = {item["template_code"] for item in local_templates}
+            if not requested or requested - known:
+                raise HTTPException(status_code=400, detail="Template codes must belong to the selected analysis type.")
+            local_templates = [item for item in local_templates if item["template_code"] in requested]
         items: list[AdminLocalTemplateSyncItem] = []
         created = 0
         updated = 0
         skipped = 0
+        new_versions = 0
+        blocked = 0
+        planned_changes: list[tuple[dict, TrainingTemplate | None, TrainingTemplateVersion | None, str]] = []
         now = datetime.now(timezone.utc)
 
         for local_template in local_templates:
-            existing_template = self.db.scalar(
-                select(TrainingTemplate).where(
-                    TrainingTemplate.template_code == local_template["template_code"]
-                )
+            template_query = select(TrainingTemplate).where(
+                TrainingTemplate.template_code == local_template["template_code"]
             )
+            existing_template = self.db.scalar(template_query if dry_run else template_query.with_for_update())
             existing_version = None
             action = "create"
             reason: str | None = None
@@ -1160,20 +1177,37 @@ class AdminService:
                         TrainingTemplateVersion.version == local_template["version"],
                     )
                 )
-                if existing_version and self._local_template_version_matches(
+                if existing_template.analysis_type != analysis_type:
+                    action = "blocked"
+                    reason = "Existing template belongs to another analysis type."
+                elif existing_version and self._local_template_version_matches(
                     existing_template,
                     existing_version,
                     local_template,
                 ):
                     action = "skip"
                     reason = "Local template metadata and rules are already in sync."
+                elif not existing_version:
+                    action = "new_version"
+                    reason = "Publish a new version; existing version rules remain unchanged."
+                elif self._local_template_rules_match(existing_version, local_template):
+                    action = "metadata_update"
+                    reason = "Select this unchanged version as the active default."
+                elif self._template_version_is_locked(existing_template, existing_version):
+                    action = "blocked"
+                    reason = "Published or referenced version is immutable. Increment the local JSON version."
                 else:
-                    action = "update"
+                    action = "draft_update"
+                    reason = "Update an unpublished, unreferenced draft and publish it."
 
             if action == "create":
                 created += 1
-            elif action == "update":
+            elif action in {"new_version", "draft_update", "metadata_update"}:
                 updated += 1
+                if action == "new_version":
+                    new_versions += 1
+            elif action == "blocked":
+                blocked += 1
             else:
                 skipped += 1
 
@@ -1189,6 +1223,26 @@ class AdminService:
                 )
             )
 
+            planned_changes.append((local_template, existing_template, existing_version, action))
+
+        current_preview_token = _local_template_content_hash({
+            "analysis_type": analysis_type.value,
+            "items": [item.model_dump(mode="json") for item in items],
+            "content_hashes": [item["content_hash"] for item in local_templates],
+        })
+        if not dry_run and preview_token is not None and preview_token != current_preview_token:
+            raise HTTPException(status_code=409, detail="Template sync preview is stale. Run dry-run again; no changes applied.")
+
+        # Inspect the whole batch before any writes, including unrelated template creates.
+        if not dry_run and blocked:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"message": "Template sync blocked; no changes applied.", "items": [
+                    item.model_dump(mode="json") for item in items if item.action == "blocked"
+                ]},
+            )
+
+        for local_template, existing_template, existing_version, action in planned_changes:
             if dry_run or action == "skip":
                 continue
 
@@ -1229,10 +1283,11 @@ class AdminService:
                 version=local_template["version"],
                 created_by_user_id=current_user.id,
             )
-            version.scoring_rules = local_template["scoring_rules"]
-            version.metric_definitions = local_template["metric_definitions"]
-            version.mediapipe_config = local_template["mediapipe_config"]
-            version.summary_template = local_template["summary_template"]
+            if action != "metadata_update":
+                version.scoring_rules = local_template["scoring_rules"]
+                version.metric_definitions = local_template["metric_definitions"]
+                version.mediapipe_config = local_template["mediapipe_config"]
+                version.summary_template = local_template["summary_template"]
             version.status = "active"
             version.is_default = True
             if not version.published_at:
@@ -1247,6 +1302,10 @@ class AdminService:
             created=created,
             updated=updated,
             skipped=skipped,
+            new_versions=new_versions,
+            blocked=blocked,
+            analysis_type=analysis_type,
+            preview_token=current_preview_token,
             items=items,
         )
 
@@ -1379,10 +1438,18 @@ class AdminService:
         payload: AdminUpdateTrainingTemplateVersionRequest,
     ) -> AdminTrainingTemplateVersionRead:
         _ensure_admin_access(current_user)
-        template = self._get_template_by_public_id(template_public_id)
+        template = self._get_template_by_public_id(template_public_id, for_update=True)
         version = self._get_template_version_by_public_id(template.id, version_public_id)
         fields_set = payload.model_fields_set
         now = datetime.now(timezone.utc)
+
+        rule_fields = {"version", "scoring_rules", "metric_definitions", "mediapipe_config", "summary_template"}
+        changes_rules = any(
+            getattr(payload, field) != getattr(version, field)
+            for field in fields_set & rule_fields
+        )
+        if changes_rules and self._template_version_is_locked(template, version):
+            raise HTTPException(status_code=409, detail="Published or referenced version is immutable. Create a new version.")
 
         if "version" in fields_set and payload.version is not None and payload.version != version.version:
             self._ensure_unique_template_version(template.id, payload.version)
@@ -1736,7 +1803,7 @@ class AdminService:
 
         return summaries
 
-    def _load_local_template_payloads(self) -> list[dict]:
+    def _load_local_template_payloads(self, analysis_type: AnalysisType | None = None) -> list[dict]:
         templates_root = Path(__file__).resolve().parents[3] / "web" / "src" / "config" / "templates"
         if not templates_root.exists():
             raise HTTPException(
@@ -1745,7 +1812,8 @@ class AdminService:
             )
 
         payloads: list[dict] = []
-        for template_path in sorted(templates_root.glob("*/*.json")):
+        pattern = f"{analysis_type.value}/*.json" if analysis_type else "*/*.json"
+        for template_path in sorted(templates_root.glob(pattern)):
             with template_path.open("r", encoding="utf-8") as template_file:
                 raw_template = json.load(template_file)
 
@@ -1838,8 +1906,8 @@ class AdminService:
             if not isinstance(value, str) or not value.strip():
                 invalid(f"{field_name} is required.")
 
-        if raw_template.get("version") != "v1":
-            invalid("version must be v1.")
+        if not re.fullmatch(r"v[1-9]\d*", raw_template["version"]):
+            invalid("version must use the v1, v2, ... format.")
         if raw_template.get("camera") not in {"front", "side"}:
             invalid("camera must be front or side.")
 
@@ -1901,16 +1969,38 @@ class AdminService:
         version: TrainingTemplateVersion,
         local_template: dict,
     ) -> bool:
-        summary_template = version.summary_template if isinstance(version.summary_template, dict) else {}
-        version_hash = summary_template.get("content_hash")
         return (
             template.name == local_template["name"]
+            and template.description == local_template["description"]
             and template.analysis_type == local_template["analysis_type"]
+            and template.status == "active"
             and template.current_version == local_template["version"]
-            and version_hash == local_template["content_hash"]
+            and self._local_template_rules_match(version, local_template)
             and version.is_default
             and version.status == "active"
         )
+
+    @staticmethod
+    def _local_template_rules_match(version: TrainingTemplateVersion, local_template: dict) -> bool:
+        return all(
+            getattr(version, field) == local_template[field]
+            for field in ("scoring_rules", "metric_definitions", "mediapipe_config", "summary_template")
+        )
+
+    def _template_version_is_locked(self, template: TrainingTemplate, version: TrainingTemplateVersion) -> bool:
+        if version.status == "active" or version.published_at is not None:
+            return True
+        session_exists = self.db.scalar(select(TrainingSession.id).where(
+            TrainingSession.template_code == template.template_code,
+            TrainingSession.template_version == version.version,
+        ).limit(1))
+        if session_exists is not None:
+            return True
+        return self.db.scalar(select(AnalysisReport.id).where(
+            or_(AnalysisReport.training_template_id == template.id,
+                AnalysisReport.template_id == template.template_code),
+            AnalysisReport.template_version == version.version,
+        ).limit(1)) is not None
 
     def _resolve_announcement_scope(
         self,
@@ -2277,10 +2367,11 @@ class AdminService:
         member.user = user
         return member
 
-    def _get_template_by_public_id(self, template_public_id: UUID) -> TrainingTemplate:
-        template = self.db.scalar(
-            select(TrainingTemplate).where(TrainingTemplate.public_id == template_public_id)
-        )
+    def _get_template_by_public_id(
+        self, template_public_id: UUID, *, for_update: bool = False,
+    ) -> TrainingTemplate:
+        query = select(TrainingTemplate).where(TrainingTemplate.public_id == template_public_id)
+        template = self.db.scalar(query.with_for_update() if for_update else query)
         if not template:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Training template not found.")
         return template

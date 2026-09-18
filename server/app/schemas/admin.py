@@ -377,6 +377,10 @@ class AdminLocalTemplateSyncResponse(BaseModel):
     created: int
     updated: int
     skipped: int
+    new_versions: int = 0
+    blocked: int = 0
+    analysis_type: AnalysisType = AnalysisType.training
+    preview_token: str
     items: list[AdminLocalTemplateSyncItem]
 
 

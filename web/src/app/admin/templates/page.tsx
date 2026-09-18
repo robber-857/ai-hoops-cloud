@@ -31,6 +31,7 @@ import {
 import type { ReportAnalysisType } from "@/services/reports";
 import { useAuthStore } from "@/store/authStore";
 import { cn } from "@/lib/utils";
+import { getAllTemplates } from "@/config/templates";
 
 const fieldClass =
   "min-h-11 w-full rounded-lg border border-white/10 bg-black/24 px-3 text-sm text-white outline-none transition placeholder:text-white/28 focus:border-[#65f7ff]/46 focus:bg-black/34 focus:ring-2 focus:ring-[#65f7ff]/12";
@@ -115,6 +116,8 @@ export default function AdminTemplatesPage() {
   const [isSavingVideo, setIsSavingVideo] = useState(false);
   const [isSyncingLocalTemplates, setIsSyncingLocalTemplates] = useState(false);
   const [syncResult, setSyncResult] = useState<AdminLocalTemplateSyncResponse | null>(null);
+  const [syncAnalysisType, setSyncAnalysisType] = useState<"training" | "dribbling" | "shooting">("training");
+  const [syncTemplateCode, setSyncTemplateCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -430,17 +433,21 @@ export default function AdminTemplatesPage() {
   };
 
   const syncLocalTemplates = async (dryRun: boolean) => {
+    if (!dryRun && (!syncResult?.dry_run || syncResult.blocked > 0)) return;
     setIsSyncingLocalTemplates(true);
     setError(null);
     setMessage(null);
     setSyncResult(null);
     try {
-      const result = await adminService.syncLocalTrainingTemplates(dryRun);
+      const result = await adminService.syncLocalTrainingTemplates(
+        dryRun, syncAnalysisType, syncTemplateCode ? [syncTemplateCode] : undefined,
+        dryRun ? undefined : syncResult?.preview_token,
+      );
       setSyncResult(result);
       setMessage(
         dryRun
-          ? `Dry run: ${result.created} create, ${result.updated} update, ${result.skipped} skip.`
-          : `Synced local templates: ${result.created} created, ${result.updated} updated.`,
+          ? `Preview: ${result.created} create, ${result.new_versions} new versions, ${result.updated - result.new_versions} other updates, ${result.skipped} skip, ${result.blocked} blocked.`
+          : `Synced ${result.analysis_type}: ${result.created} created, ${result.new_versions} new versions, ${result.updated - result.new_versions} other updates.`,
       );
       if (!dryRun) {
         await loadTemplates();
@@ -477,7 +484,7 @@ export default function AdminTemplatesPage() {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_28rem]">
         <section className="min-w-0 rounded-lg border border-white/10 bg-white/[0.055] p-5 backdrop-blur-2xl">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
             <div>
               <div className="text-[0.68rem] uppercase tracking-[0.22em] text-white/42">
                 Template registry
@@ -499,7 +506,7 @@ export default function AdminTemplatesPage() {
               <button
                 type="button"
                 onClick={() => syncLocalTemplates(false)}
-                disabled={isSyncingLocalTemplates}
+                disabled={isSyncingLocalTemplates || !syncResult?.dry_run || syncResult.blocked > 0}
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[#d8ff5d]/24 bg-[#d8ff5d]/10 px-3 text-xs font-semibold text-[#f1ffc1] transition hover:bg-[#d8ff5d]/16 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isSyncingLocalTemplates ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
@@ -509,27 +516,53 @@ export default function AdminTemplatesPage() {
             </div>
           </div>
 
-          {syncResult ? (
-            <div className="mt-4 rounded-lg border border-white/10 bg-black/18 p-3 text-sm text-white/60">
-              <div className="font-semibold text-white">
-                Local sync {syncResult.dry_run ? "preview" : "result"}: {syncResult.created} create / {syncResult.updated} update / {syncResult.skipped} skip
-              </div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {syncResult.items.slice(0, 12).map((item) => (
-                  <span
-                    key={`${item.template_code}-${item.action}`}
-                    className={cn(
-                      "rounded-full border px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.12em]",
-                      item.action === "skip"
-                        ? "border-white/10 bg-white/[0.04] text-white/48"
-                        : item.action === "create"
-                          ? "border-[#d8ff5d]/24 bg-[#d8ff5d]/10 text-[#e8ff9a]"
-                          : "border-[#65f7ff]/24 bg-[#65f7ff]/10 text-[#dffbff]",
-                    )}
-                  >
-                    {item.action}: {item.template_code}
-                  </span>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <label className="grid min-w-0 gap-2">
+              <span className={labelClass}>Sync motion</span>
+              <select className={fieldClass} value={syncAnalysisType} onChange={(event) => {
+                setSyncAnalysisType(event.target.value as typeof syncAnalysisType);
+                setSyncTemplateCode("");
+                setSyncResult(null);
+              }} disabled={isSyncingLocalTemplates}>
+                {(["training", "dribbling", "shooting"] as const).map((type) => (
+                  <option key={type} value={type}>{analysisTypeLabels[type]}</option>
                 ))}
+              </select>
+            </label>
+            <label className="grid min-w-0 gap-2">
+              <span className={labelClass}>Sync template</span>
+              <select className={fieldClass} value={syncTemplateCode} onChange={(event) => {
+                setSyncTemplateCode(event.target.value);
+                setSyncResult(null);
+              }} disabled={isSyncingLocalTemplates}>
+                <option value="">All {analysisTypeLabels[syncAnalysisType]}</option>
+                {getAllTemplates(syncAnalysisType).map((template) => (
+                  <option key={template.templateId} value={template.templateId}>{template.displayName}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {syncResult ? (
+            <div className="mt-4 border-y border-white/10 py-3 text-sm text-white/60">
+              <div className="font-semibold text-white">
+                {analysisTypeLabels[syncResult.analysis_type]} {syncResult.dry_run ? "preview" : "result"}: {syncResult.created} create / {syncResult.new_versions} new versions / {syncResult.blocked} blocked
+              </div>
+              <div className="mt-2 overflow-x-auto">
+                <table className="w-full min-w-[580px] text-left text-xs">
+                  <thead className="text-white/50"><tr>
+                    <th className="py-2 pr-3">Template / Version</th>
+                    <th className="py-2 pr-3">Action</th>
+                    <th className="py-2">Reason</th>
+                  </tr></thead>
+                  <tbody>{syncResult.items.map((item) => (
+                    <tr key={item.template_code} className="border-t border-white/10 align-top">
+                      <td className="py-2 pr-3 break-words">{item.template_code}<br />{item.version}</td>
+                      <td className={cn("py-2 pr-3", item.action === "blocked" ? "text-red-300" : "text-white/80")}>{item.action}</td>
+                      <td className="py-2">{item.reason || "Create and publish this template."}</td>
+                    </tr>
+                  ))}</tbody>
+                </table>
               </div>
             </div>
           ) : null}
