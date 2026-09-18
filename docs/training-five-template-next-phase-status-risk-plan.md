@@ -1,11 +1,21 @@
 # Training 五模板下一阶段状态、风险与开发计划
 
-更新日期：2026-08-01  
+更新日期：2026-09-18
 适用分支：`developbranch` 当前工作区  
 关联文档：
 
 - [training-five-template-end-to-end-development-plan.md](./training-five-template-end-to-end-development-plan.md)
 - [training-five-template-metrics-development-plan.md](./training-five-template-metrics-development-plan.md)
+
+### 本轮代码提交
+
+| Commit | 更新内容 |
+| --- | --- |
+| `f8301d9` | 隔离旧运球/投篮评分策略，35 组发布基准，十个 Training 多年龄边界测试；不改评分区间定义 |
+| `307c313` | 原五个版本标记 v2，限定同步范围，预览 token、冲突整批拒绝、发布版本及 PATCH 保护，Admin 完整预览 |
+| `f715146` | 删除 Training 硬编码图表，保留 N/A，读取锁定快照及实际年龄区间，服务端快照保护，旧深蹲夹具与静态渲染回归 |
+
+这三笔代码提交及随后文档提交只推送 developbranch，不同步 main，不包含原有 Landing/Phase 2 工作区改动。目标数据库、服务启动和真实视频验收不属于本轮已执行操作。
 
 ## 1. 文档目的
 
@@ -31,7 +41,7 @@
 - 所有 Training 模板统一使用 `Posture 40% + Execution 40% + Consistency 20%`。
 - 一次完整动作可以评价 Posture 和 Execution；Consistency 数据不足时显示 `N/A`，并将总分权重重新归一化。
 
-### 2.2 运球模板配置没有直接修改，但共享评分行为有变化
+### 2.2 运球和投篮已隔离为原有评分策略
 
 当前工作区没有修改以下文件或运球时序聚合器：
 
@@ -41,15 +51,9 @@
 
 因此五个运球模板的指标、目标值、容差和指标权重没有直接改动。
 
-但是 `web/src/lib/scoring.ts` 是 Shooting、Dribbling 和 Training 共用评分器，本轮已经重构，所以存在间接行为变化：
+`web/src/lib/scoring.ts` 现在按 mode 隔离行为：Training 使用 availability-aware 评分；Shooting/Dribbling 保留发布基准的缺失项计零、原分类权重、建议和正向标记规则。没有修改运球/投篮 JSON 或时序算法。
 
-- 缺失指标不再自动按 0 分计入分类平均值。
-- 缺失分类会重新归一化总分权重。
-- Posture 或 Execution 整个分类缺失时不生成有效总分。
-- 反馈从单一 `hint_bad` 扩展为 `good / low / high / missing`。
-- 数值在目标区间外但仍得到较高分时，报告会显示改进建议，而不再误标为“做得好”。
-
-在所有运球指标都正常采集时，`target`、`range` 和 `rangeByOption` 的核心数值公式与旧版本基本一致。但是目前还没有覆盖五个运球模板的固定输入、固定输出 golden tests，因此不能声称运球评分结果已经被证明完全无回归。
+`legacyScoring.test.ts` 从发布提交 `299aaf3` 固定了 35 组期望输出，覆盖五个运球、两个投篮的正常值、越界、年龄/左右手、部分缺失和全部缺失；分数、分类、权重、标题和建议验证通过。此证据只覆盖固定指标输入，不等于真实视频端到端验收。原评分器不支持的投篮指标类型也保留既有输出，不在本轮顺带升级。
 
 ### 2.3 Training 模板应该在上传前选择
 
@@ -93,9 +97,9 @@ flowchart LR
 
 - Admin 页面：`/admin/templates`
 - 预览：`POST /api/v1/admin/training-templates/sync-local?dry_run=true`
-- 应用：`POST /api/v1/admin/training-templates/sync-local?dry_run=false`
+- 应用：`POST /api/v1/admin/training-templates/sync-local?dry_run=false&preview_token=<预览返回值>`
 
-正式应用前必须先处理第 8.3 节的版本覆盖风险。
+接口默认 `analysis_type=training`，可重复传入 `template_codes`。代码已加入版本保护，但正式应用前仍须备份、审核完整预览并完成测试环境验收。
 
 ### 2.5 评分指标和图表必须按版本一一对应
 
@@ -278,14 +282,11 @@ Consistency = N/A
 - 模板目录、版本、content hash 和上传会话锁定。
 - Coach 任务模板校验。
 - Training 报告模板只读。
-- 前端单元测试、后端服务测试、Lint 和生产构建。
+- 本轮前端 126 个测试、后端全部 35 个测试（其中 21 个模板/报告相关）、TypeScript 和定向 ESLint 通过；没有启动服务，也没有执行本轮生产构建。
 
-当前图表实现只完成了一部分目标：
+当前报告主路径已使用统一数据驱动图表：新分析读取当前选定 JSON，历史 Training 报告读取后端提供的锁定模板快照。每项保留图表或聚合摘要，缺失显示 N/A；全部数据缺失也不再隐藏整个图表区。版本缺失或 Findings 顺序/数量不符时显示错误，禁止混用当前规则。
 
-- 五个新增模板可通过数据驱动分支读取当前本地 JSON 生成图表。
-- 原五个 Training 仍保留专用图表分支，其中部分目标区间仍写在组件代码里。
-- 报告 Findings 使用保存结果，但图表仍可能通过 `templateId` 读取当前本地 JSON。
-- 因此历史报告可能出现指标数、评分卡数和图表数不一致，尚未达到版本级一一映射要求。
+原五个 Training 的旧硬编码回退分支及其专用计算辅助函数已删除，运球分支保持原样。使用发布提交 `299aaf3` 的真实旧深蹲 JSON 固定夹具，覆盖旧版 7 项/新版 6 项模型和静态渲染；截图对应的真实历史报告尚未在目标数据库/浏览器验收。
 
 ## 6. Training 模板选择现状与问题
 
@@ -326,7 +327,7 @@ Consistency = N/A
 | 变更 | 是否需要 Alembic |
 | --- | --- |
 | 新增五个模板记录 | 否，只需数据同步 |
-| 更新原五个模板规则 | 否，只需创建或更新版本数据 |
+| 更新原五个模板规则 | 否，创建 v2；不得覆盖已发布 v1 |
 | 使用现有模板、版本、会话和报告字段 | 否 |
 | 新增 `training_template_version_id` 外键 | 是，未来加强项 |
 | 在 session 中新增不可变 `content_hash` | 是，未来加强项 |
@@ -334,46 +335,37 @@ Consistency = N/A
 
 ### 7.2 当前同步实现的影响范围
 
-`AdminService.sync_local_training_templates()` 当前扫描：
+`AdminService.sync_local_training_templates()` 默认仅扫描：
 
 ```text
-web/src/config/templates/*/*.json
+web/src/config/templates/training/*.json
 ```
 
-这表示 `Sync local` 不是只同步新增五个 Training 模板，它会预览或处理 Shooting、Dribbling 和 Training 的全部本地模板。
+已完成以下范围保护：
 
-因此生产环境不能直接点击 apply。下一阶段应先增加：
+- 默认 `analysis_type=training`；其他模式须明确选择。
+- 可选 `template_codes` 白名单，跨模式或未知 code 返回 400。
+- Admin 先预览，变更范围后使预览失效；列表显示全部动作、版本、原因。
+- API apply 必须提供预览返回的 preview_token；范围、内容或计划操作变化后拒绝旧 token，要求重新预览。
+- 每项显示 create、new_version、draft_update、metadata_update、skip 或 blocked。
+- 规则比较基于实际 JSON 内容，不能只信任声明 hash。
+- 整批预检查；存在 blocked 时 apply 返回 409，整批不写入。
 
-- `analysis_type=training` 过滤。
-- 可选 `template_codes` 白名单。
-- apply 前显示完整列表，不只显示前 12 项。
-- 对每项显示 create、new_version、metadata_update 或 skip。
-- 不允许静默覆盖已经被历史报告引用的版本内容。
+### 7.3 已实施不可变版本策略
 
-### 7.3 v1 被原地覆盖的审计风险
+原五个修改模板均声明 `v2`，五个新模板从 `v1` 开始；前后端校验接受 `v1/v2/...`。无需 schema migration。
 
-当前同步逻辑在发现相同 `template_code + version` 时，会更新该版本行的 JSONB 内容。当前修改后的原五个模板仍声明 `version: "v1"`。
+active、曾发布或已被会话/报告引用的版本规则不得修改，归档也不解除保护。sync-local 与手动版本 PATCH 都执行该限制。未发布且无引用的 draft 可以修改后发布；不变规则可以重新选为当前默认版本。
 
-如果生产数据库中的旧 `v1` 已经被历史报告使用，原地更新会导致：
-
-- 历史报告仍写着 `v1`，但数据库中的 `v1` 已经变成新规则。
-- 无法根据版本号恢复历史评分规则。
-- 审计、复现和问题排查失去可信依据。
-
-上线前必须二选一：
-
-1. 数据库中尚无真实历史报告：确认后可以重建或更新 `v1`。
-2. 数据库中已有真实历史报告：原五个修改模板发布为新版本，例如 `v2`，旧 `v1` 保持不可变。
-
-推荐选择第二种版本不可变策略。五个全新模板可以从 `v1` 开始，原五个修改模板使用 `v2`。这需要取消当前 Training 校验器“所有模板必须是 v1”的限制，但不需要数据库 schema migration。
+仍需审计以前是否已经覆盖过 v1：本轮保护不能恢复过去丢失的内容。受污染历史版本只能从备份、当时提交或报告原始快照核实并受控修复，不能猜测后静默回填。
 
 ### 7.4 推荐的数据同步顺序
 
 1. 备份目标数据库或至少导出模板、版本和报告引用关系。
 2. 查询原五个模板的 `v1` 是否已被 `analysis_reports` 使用。
-3. 根据查询结果决定原五个模板使用 `v1` 还是新建 `v2`。
+3. 原五个模板创建 `v2`，保留并核验旧 `v1` 内容；若 v2 已发布但内容不一致，必须继续递增版本，不得覆盖。
 4. 在测试环境执行 Training-only dry-run。
-5. 审核每一项 create/update/new_version。
+5. 审核每项动作、版本、操作和原因；存在 blocked 时先解决冲突。
 6. 在测试环境 apply。
 7. 再次 dry-run，结果应全部为 skip。
 8. 验证 public catalog 返回十个 active Training 模板及正确 hash。
@@ -383,9 +375,9 @@ web/src/config/templates/*/*.json
 
 ### 8.1 P0：共享评分器可能影响旧运球和投篮结果
 
-状态：确认存在共享行为变化，尚未证明有数值回归。  
-影响：旧模板在缺失指标、缺失分类和报告反馈状态下可能与发布版本不同。  
-处理：先建立五个运球模板和两个投篮模板的 golden score tests，再决定是否需要按模式拆分评分策略。
+状态：代码层已处理，35 组发布基准通过。
+剩余：需要真实旧视频冒烟，不能把指标输入测试等同于识别链路无回归。
+处理：保留模式隔离；非有限输入按缺失处理，不接受 NaN/Infinity。
 
 推荐策略：
 
@@ -397,10 +389,10 @@ web/src/config/templates/*/*.json
 
 ### 8.2 P0：报告评分项与图表数量、阈值可能不一致
 
-状态：截图和当前渲染路径已确认存在。  
+状态：统一图表路径已修复，Training 硬编码分支已删除；历史真实数据和浏览器验收未完成。
 影响：历史 Findings 可能保留旧指标，但图表按当前模板生成，导致深蹲出现 `7 Checks/6 Charts`；图表中手写的目标带还可能与 JSON 评分区间漂移。用户看到的图形不能可靠解释对应分数。
 
-根因：
+此前根因（已在代码层处理）：
 
 - Findings、评分卡和图表没有从同一个锁定模板快照生成。
 - `MetricTimelineCard.tsx` 同时存在数据驱动和原五模板硬编码分支。
@@ -417,9 +409,9 @@ web/src/config/templates/*/*.json
 
 ### 8.3 P0：模板同步范围过大且可能覆盖历史版本
 
-状态：确认存在。  
-影响：一次 Sync local 可能同时更新无关的 Shooting/Dribbling；相同版本号内容可被覆盖。  
-处理：增加 Training-only 和 template-code 过滤，并执行不可变版本策略。
+状态：代码层已处理，SQLite 服务测试通过，目标 PostgreSQL 尚未同步。
+保护：默认 Training-only、code 过滤、内容比较、整批冲突拒绝、过期预览拒绝、手动 PATCH 不可绕过。
+剩余：真实库备份、历史版本审计、并发写入/数据库约束和部署目录可用性验证。
 
 ### 8.4 P0：服务端信任浏览器提交的分数和指标
 
@@ -439,7 +431,7 @@ web/src/config/templates/*/*.json
 状态：已知架构限制。  
 当前 session 保存 `template_code` 和版本字符串，没有 `training_template_version_id` 外键，也没有持久化不可变 content hash。
 
-影响：版本内容被修改后，会话无法证明当时使用的完整规则。  
+影响：API 已禁止发布版本修改，但无法防止绕过 API 的直接数据库写入，也缺少 session 级规则凭证。
 处理：下一阶段评估新增版本外键和 content hash；此项需要 Alembic migration。
 
 ### 8.6 P1：真实儿童视频尚未完成验收
@@ -482,6 +474,8 @@ web/src/config/templates/*/*.json
 
 ### 阶段 0：先冻结旧功能基准，暂不执行生产 sync
 
+当前状态：旧 Shooting/Dribbling 固定基准和策略隔离已完成；真实视频冒烟未完成。
+
 目标：证明新功能不会改变旧模板的既有结果。
 
 任务：
@@ -494,6 +488,8 @@ web/src/config/templates/*/*.json
 完成门槛：旧 Shooting/Dribbling 的关键数值输出与发布基准一致，或差异已经被产品明确批准并创建新版本。
 
 ### 阶段 1：修复报告版本来源和指标图表一一对应
+
+当前状态：统一图表、共享区间、旧版夹具和静态渲染已完成；目标数据库历史报告的真实浏览器验收未完成。
 
 目标：让同一份报告的 Findings、评分卡和 Performance Curves 全部来自同一个锁定模板版本，先解决截图中的 `7 Checks/6 Charts`。
 
@@ -511,6 +507,8 @@ web/src/config/templates/*/*.json
 
 ### 阶段 2：修复模板版本和同步边界
 
+当前状态：代码和服务测试已完成；测试 PostgreSQL 同步及并发验收未完成。
+
 目标：保证数据同步不会影响无关模板，也不会覆盖历史版本。
 
 任务：
@@ -518,7 +516,7 @@ web/src/config/templates/*/*.json
 1. Sync local API 支持 `analysis_type` 和 `template_codes`。
 2. Admin UI 可以只预览和同步 Training。
 3. 同步服务默认拒绝修改已发布版本的规则内容。
-4. 原五个修改模板根据数据库使用情况决定发布 `v2`。
+4. 原五个修改模板统一发布 v2，审计旧 v1，不覆盖旧规则。
 5. 前端和后端校验器支持合法版本，而不是硬编码只能 `v1`。
 
 完成门槛：Training-only dry-run 不列出任何无关 Shooting/Dribbling 更新；历史版本内容不可变。
@@ -580,28 +578,28 @@ web/src/config/templates/*/*.json
 
 在任何生产数据库同步之前，按以下顺序执行：
 
-1. **把截图中的深蹲 `7 Checks/6 Charts` 报告固定为回归用例。**
-2. **补五个运球模板、两个投篮模板和原五个 Training 的评分 golden tests，锁定现有公式。**
-3. **实现报告模板快照、共享评分区间 resolver 和指标/Findings/图表一一对应。**
-4. **查询数据库中原五个 Training `v1` 是否已有历史报告引用。**
-5. **将 sync-local 限制为 Training 和指定模板，禁止原地覆盖已发布版本。**
-6. **决定原五个模板使用 `v2`，五个新模板使用 `v1`。**
-7. **完成测试环境 dry-run 后再 apply。**
+1. **使用固定旧版 JSON 夹具核对目标库截图历史报告，不能猜测缺失版本内容。**
+2. **备份并审计目标数据库旧 v1 和报告引用，确认是否存在过去的覆盖。**
+3. **在测试 PostgreSQL 完成 Training-only 预览、apply、二次全 skip，验证 v2/v1/hash。**
+4. **用户自行运行服务后验收上传、Coach 任务、历史报告、Admin 手机布局；开发代理不启动 3000/8000。**
+5. **提供新五个正确/错误儿童视频和旧模板视频，完成识别及建议验收。**
+6. **实现服务端总分重算，再评估可信关键点提取和版本外键迁移。**
+7. **显式同视频新分析入口作为独立能力开发，不覆盖旧 session/report。**
 
 当前不建议直接在生产点击 `Sync local`。
 
 ## 11. 下一阶段验收清单
 
-- [ ] 五个运球模板 golden scores 与发布基准一致。
-- [ ] 两个投篮模板 golden scores 与发布基准一致。
+- [x] 五个运球模板 golden scores 与发布基准一致（固定指标输入）。
+- [x] 两个投篮模板 golden scores 与发布基准一致（固定指标输入）。
 - [ ] 原五个 Training 只有已批准的指标、分类和权重变化。
 - [ ] 每份报告满足锁定模板指标数、Findings 数和图表数一致，顺序和名称一致。
 - [ ] 旧深蹲报告显示 7 个指标、7 个 Findings 和 7 张图；当前版本显示 6 对 6。
-- [ ] 图表区间直接来自锁定版本 JSON；组件中不存在 Training 手写评分阈值。
-- [ ] `range` 的 `[L,U]` 评分保持不变；`target ± tol` 仍为 90-100 分且目标点为 100 分。
+- [x] 图表区间直接来自锁定版本 JSON；组件中不存在 Training 手写评分阈值（模型/静态渲染验证）。
+- [x] `range` 的 `[L,U]` 评分保持不变；`target ± tol` 仍为 90-100 分且目标点为 100 分（十个 Training、多年龄边界测试）。
 - [ ] 修改当前 JSON 后重新打开历史报告，旧报告的指标、图表和目标区间不变。
-- [ ] Training-only sync 不触碰 Shooting/Dribbling。
-- [ ] 已发布模板版本内容不可变。
+- [x] Training-only sync 不触碰 Shooting/Dribbling（服务测试）。
+- [x] 已发布模板版本内容不可变（sync/PATCH 服务测试；不包含直接 SQL）。
 - [ ] 自由训练上传前可以选择动作。
 - [ ] Coach 任务模板不能被替换。
 - [ ] 上传后清楚显示锁定模板和版本。
@@ -620,11 +618,10 @@ web/src/config/templates/*/*.json
 
 主要阻止项是：
 
-1. 历史评分项与当前图表可能混用模板版本，已出现 `7 Checks/6 Charts`。
-2. 旧运球、投篮和原五个 Training 缺少完整评分基准回归证据。
-3. sync-local 影响所有本地模板，范围过大。
-4. 相同 `v1` 内容可被原地更新，存在历史审计风险。
-5. 五个新模板缺少真实儿童视频验收。
-6. 服务端仍信任客户端提交的评分结果。
+1. 目标库旧 v1 是否曾被覆盖尚未审计，截图历史报告尚未做真实验收。
+2. 测试 PostgreSQL 同步、真实登录全链路和多设备 UI 验收未完成。
+3. 五个新模板和旧模板缺少真实视频回归；固定输入测试已通过。
+4. 服务端仍信任客户端提交的分数和指标；本轮只保证模板快照由服务端生成。
+5. 移动 HTTP hash 风险、并发发布验证和依赖安全审计仍待处理。
 
 完成第 9 节阶段 0 至阶段 5 后，可以进入受控发布；阶段 6 的评分完整性加固至少应在分数用于任务达标、排名或奖励之前完成。

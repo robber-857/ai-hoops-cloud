@@ -1,5 +1,20 @@
 # Training 五个新模板端到端开发计划
 
+## 0. 2026-09-18 恢复开发记录
+
+本轮在 `developbranch` 完成代码层保护，不启动或打开 3000/8000 服务，不同步目标数据库：
+
+- Shooting/Dribbling 恢复发布基准评分行为，与 Training 缺失数据策略隔离；35 组固定基准通过。
+- 原五个 Training 使用 v2，新五个使用 v1；仅版本号升级，本轮不修改已有 target/tol/L/U/margin。
+- sync-local 默认仅 Training，可指定 template_codes；完整预览、preview_token 校验、整批冲突拒绝、已发布/已引用规则不可覆盖；手动 PATCH 同样保护。
+- 统一 Training 图表按明确传入的锁定快照生成，删除旧硬编码分支；缺失保留 N/A，目标带与分数标签读取年龄生效后的共享 resolver。
+- 模板快照仅由服务端数据库规则生成，拒绝错误 code/version，不信任客户端快照；这不是服务端分数重算。
+- 前端 126 个测试、后端全量 35 个测试、类型检查、定向 Lint 通过；静态渲染不等于真实浏览器/移动端验收。
+
+尚未完成：目标 PostgreSQL 备份与版本审计、同步/真实登录业务联调、儿童正确/错误视频及旧模板冒烟、多设备布局、移动 HTTP hash 兼容、服务端评分重算、显式同视频创建新分析。未新增 Alembic revision；本轮未执行生产构建。
+
+下一步先备份并审计旧 v1，再在测试库预览/apply/二次 skip，按状态风险文档执行人工验收；不可把 SQLite 测试当成数据库已上线。
+
 ## 1. 文档目的
 
 本文档用于指导以下五个新动作模板接入现有 Training 系统：
@@ -99,7 +114,7 @@ flowchart TD
 | --- | --- | --- |
 | Training 模板列表是占位 UI | 用户无法可靠选择五个新模板 | 接入数据库目录并与本地可执行模板求交集 |
 | 上传端默认取第一个本地模板 | 选择、上传和评分可能不是同一模板 | 页面持有唯一模板上下文并在上传后锁定 |
-| 本地同步默认 `local-v1`，上传默认 `v1` | 数据库版本与报告版本漂移 | 所有 Training JSON 显式声明 `version: "v1"` |
+| 本地同步与上传版本可能漂移 | 会话与规则不一致 | Training JSON 显式版本：新五个 v1，原五个修改后 v2；上传使用锁定版本 |
 | 上传 API 不验证模板 | 会话可保存不存在或停用的模板 | 后端解析并返回规范化模板上下文 |
 | 任务模板未在后端校验 | 学生可通过参数替换 Coach 指定模板 | 上传时以任务记录为准并拒绝不一致 |
 | 报告可切换模板后覆盖 | 历史报告和任务进度可能被改变 | 已保存报告锁定模板和版本 |
@@ -142,7 +157,7 @@ flowchart TD
 本次新增五个模板不需要新建数据库表，也不需要修改现有表结构：
 
 - 新模板通过 `sync-local` 写入 `training_templates`。
-- 每个模板的 `v1` 规则写入 `training_template_versions`。
+- 五个新模板的 v1 和原五个修改模板的 v2 写入 `training_template_versions`，保留旧 v1。
 - 上传会话继续保存 `template_code` 和 `template_version`。
 - 报告继续保存 `training_template_id` 外键和版本字符串。
 
@@ -189,7 +204,7 @@ flowchart TD
 
 | 字段 | 要求 |
 | --- | --- |
-| `version` | 必填，首版统一为 `v1` |
+| `version` | 必填，采用 v1/v2/...；新模板首版 v1，修改已发布规则必须新建版本 |
 | `templateId` | 必须与数据库 `template_code` 完全一致 |
 | `mode` | 必须为 `training` |
 | `camera` | `front` 或 `side` |
@@ -301,7 +316,7 @@ flowchart TD
 
 - 在 `ActionTemplate` 中增加必填 `version`。
 - 在 `Metric` 中增加儿童可读名称、目标和方向反馈字段。
-- 为每个 Training JSON 增加显式版本。五个新模板从 `v1` 开始；原五个模板如果已有历史报告引用旧规则，修改后的规则必须发布为新版本，不得覆盖旧 `v1`。
+- 为每个 Training JSON 增加显式版本。五个新模板从 v1 开始；原五个修改模板统一发布 v2，不得覆盖旧 v1。
 - 新增五个模板 JSON。
 - 在 `web/src/config/templates/index.ts` 注册五个新模板。
 - 增加模板启动校验：
@@ -527,7 +542,7 @@ flowchart TD
 3. 执行 `Sync local`。
 4. 再次执行 `Dry run`，所有项目应为 skip。
 5. 检查五个新 `training_templates` 记录均为 active。
-6. 检查每个模板存在一个 active/default `v1`。
+6. 检查每个模板存在正确的 active/default 版本：新五个 v1，原五个 v2；旧 v1 内容不变。
 7. 检查 JSONB 中的 `content_hash`、camera 和 metric count。
 
 #### 完成标准
@@ -535,7 +550,7 @@ flowchart TD
 - 同步重复执行不会创建重复模板或版本。
 - API 能按 Training 返回十个 active 模板。
 - 新报告的 `training_template_id` 非空。
-- 会话、报告和报告快照的版本均为 `v1`。
+- 会话、报告和报告快照使用同一锁定版本，不要求所有模板版本号相同。
 - 篡改模板代码或版本会得到明确的 4xx 响应。
 
 ### 阶段 6：Training 前端模板选择与上传锁定
@@ -726,7 +741,7 @@ flowchart TD
 
 - 前端异常：回滚前端部署版本。
 - 某个模板异常：在 Admin 将该模板状态改为 inactive。
-- 规则异常：恢复上一版本 JSON，重新部署并执行 sync-local。
+- 规则异常：将未修改的旧版本重新设为当前默认，并部署匹配的前端；不得将新规则覆盖写入旧版本。若旧版本缺失，先从经核实的备份/提交恢复并审计。
 - 报告保存异常：停止新模板入口，不删除已生成报告或快照。
 - 不通过删除数据库模板记录进行回滚，避免破坏历史报告外键。
 
