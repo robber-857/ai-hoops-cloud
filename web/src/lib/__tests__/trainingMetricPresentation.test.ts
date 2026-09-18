@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { getTemplateById, type ActionTemplate, type Metric } from "@/config/templates";
+import { getTemplateById, parseActionTemplateSnapshot } from "@/config/templates";
+import squatV1 from "./fixtures/squat-v1.json";
 
 import { resolveMetricScoreBand } from "../scoring";
 import { buildTrainingMetricChartModels } from "../trainingMetricPresentation";
@@ -25,28 +26,23 @@ describe("training metric chart contract", () => {
     expect(currentTemplate).toBeDefined();
     if (!currentTemplate) return;
 
-    const historicalMetric: Metric = {
-      metricId: "E_rep_rhythm",
-      displayName: "Rep Rhythm",
-      category: "execution",
-      weight: 0.2,
-      type: "range",
-      computeKey: "repTempoSec",
-      params: { L: 1.5, U: 4, margin: 2 },
-    };
-    const historicalTemplate: ActionTemplate = {
-      ...currentTemplate,
-      version: "v1",
-      metrics: [...currentTemplate.metrics, historicalMetric],
-    };
+    // The published 299aaf3 fixture preserves the real v1 ordering and parameters.
+    const historicalTemplate = parseActionTemplateSnapshot(squatV1, {
+      templateId: currentTemplate.templateId, version: "v1",
+    })!;
 
     const models = buildTrainingMetricChartModels(historicalTemplate, [], [], {
       ageGroup: "16-18",
     });
 
     expect(models).toHaveLength(7);
-    expect(models.at(-1)?.metric.metricId).toBe("E_rep_rhythm");
-    expect(models.at(-1)?.summaryValue).toBeNull();
+    expect(models[4].metric.metricId).toBe("E_rep_rhythm");
+    expect(models[4].summaryValue).toBeNull();
+    expect(models[4].scoreBand).toMatchObject({ min: 1.5, max: 4 });
+    expect(currentTemplate.metrics).toHaveLength(6);
+    expect(models.map((model) => model.metric.metricId)).toEqual(
+      squatV1.metrics.map((metric) => metric.metricId),
+    );
   });
 
   it("uses the same resolved score band as the scorer", () => {

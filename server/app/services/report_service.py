@@ -68,6 +68,10 @@ def _template_snapshot_from_version(
     raw_template = version.scoring_rules.get("template")
     if not isinstance(raw_template, dict):
         return None
+    if raw_template.get("templateId", template_code) != template_code:
+        return None
+    if template_version and raw_template.get("version", template_version) != template_version:
+        return None
 
     snapshot = deepcopy(raw_template)
     snapshot.setdefault("templateId", template_code)
@@ -77,6 +81,14 @@ def _template_snapshot_from_version(
     if isinstance(content_hash, str) and content_hash:
         snapshot["contentHash"] = content_hash
     return snapshot
+
+
+def _score_data_with_snapshot(score_data: dict, template_snapshot: dict | None) -> dict:
+    saved = deepcopy(score_data)
+    saved.pop("template_snapshot", None)
+    if template_snapshot is not None:
+        saved["template_snapshot"] = deepcopy(template_snapshot)
+    return saved
 
 
 def _report_read(report: AnalysisReport, template_snapshot: dict | None = None) -> ReportRead:
@@ -97,7 +109,11 @@ class ReportService:
     def _template_snapshot_for_report(self, report: AnalysisReport) -> dict | None:
         score_data = report.score_data if isinstance(report.score_data, dict) else {}
         stored_snapshot = score_data.get("template_snapshot")
-        if isinstance(stored_snapshot, dict):
+        if (
+            isinstance(stored_snapshot, dict)
+            and stored_snapshot.get("templateId") == report.template_id
+            and stored_snapshot.get("version") == report.template_version
+        ):
             return deepcopy(stored_snapshot)
         if not report.training_template_id or not report.template_version:
             return None
@@ -224,14 +240,14 @@ class ReportService:
             )
         is_new_report = existing_report is None
 
-        score_data = dict(payload.score_data)
         template_snapshot = _template_snapshot_from_version(
             resolved_template_version,
             template_code=normalized_template_code,
             template_version=normalized_template_version,
         )
-        if template_snapshot is not None:
-            score_data["template_snapshot"] = template_snapshot
+        if session.analysis_type == AnalysisType.training and template_snapshot is None:
+            raise HTTPException(status_code=409, detail="The locked Training template rules are incomplete.")
+        score_data = _score_data_with_snapshot(payload.score_data, template_snapshot)
 
         now = datetime.now(timezone.utc)
         report = existing_report or AnalysisReport(

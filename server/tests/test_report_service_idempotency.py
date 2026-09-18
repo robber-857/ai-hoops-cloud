@@ -4,7 +4,7 @@ import unittest
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
-from app.services.report_service import ReportService, _template_snapshot_from_version
+from app.services.report_service import ReportService, _score_data_with_snapshot, _template_snapshot_from_version
 
 
 class _ScalarResult:
@@ -28,6 +28,33 @@ class _FakeSession:
 
 
 class ReportServiceIdempotencyTests(unittest.TestCase):
+    def test_client_snapshot_is_never_trusted(self) -> None:
+        client = {"overall": 90, "template_snapshot": {"templateId": "forged"}}
+        self.assertEqual(_score_data_with_snapshot(client, None), {"overall": 90})
+        trusted = {"templateId": "deep_squat_reps_side", "version": "v1", "metrics": []}
+        saved = _score_data_with_snapshot(client, trusted)
+        self.assertEqual(saved["template_snapshot"], trusted)
+        saved["template_snapshot"]["metrics"].append("changed")
+        self.assertEqual(trusted["metrics"], [])
+        self.assertEqual(client["template_snapshot"]["templateId"], "forged")
+
+    def test_snapshot_rejects_rules_for_another_identity_or_version(self) -> None:
+        for raw in ({"templateId": "wrong"}, {"templateId": "deep_squat_reps_side", "version": "v2"}):
+            version = SimpleNamespace(scoring_rules={"template": raw})
+            self.assertIsNone(_template_snapshot_from_version(
+                version, template_code="deep_squat_reps_side", template_version="v1",
+            ))
+
+    def test_saved_snapshot_is_independent_of_current_database_rules(self) -> None:
+        stored = {"templateId": "deep_squat_reps_side", "version": "v1", "metrics": [{"metricId": "E_rep_rhythm"}]}
+        report = SimpleNamespace(score_data={"template_snapshot": stored},
+                                 template_id="deep_squat_reps_side", template_version="v1")
+        service = ReportService(SimpleNamespace())
+        snapshot = service._template_snapshot_for_report(report)
+        self.assertEqual(snapshot, stored)
+        snapshot["metrics"].clear()
+        self.assertEqual(len(stored["metrics"]), 1)
+
     def test_template_snapshot_uses_the_locked_version_rules(self) -> None:
         raw_template = {
             "templateId": "deep_squat_reps_side",

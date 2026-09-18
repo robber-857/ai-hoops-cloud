@@ -291,6 +291,7 @@ function ReportContent() {
   const performanceCurveRef = useRef<HTMLDivElement | null>(null);
   const findingsColumnRef = useRef<HTMLDivElement | null>(null);
   const [findingsCardHeight, setFindingsCardHeight] = useState<number | null>(null);
+  const [persistedScoringOptions, setPersistedScoringOptions] = useState<Record<string, unknown>>({});
 
   useEffect(() => setIsMounted(true), []);
 
@@ -359,6 +360,7 @@ function ReportContent() {
           : await reportService.getReport(publicId);
         const scoreData = data.score_data as unknown as SavedScoreData;
         const persistedAgeGroup = getPersistedAgeGroup(scoreData);
+        setPersistedScoringOptions(scoreData.score_context || {});
 
         setDbResult(scoreData);
         setDbTimeline((data.timeline_data ?? []) as FrameSample[]);
@@ -552,7 +554,9 @@ function ReportContent() {
   const hasPerformanceData =
     Boolean(finalTimeline && finalTimeline.length > 0) ||
     Boolean(finalSavedMetrics && finalSavedMetrics.length > 0);
-  const hasPerformanceCurves = hasPerformanceData && !trainingTemplateContractError;
+  const hasPerformanceCurves =
+    (hasPerformanceData || (selectedTemplate?.mode === "training" && Boolean(finalResult))) &&
+    !trainingTemplateContractError;
   const trainingBackHref =
     selectedMode === "dribbling"
       ? routes.pose2d.dribbling
@@ -985,7 +989,11 @@ function ReportContent() {
                       templateId={selectedTemplateId}
                       template={selectedTemplate}
                       savedMetrics={finalSavedMetrics}
-                      scoringContext={{ ageGroup, handedness: "right" }}
+                      scoringContext={{
+                        ...(reportId ? persistedScoringOptions : {}),
+                        ageGroup,
+                        handedness: reportId ? persistedScoringOptions.handedness || "right" : "right",
+                      }}
                     />
                   </div>
                 )}
