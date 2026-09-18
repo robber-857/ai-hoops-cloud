@@ -1,10 +1,46 @@
 import { describe, expect, it } from "vitest";
 
-import { getTemplateById } from "@/config/templates";
+import { getAllTemplates, getTemplateById } from "@/config/templates";
+import globalConfig from "@/config/templates/global.json";
 
 import { calculateRealScore, resolveMetricScoreBand } from "../scoring";
 
 describe("training score availability and feedback", () => {
+  for (const template of getAllTemplates("training")) {
+    for (const ageGroup of Object.keys(globalConfig.ageToleranceScale)) {
+      it(`${template.templateId}: JSON bands and scores at ${ageGroup}`, () => {
+        const options = { ...template.options, ageGroup };
+        const ideal = template.metrics.map((metric) => {
+          const band = resolveMetricScoreBand(metric, options)!;
+          return { name: metric.computeKey, value: band.target ?? (band.min + band.max) / 2 };
+        });
+        expect(calculateRealScore(template, ideal, options).overall).toBeCloseTo(100);
+        template.metrics.forEach((metric, index) => {
+          const band = resolveMetricScoreBand(metric, options)!;
+          expect(band.kind).toBe(metric.type);
+          if (metric.type === "range") {
+            expect(band.min).toBe(metric.params.L);
+            expect(band.max).toBe(metric.params.U);
+          } else if (metric.type === "target") {
+            expect(band.target).toBe(metric.params.target);
+            expect(band.max - band.min).toBeCloseTo(2 * band.tolerance!);
+          }
+          for (const edge of [band.min, band.max]) {
+            const values = ideal.map((value, i) => i === index ? { ...value, value: edge } : value);
+            const finding = calculateRealScore(template, values, options).findings[index];
+            expect(finding.score).toBe(band.scoreFloorInsideBand);
+          }
+          if (band.margin > 0) {
+            const values = ideal.map((value, i) => i === index
+              ? { ...value, value: band.max + band.margin / 2 } : value);
+            const finding = calculateRealScore(template, values, options).findings[index];
+            expect(finding.score).toBe(band.kind === "target" ? 45 : 50);
+            expect(finding.state).toBe("high");
+          }
+        });
+      });
+    }
+  }
   it("keeps target tolerance as a 90-100 score band", () => {
     const template = getTemplateById("deep_squat_reps_side");
     expect(template).toBeDefined();

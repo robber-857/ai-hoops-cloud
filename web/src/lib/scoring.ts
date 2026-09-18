@@ -39,6 +39,7 @@ export type MetricScoreBand = {
   max: number;
   margin: number;
   target?: number;
+  tolerance?: number;
   scoreFloorInsideBand: number;
   scoreCeilingInsideBand: number;
 };
@@ -170,6 +171,7 @@ export function resolveMetricScoreBand(
       max: target + tolerance,
       margin: relax(metric.params.margin, 15),
       target,
+      tolerance,
       scoreFloorInsideBand: 90,
       scoreCeilingInsideBand: 100,
     };
@@ -206,7 +208,7 @@ function scoreMetric(
 
   if (band.kind === "target") {
     const target = band.target ?? 0;
-    const tolerance = Math.max(0, band.max - target);
+    const tolerance = band.tolerance ?? 0;
     const difference = Math.abs(value - target);
     if (difference <= tolerance) {
       const withinToleranceScore = tolerance > 0 ? 100 - (difference / tolerance) * 10 : 100;
@@ -241,6 +243,9 @@ export function calculateRealScore(
   currentAngles: AngleData[],
   options: Record<string, unknown> = {},
 ): ScoreResult {
+  if (template.mode !== "training") {
+    return calculateLegacyScore(template, currentAngles, options);
+  }
   const ageGroup = (options.ageGroup as string) || "16-18";
   const configuredWeights =
     template.overallWeights || template.categoryWeights || DEFAULT_CATEGORY_WEIGHTS;
@@ -354,5 +359,107 @@ export function calculateRealScore(
     availability,
     breakdown,
     findings,
+  };
+}
+
+// Keep the published dribbling/shooting policy separate from Training availability rules.
+function calculateLegacyScore(
+  template: ActionTemplate,
+  currentAngles: AngleData[],
+  options: Record<string, unknown>,
+): ScoreResult {
+  const multiplier = getAgeToleranceMultiplier((options.ageGroup as string) || "16-18");
+  const weights = template.overallWeights || template.categoryWeights || DEFAULT_CATEGORY_WEIGHTS;
+  const categories = {
+    posture: { score: 0, weight: 0 },
+    execution: { score: 0, weight: 0 },
+    consistency: { score: 0, weight: 0 },
+  };
+  const findings = template.metrics.map((metric): Finding => {
+    const data = currentAngles.find(
+      (angle) => normalizeMetricKey(angle.name) === normalizeMetricKey(metric.computeKey),
+    );
+    const params = metric.params;
+    let score = 0;
+    let missing = !data || !Number.isFinite(data.value);
+    let state: FindingState = "missing";
+    if (!missing && data) {
+      let band: { min: number; max: number; margin: number } | undefined;
+      if (metric.type === "boolean") {
+        const target = params.target ?? 1;
+        score = Math.round(data.value) === target ? 100 : 0;
+        state = score === 100 ? "good" : data.value < target ? "low" : "high";
+      } else if (metric.type === "target") {
+        const target = params.target || 0;
+        const tolerance = (params.tol || 5) * multiplier;
+        const margin = (params.margin || 15) * multiplier;
+        const difference = Math.abs(data.value - target);
+        if (difference <= tolerance) {
+          score = 100 - (difference / tolerance) * 10;
+          state = "good";
+        } else {
+          const extra = difference - tolerance;
+          score = extra > margin ? 0 : 90 - (extra / margin) * 90;
+          state = data.value < target ? "low" : "high";
+        }
+      } else if (metric.type === "range") {
+        band = { min: params.L || 0, max: params.U || 180, margin: (params.margin || 15) * multiplier };
+      } else if (metric.type === "rangeByOption") {
+        const key = params.optionKey || "handedness";
+        const selected = (options[key] as string) || (template.options?.[key] as string) || "right";
+        const range = params.ranges?.[selected];
+        if (range) {
+          band = { min: range.L, max: range.U, margin: (range.margin || 0.1) * multiplier };
+        } else {
+          missing = true;
+        }
+      }
+      if (band) {
+        state = data.value < band.min ? "low" : data.value > band.max ? "high" : "good";
+        score = state === "good" ? 100 : Math.max(
+          0,
+          100 - ((state === "low" ? band.min - data.value : data.value - band.max) / band.margin) * 100,
+        );
+      }
+    }
+    const weight = metric.weight || 1;
+    categories[metric.category].score += score * weight;
+    categories[metric.category].weight += weight;
+    const hint = missing
+      ? `Data missing: ${metric.computeKey} was not collected for this clip. Use a clearer ${template.camera} view and make sure the movement completes enough reps for this metric.`
+      : score < 75
+        ? metric.hint_bad || ""
+        : score < 90
+          ? metric.hint_good || "Improve the details of the movements to get a better score."
+          : metric.hint_good || "Good form maintained.";
+    return {
+      id: metric.metricId,
+      title: metric.metricId.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()),
+      score: Math.round(score),
+      isPositive: !missing && score >= 75,
+      isMissing: missing,
+      state: missing ? "missing" : state,
+      actualValue: missing || !data ? null : formatActualValue(metric, data.value),
+      targetText: getTargetText(metric),
+      hint,
+      category: metric.category,
+    };
+  });
+  const breakdown = {
+    posture: categories.posture.weight ? categories.posture.score / categories.posture.weight : 0,
+    execution: categories.execution.weight ? categories.execution.score / categories.execution.weight : 0,
+    consistency: categories.consistency.weight ? categories.consistency.score / categories.consistency.weight : 0,
+  };
+  const weightTotal = weights.posture + weights.execution + weights.consistency || 1;
+  const overall = (breakdown.posture * weights.posture + breakdown.execution * weights.execution +
+    breakdown.consistency * weights.consistency) / weightTotal;
+  return {
+    overall, grade: getGrade(overall), weights, breakdown, findings,
+    analysisStatus: "ready",
+    availability: {
+      posture: categories.posture.weight > 0,
+      execution: categories.execution.weight > 0,
+      consistency: categories.consistency.weight > 0,
+    },
   };
 }
