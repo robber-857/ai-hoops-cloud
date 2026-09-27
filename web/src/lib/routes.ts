@@ -22,6 +22,7 @@ export const routes = {
   coach: {
     home: "/coach",
     plans: "/coach/plans",
+    lessons: "/coach/lessons",
     classes: "/coach/classes",
     reports: "/coach/reports",
     tasks: "/coach/tasks",

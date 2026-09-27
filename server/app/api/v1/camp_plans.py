@@ -49,6 +49,16 @@ def update(
     return CampPlanService(db).update(user, class_id, plan_id, payload)
 
 
+@router.get("/coach/classes/{class_id}/plans/{plan_id}", response_model=PlanRead)
+def get_plan(
+    class_id: UUID,
+    plan_id: UUID,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return CampPlanService(db).get(user, class_id, plan_id)
+
+
 @router.post(
     "/coach/classes/{class_id}/plans/{plan_id}/publish", response_model=PlanRead
 )

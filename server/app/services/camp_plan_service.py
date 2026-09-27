@@ -225,6 +225,17 @@ class CampPlanService:
             select(CampPlan).where(CampPlan.class_id == klass.id), limit, offset
         )
 
+    def get(self, user, class_public_id, plan_public_id):
+        klass = self._class(user, class_public_id)
+        row = self.db.scalar(
+            select(CampPlan).where(
+                CampPlan.class_id == klass.id, CampPlan.public_id == plan_public_id
+            )
+        )
+        if not row:
+            raise HTTPException(404, "Plan not found.")
+        return self._read(row)
+
     def student_list(self, user, limit=20, offset=0):
         stmt = (
             select(CampPlan)

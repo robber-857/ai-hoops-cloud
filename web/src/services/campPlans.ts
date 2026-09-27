@@ -30,6 +30,8 @@ export type CampPlan = PlanContent & {
 export type PlansResponse = { items: CampPlan[]; has_more: boolean };
 const base = (id: string) => `/coach/classes/${id}/plans`;
 export const campPlanService = {
+  get: (id: string, planId: string) =>
+    apiRequest<CampPlan>(`${base(id)}/${planId}`),
   mine: (offset = 0) => apiRequest<PlansResponse>(`/me/plans?offset=${offset}`),
   list: (id: string, offset = 0) =>
     apiRequest<PlansResponse>(`${base(id)}?offset=${offset}`),

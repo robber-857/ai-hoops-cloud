@@ -6,6 +6,7 @@ from app.models.announcement import Announcement
 from app.models.announcement_read import AnnouncementRead
 from app.models.camp_class import CampClass
 from app.models.camp_plan import CampPlan
+from app.models.camp_lesson import CampLesson, CampLessonRevision
 from app.models.class_member import ClassMember
 from app.models.notification import Notification
 from app.models.operation_log import OperationLog
@@ -35,6 +36,8 @@ __all__ = [
     "AnnouncementRead",
     "CampClass",
     "CampPlan",
+    "CampLesson",
+    "CampLessonRevision",
     "ClassMember",
     "Notification",
     "OperationLog",

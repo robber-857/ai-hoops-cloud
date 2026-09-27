@@ -4,6 +4,7 @@ from app.api.v1.admin import router as admin_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.coach import router as coach_router
 from app.api.v1.camp_plans import router as camp_plans_router
+from app.api.v1.camp_lessons import router as camp_lessons_router
 from app.api.v1.me import router as me_router
 from app.api.v1.reports import router as reports_router
 from app.api.v1.training_templates import router as templates_router
@@ -19,3 +20,4 @@ api_router.include_router(coach_router, prefix="/coach", tags=["coach"])
 api_router.include_router(admin_router, prefix="/admin", tags=["admin"])
 
 api_router.include_router(camp_plans_router, tags=['camp-plans'])
+api_router.include_router(camp_lessons_router, tags=['camp-lessons'])

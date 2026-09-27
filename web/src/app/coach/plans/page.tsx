@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { CoachShell } from "@/components/coach/CoachShell";
 import { PlanDetails, focusLabels } from "@/components/plans/PlanDetails";
 import { useAuthStore } from "@/store/authStore";
@@ -505,8 +506,8 @@ export default function CoachPlansPage() {
                           Optional assessment
                           <select
                             className={field}
-                          value={item.template_code || ""}
-                          aria-label={`Assessment for activity ${index + 1}`}
+                            value={item.template_code || ""}
+                            aria-label={`Assessment for activity ${index + 1}`}
                             onChange={(e) =>
                               update({ template_code: e.target.value || null })
                             }
@@ -577,6 +578,14 @@ export default function CoachPlansPage() {
                   <article key={plan.public_id} className="py-6">
                     <PlanDetails plan={plan} />
                     <div className="mt-3 flex flex-wrap gap-3">
+                      {plan.status === "published" && (
+                        <Link
+                          className={button}
+                          href={`/coach/lessons?classId=${plan.class_public_id}&planId=${plan.public_id}`}
+                        >
+                          Record actual lesson
+                        </Link>
+                      )}
                       {plan.status === "draft" ? (
                         <>
                           <button
