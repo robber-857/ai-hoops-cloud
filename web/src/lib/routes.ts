@@ -12,6 +12,11 @@ export const routes = {
   },
   user: {
     me: "/me",
+    tasks: "/me/tasks",
+    reports: "/me/reports",
+    trends: "/me/trends",
+    messages: "/me/messages",
+    profile: "/me/profile",
   },
   coach: {
     home: "/coach",
