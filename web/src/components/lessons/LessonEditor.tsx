@@ -386,20 +386,30 @@ export function LessonEditor({
             )}
             <div className="mt-4 divide-y divide-white/20">
               {form.participants.map((p, index) => {
-                const name =
-                  lesson.roster.find(
-                    (r) => r.student_public_id === p.student_public_id,
-                  )?.name || "Player";
+                const person = lesson.roster.find(
+                  (r) => r.student_public_id === p.student_public_id,
+                );
+                const name = person?.name || "Name not added";
+                const label = person?.contact
+                  ? `${name} (${person.contact})`
+                  : name;
                 return (
                   <div key={p.student_public_id} className="min-w-0 py-6">
                     <div className="grid min-w-0 items-center gap-4 sm:grid-cols-2">
-                      <h4 className="break-words text-lg font-semibold">
-                        {name}
-                      </h4>
+                      <div>
+                        <h4 className="break-words text-lg font-semibold">
+                          {name}
+                        </h4>
+                        {person?.contact && (
+                          <p className="mt-1 break-words text-sm text-white/70">
+                            {person.contact}
+                          </p>
+                        )}
+                      </div>
                       <label className="text-sm">
                         Participation
                         <select
-                          aria-label={`Participation for ${name}`}
+                          aria-label={`Participation for ${label}`}
                           className={lessonField}
                           value={p.status}
                           onChange={(e) =>
@@ -472,7 +482,7 @@ export function LessonEditor({
                     <label className="mt-4 block text-sm">
                       Player notes
                       <textarea
-                        aria-label={`Notes for ${name}`}
+                        aria-label={`Notes for ${label}`}
                         className={lessonField}
                         maxLength={1000}
                         value={p.notes || ""}

@@ -1,4 +1,5 @@
 "use client";
+import { staffName } from "@/lib/staffNames";
 
 import { useEffect, useState } from "react";
 import {
@@ -221,7 +222,7 @@ export default function AdminTasksPage() {
                 <option value="">All coaches</option>
                 {coaches.map((coach) => (
                   <option key={coach.public_id} value={coach.public_id}>
-                    {coach.nickname || coach.username}
+                    {staffName(coach)}
                   </option>
                 ))}
               </select>

@@ -1,5 +1,6 @@
 "use client";
 
+import { staffName } from "@/lib/staffNames";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
@@ -49,7 +50,7 @@ function statusTone(status: string) {
 }
 
 function displayName(user: AdminUserRead) {
-  return user.nickname?.trim() || user.username;
+  return staffName(user);
 }
 
 function selectedClassIds(user: AdminUserDetailRead | null) {
@@ -366,9 +367,6 @@ export default function AdminUsersPage() {
                     <tr key={item.public_id} className="transition hover:bg-[#65f7ff]/[0.055]">
                       <td className="px-4 py-4">
                         <div className="font-semibold text-white">{displayName(item)}</div>
-                        <div className="mt-1 text-xs uppercase tracking-[0.14em] text-white/38">
-                          {item.username}
-                        </div>
                       </td>
                       <td className="px-4 py-4 text-white/62">
                         <div>{item.email || "--"}</div>
@@ -468,7 +466,7 @@ export default function AdminUsersPage() {
 
               <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 <label className="block space-y-2">
-                  <span className={labelClass}>Nickname</span>
+                  <span className={labelClass}>Name</span>
                   <input className={fieldClass} value={editNickname} onChange={(event) => setEditNickname(event.target.value)} />
                 </label>
                 <label className="block space-y-2">
@@ -579,7 +577,7 @@ export default function AdminUsersPage() {
                 </label>
               </div>
               <label className="block space-y-2">
-                <span className={labelClass}>Nickname</span>
+                <span className={labelClass}>Name</span>
                 <input className={fieldClass} value={createForm.nickname ?? ""} onChange={(event) => setCreateForm((current) => ({ ...current, nickname: event.target.value }))} />
               </label>
               <label className="block space-y-2">

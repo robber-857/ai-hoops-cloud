@@ -197,6 +197,27 @@ class CampLessonTests(unittest.TestCase):
         with self.assertRaises(HTTPException):
             self.create(self.make_plan(publish=False))
 
+    def test_current_names_do_not_rewrite_saved_roster(self):
+        from copy import deepcopy
+
+        row = self.create()
+        stored = self.db.scalar(select(CampLesson).where(CampLesson.public_id == row.public_id))
+        original_roster = deepcopy(stored.roster)
+        original_content = deepcopy(stored.content)
+        self.student.nickname = "Updated Student Name"
+        self.db.commit()
+        for read in (
+            self.service.get(self.coach, self.klass.public_id, row.public_id),
+            self.service.revision(self.coach, self.klass.public_id, row.public_id, 1),
+        ):
+            person = next(p for p in read.roster if p["student_public_id"] == str(self.student.public_id))
+            self.assertEqual(person["name"], "Updated Student Name")
+            self.assertEqual(person["contact"], self.student.email)
+        self.db.refresh(stored)
+        self.assertEqual(stored.roster, original_roster)
+        self.assertEqual(stored.content, original_content)
+        self.assertEqual(stored.version, 1)
+
     def test_roundtrip_history_and_restore(self):
         row = self.create()
         data = self.update_payload(row).model_dump(mode="json")

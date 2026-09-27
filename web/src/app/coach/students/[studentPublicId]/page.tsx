@@ -160,7 +160,7 @@ export default function CoachStudentProfilePage() {
                 {displayName}
               </h1>
               <p className="mt-3 text-sm text-white/52">
-                @{profile?.username ?? "loading"} / {profile?.email || profile?.phone_number || "--"}
+                {profile?.email || profile?.phone_number || "--"}
               </p>
             </div>
           </div>

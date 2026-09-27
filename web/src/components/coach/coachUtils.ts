@@ -1,3 +1,4 @@
+import { staffName } from "@/lib/staffNames";
 import { getTemplateById } from "@/config/templates";
 import type { ReportAnalysisType } from "@/services/reports";
 
@@ -62,5 +63,6 @@ export function getTemplateDisplayName(templateCode: string | null | undefined) 
 }
 
 export function getStudentDisplayName(username: string, nickname: string | null) {
-  return nickname?.trim() || username;
+  void username;
+  return staffName({ nickname });
 }

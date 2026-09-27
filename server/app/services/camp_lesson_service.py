@@ -1,3 +1,4 @@
+from app.services.display_names import staff_display_name
 from uuid import uuid4
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -40,6 +41,32 @@ class CampLessonService:
 
     def _read(self, row, content=None, version=None, updated_at=None):
         klass = self.db.get(CampClass, row.class_id)
+        # Resolve current human labels without changing stored attendance/history snapshots.
+        people = self.db.scalars(
+            select(User).where(
+                User.public_id.in_([p["student_public_id"] for p in row.roster])
+            )
+        ).all()
+        labels = {str(p.public_id): p for p in people}
+        roster = [
+            {
+                **entry,
+                "name": (
+                    staff_display_name(labels[entry["student_public_id"]])
+                    if entry["student_public_id"] in labels
+                    else "Name not added"
+                ),
+                "contact": (
+                    (
+                        labels[entry["student_public_id"]].email
+                        or labels[entry["student_public_id"]].phone_number
+                    )
+                    if entry["student_public_id"] in labels
+                    else None
+                ),
+            }
+            for entry in row.roster
+        ]
         return LessonRead(
             **(content or row.content),
             public_id=row.public_id,
@@ -47,7 +74,7 @@ class CampLessonService:
             class_name=klass.name,
             version=version or row.version,
             source_plan=row.source_plan,
-            roster=row.roster,
+            roster=roster,
             updated_at=updated_at or row.updated_at
         )
 
@@ -93,7 +120,7 @@ class CampLessonService:
                 "A lesson requires 1–300 active players in its plan recipient group.",
             )
         roster = [
-            dict(student_public_id=str(s.public_id), name=s.nickname or s.username)
+            dict(student_public_id=str(s.public_id), name=staff_display_name(s))
             for s in students
         ]
         items = [

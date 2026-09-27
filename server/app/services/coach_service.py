@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.services.display_names import staff_display_name
+
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import UUID
@@ -50,7 +52,7 @@ def _numeric_to_float(value: Decimal | float | None) -> float | None:
 
 
 def _display_name(user: User) -> str:
-    return user.nickname or user.username
+    return staff_display_name(user)
 
 
 def _class_read(class_row: CampClass, student_count: int) -> CoachClassRead:

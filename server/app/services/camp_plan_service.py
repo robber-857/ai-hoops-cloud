@@ -1,3 +1,4 @@
+from app.services.display_names import staff_display_name
 from datetime import datetime, timezone
 from fastapi import HTTPException
 from sqlalchemy import select, or_
@@ -80,7 +81,7 @@ class CampPlanService:
             class_public_id=klass.public_id,
             class_name=klass.name,
             student_public_id=student.public_id if student else None,
-            student_name=(student.nickname or student.username) if student else None,
+            student_name=staff_display_name(student) if student else None,
             title=row.title,
             planned_on=row.planned_on,
             focus=row.focus,

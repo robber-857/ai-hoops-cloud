@@ -1,4 +1,5 @@
 "use client";
+import { staffName, staffContact } from "@/lib/staffNames";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { CoachShell } from "@/components/coach/CoachShell";
@@ -379,7 +380,7 @@ export default function CoachPlansPage() {
                       <option value="">Whole class</option>
                       {students.map((s) => (
                         <option key={s.public_id} value={s.public_id}>
-                          {s.nickname || s.username}
+                          {staffName(s)} · {staffContact(s)}
                         </option>
                       ))}
                     </select>

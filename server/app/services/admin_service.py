@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.services.display_names import staff_display_name
+
 import hashlib
 import json
 import re
@@ -281,7 +283,7 @@ def _numeric_to_float(value) -> float | None:
 
 
 def _display_name(user: User) -> str:
-    return user.nickname or user.username
+    return staff_display_name(user)
 
 
 def _user_role_from_value(value: str | None) -> UserRole | None:

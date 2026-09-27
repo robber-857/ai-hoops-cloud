@@ -30,7 +30,7 @@ export type CampLesson = LessonContent & {
     public_id: string;
     items: { name: string; duration_minutes: number | null }[];
   };
-  roster: { student_public_id: string; name: string }[];
+  roster: { student_public_id: string; name: string; contact?: string | null }[];
 };
 export type LessonSummary = {
   public_id: string;
