@@ -12,6 +12,7 @@ export const routes = {
   },
   user: {
     me: "/me",
+    plans: "/me/plans",
     tasks: "/me/tasks",
     reports: "/me/reports",
     trends: "/me/trends",
@@ -20,6 +21,7 @@ export const routes = {
   },
   coach: {
     home: "/coach",
+    plans: "/coach/plans",
     classes: "/coach/classes",
     reports: "/coach/reports",
     tasks: "/coach/tasks",

@@ -13,6 +13,7 @@ from app.models import (  # noqa: F401
     announcement,
     announcement_read,
     camp_class,
+    camp_plan,
     class_member,
     notification,
     operation_log,

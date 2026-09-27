@@ -55,6 +55,8 @@ _id_counters: defaultdict[str, int] = defaultdict(int)
 
 
 def _assign_sqlite_bigint_id(_mapper, _connection, target) -> None:
+    if _connection.dialect.name != "sqlite":
+        return
     if getattr(target, "id", None) is not None:
         return
     table_name = target.__tablename__

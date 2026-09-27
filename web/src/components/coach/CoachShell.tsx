@@ -44,6 +44,7 @@ const navItems = [
     label: "Console",
     icon: LayoutDashboard,
   },
+  { href: routes.coach.plans, label: "Training plans", icon: ClipboardList },
   {
     href: routes.coach.classes,
     label: "Classes",
