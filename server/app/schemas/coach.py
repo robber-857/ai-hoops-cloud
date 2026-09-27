@@ -32,7 +32,7 @@ class CoachStudentRead(BaseModel):
     username: str
     nickname: str | None = None
     email: str | None = None
-    phone_number: str
+    phone_number: str | None
     status: str
     joined_at: datetime | None = None
     report_count: int
@@ -219,7 +219,7 @@ class CoachStudentProfileRead(BaseModel):
     username: str
     nickname: str | None = None
     email: str | None = None
-    phone_number: str
+    phone_number: str | None
     status: str
     role: str
     report_count: int

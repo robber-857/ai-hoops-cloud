@@ -21,11 +21,13 @@ from app.models.training_template import TrainingTemplate
 from app.models.training_template_version import TrainingTemplateVersion
 from app.models.upload_task import UploadTask
 from app.models.user import User
+from app.models.player_profile_revision import PlayerProfileRevision
 from app.models.user_session import UserSession
 from app.models.verification_code import VerificationCode
 from app.models.video import Video
 
 __all__ = [
+    "PlayerProfileRevision",
     "AnalysisReport",
     "Achievement",
     "Announcement",

@@ -122,7 +122,7 @@ export default function AdminUsersPage() {
     setSelectedUser(detail);
     setEditNickname(detail.nickname || "");
     setEditEmail(detail.email || "");
-    setEditPhone(detail.phone_number);
+    setEditPhone(detail.phone_number ?? "");
     setEditRole(detail.role === "user" ? "student" : detail.role);
     setEditStatus(detail.status);
     setEditPassword("");
@@ -250,7 +250,7 @@ export default function AdminUsersPage() {
       const updatedUser = await adminService.updateUser(selectedUser.public_id, {
         nickname: editNickname.trim() || null,
         email: editEmail.trim() || null,
-        phone_number: editPhone.trim(),
+        phone_number: editPhone.trim() || undefined,
         role: editRole,
         status: editStatus,
         password: editPassword || undefined,
@@ -477,7 +477,7 @@ export default function AdminUsersPage() {
                 </label>
                 <label className="block space-y-2">
                   <span className={labelClass}>Phone</span>
-                  <input className={fieldClass} value={editPhone} onChange={(event) => setEditPhone(event.target.value)} required />
+                  <input className={fieldClass} value={editPhone} onChange={(event) => setEditPhone(event.target.value)} />
                 </label>
                 <label className="block space-y-2">
                   <span className={labelClass}>Role</span>

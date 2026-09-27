@@ -120,7 +120,7 @@ class AuthService:
         )
 
     def register_user(self, payload: RegisterRequest) -> UserRead:
-        normalized_phone = self._normalize_phone_number(payload.phone_number)
+        normalized_phone = self._normalize_phone_number(payload.phone_number) if payload.phone_number else None
         normalized_email = self._normalize_email(payload.email)
 
         self._ensure_user_uniqueness(payload.username, normalized_phone, normalized_email)
@@ -572,13 +572,14 @@ class AuthService:
     def _ensure_user_uniqueness(
         self,
         username: str,
-        phone_number: str,
+        phone_number: str | None,
         email: str | None,
     ) -> None:
         conflicts = [
             self.db.scalar(select(User).where(User.username == username)),
-            self.db.scalar(select(User).where(User.phone_number == phone_number)),
         ]
+        if phone_number:
+            conflicts.append(self.db.scalar(select(User).where(User.phone_number == phone_number)))
         if email:
             conflicts.append(self.db.scalar(select(User).where(User.email == email)))
 

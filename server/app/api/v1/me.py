@@ -21,8 +21,29 @@ from app.schemas.me import (
     TaskDetailRead,
 )
 from app.services.me_service import MeService
+from app.schemas.player_profile import PlayerProfileCreate, PlayerProfileHistory, PlayerProfileRead
+from app.services.player_profile_service import PlayerProfileService
 
 router = APIRouter()
+
+
+@router.get("/profile/measurements", response_model=PlayerProfileHistory)
+def get_player_measurements(
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return PlayerProfileService(db).history(current_user, limit=limit, offset=offset)
+
+
+@router.post("/profile/measurements", response_model=PlayerProfileRead, status_code=201)
+def create_player_measurement(
+    payload: PlayerProfileCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return PlayerProfileService(db).create(current_user, payload)
 
 
 @router.get("/dashboard", response_model=MeDashboardResponse, status_code=status.HTTP_200_OK)

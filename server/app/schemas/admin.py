@@ -96,7 +96,7 @@ class AdminClassMemberRead(BaseModel):
     username: str
     nickname: str | None = None
     email: str | None = None
-    phone_number: str
+    phone_number: str | None
     user_role: str
     member_role: str
     status: str
@@ -155,7 +155,7 @@ class AdminUserRead(BaseModel):
     username: str
     nickname: str | None = None
     email: EmailStr | None = None
-    phone_number: str
+    phone_number: str | None
     role: UserRole
     status: UserStatus
     is_active: bool

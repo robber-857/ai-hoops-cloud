@@ -8,9 +8,19 @@ class RegisterRequest(BaseModel):
     username: str = Field(min_length=3, max_length=50)
     password: str = Field(min_length=8, max_length=128)
     confirm_password: str = Field(min_length=8, max_length=128)
-    phone_number: str = Field(min_length=6, max_length=32)
+    phone_number: str | None = Field(default=None, min_length=6, max_length=32)
     email: EmailStr
     email_code: str = Field(min_length=4, max_length=10)
+
+    @field_validator("phone_number", mode="before")
+    @classmethod
+    def optional_phone(cls, value):
+        if value is None or not str(value).strip():
+            return None
+        normalized = "".join(char for char in str(value).strip() if char.isdigit() or char == "+")
+        if len("".join(char for char in normalized if char.isdigit())) < 6:
+            raise ValueError("Phone number must contain at least 6 digits.")
+        return normalized
 
     @field_validator("confirm_password")
     @classmethod

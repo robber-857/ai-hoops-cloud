@@ -29,6 +29,7 @@ from app.models import (  # noqa: F401
     training_template_version,
     upload_task,
     user,
+    player_profile_revision,
     user_session,
     verification_code,
     video,

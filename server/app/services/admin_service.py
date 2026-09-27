@@ -527,6 +527,9 @@ class AdminService:
                 email = next_email
                 email_changed = True
 
+        if not (phone_number or user.phone_number or next_email):
+            raise HTTPException(status_code=422, detail="A phone number or email is required.")
+
         self._ensure_unique_user_identity(
             username=username,
             phone_number=phone_number,

@@ -64,7 +64,7 @@ export type AdminClassMemberRead = {
   username: string;
   nickname: string | null;
   email: string | null;
-  phone_number: string;
+  phone_number: string | null;
   user_role: string;
   member_role: string;
   status: string;
@@ -122,7 +122,7 @@ export type AdminUserRead = {
   username: string;
   nickname: string | null;
   email: string | null;
-  phone_number: string;
+  phone_number: string | null;
   role: AdminUserRole;
   status: AdminUserStatus;
   is_active: boolean;

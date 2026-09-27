@@ -36,6 +36,7 @@ import {
 } from "@/services/me";
 import type { ReportListItem } from "@/services/reports";
 import { useAuthStore } from "@/store/authStore";
+import type { PlayerMeasurementDraft } from "@/services/playerProfile";
 
 const ACCOUNT_ANALYSIS_TYPES: AccountAnalysisType[] = [
   "shooting",
@@ -542,6 +543,8 @@ function getErrorMessage(error: unknown, fallback: string): string {
 }
 
 function useAccountData() {
+  const [measurementDraft, setMeasurementDraft] =
+    useState<PlayerMeasurementDraft | null>(null);
   const [selectedTaskReports, setSelectedTaskReports] = useState<
     Record<string, string>
   >({});
@@ -1059,6 +1062,8 @@ function useAccountData() {
 
   return {
     selectedTaskReports,
+    measurementDraft,
+    setMeasurementDraft,
     setSelectedTaskReports,
     user,
     dashboard,

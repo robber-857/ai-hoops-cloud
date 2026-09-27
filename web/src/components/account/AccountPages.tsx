@@ -10,6 +10,7 @@ import { RecentReportsSection } from "./RecentReportsSection";
 import { AnnouncementInboxSection } from "./AnnouncementInboxSection";
 import { ProfileSummaryCard } from "./ProfileSummaryCard";
 import { NotificationInboxSection } from "./NotificationInboxSection";
+import { PlayerMeasurementsSection } from "./PlayerMeasurementsSection";
 import { routes } from "@/lib/routes";
 import type { AccountAnalysisType } from "./types";
 
@@ -267,6 +268,7 @@ export function AccountProfilePage() {
         displayName={d.displayName}
         joinedLabel={joinedLabel}
       />
+      <PlayerMeasurementsSection />
     </>
   );
 }
