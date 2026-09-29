@@ -16,6 +16,7 @@ from app.models import (  # noqa: F401
     camp_plan,
     camp_lesson,
     food_catalog,
+    recipe,
     class_member,
     notification,
     operation_log,

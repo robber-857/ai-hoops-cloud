@@ -1,6 +1,6 @@
 # 假期班首版：三餐营养与 AFCD 数据规范
 
-更新：2026-09-27。状态：计算框架草案；未导入 AFCD，未批准具体建议公式，未生成真实学员建议。
+更新：2026-09-29。状态：P5a 已在专用本地库导入 AFCD；P5b 菜谱成分换算与发布快照后端已实现（见 [验证记录](holiday-camp-p5b-validation-2026-09-29.md)）。个体全天/三餐建议公式仍未批准，未生成真实学员建议；菜谱 UI 待 P5c。
 
 关联：[需求](./holiday-camp-training-nutrition-requirements.md) · [开发计划](./holiday-camp-development-plan.md)。
 
