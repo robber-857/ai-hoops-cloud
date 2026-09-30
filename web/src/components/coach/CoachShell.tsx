@@ -71,6 +71,7 @@ const navItems = [
     label: "Notifications",
     icon: Bell,
   },
+  { href: routes.recipes, label: "Recipes", icon: ClipboardList },
 ];
 
 const mobileNavItems = navItems.map((item, index) => ({
