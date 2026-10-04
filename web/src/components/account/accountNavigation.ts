@@ -3,8 +3,9 @@ import { routes } from "@/lib/routes";
 // Only expose working modules. Future camp modules join this list when ready.
 export const accountNavigation = [
   { href: routes.user.me, label: "Overview", exact: true },
-  { href: routes.recipes, label: "Recipes", exact: false },
+  { href: routes.foods, label: "Food nutrition", exact: false },
   { href: routes.user.plans, label: "Training plans", exact: true },
+  { href: "/me/class-reports", label: "Class reports", exact: false },
   { href: routes.user.tasks, label: "Training tasks", exact: true },
   { href: routes.user.reports, label: "Analysis reports", exact: true },
   { href: routes.user.trends, label: "Growth trends", exact: true },

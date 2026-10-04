@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { LessonReportPublisher } from "@/components/class-reports/LessonReportPublisher";
 import { CoachShell } from "@/components/coach/CoachShell";
 import {
   LessonEditor,
@@ -378,8 +379,9 @@ export default function CoachLessonsPage() {
             </section>
             {selected && (
               <LessonEditor
-                key={`${selected.public_id}:${selected.version}`}
+              key={`editor:${selected.public_id}:${selected.version}`}
                 lesson={selected}
+                disabled={busy}
                 onDirty={setDirty}
                 onBusy={setBusy}
                 onSaved={(lesson) => {
@@ -392,6 +394,7 @@ export default function CoachLessonsPage() {
                 }}
               />
             )}
+            {selected && <LessonReportPublisher key={`publisher:${selected.public_id}:${selected.version}`} lesson={selected} disabled={dirty || busy} onBusy={setBusy} />}
           </>
         )}
       </div>

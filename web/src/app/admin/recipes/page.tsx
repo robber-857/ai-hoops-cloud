@@ -1,4 +1,4 @@
-import { RecipeList } from "@/components/recipes/RecipeList";
+import { redirect } from "next/navigation";
 export default function Recipes() {
-  return <RecipeList admin />;
+  redirect("/foods");
 }

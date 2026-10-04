@@ -1,7 +1,4 @@
-"use client";
-import { useParams } from "next/navigation";
-import { RecipeEditor } from "@/components/recipes/RecipeEditor";
+import { redirect } from "next/navigation";
 export default function EditRecipe() {
-  const { id } = useParams<{ id: string }>();
-  return <RecipeEditor key={id} id={id} />;
+  redirect("/foods");
 }

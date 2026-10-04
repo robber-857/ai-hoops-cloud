@@ -23,8 +23,27 @@ from app.schemas.me import (
 from app.services.me_service import MeService
 from app.schemas.player_profile import PlayerProfileCreate, PlayerProfileHistory, PlayerProfileRead
 from app.services.player_profile_service import PlayerProfileService
+from app.schemas.profile import ProfileRead, ProfileUpdate
+from app.services.profile_service import ProfileService
 
 router = APIRouter()
+
+
+@router.get("/profile", response_model=ProfileRead)
+def get_profile(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return ProfileService(db).read(current_user)
+
+
+@router.patch("/profile", response_model=ProfileRead)
+def update_profile(
+    payload: ProfileUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return ProfileService(db).update(current_user, payload)
 
 
 @router.get("/profile/measurements", response_model=PlayerProfileHistory)

@@ -1,0 +1,74 @@
+{
+  "mapping_version": "exercise-activities-2026-10-03-v1",
+  "checked_on": "2026-10-03",
+  "youth_source": {
+    "title": "NCCOR Youth Compendium of Physical Activities — smoothed METy",
+    "url": "https://www.nccor.org/tools-youthcompendium/met-view-by-individual-category/",
+    "formula_url": "https://www.nccor.org/tools-youthcompendium/how-to-use/",
+    "version": "NCCOR Youth Compendium smoothed table, checked 2026-10-03"
+  },
+  "generic_source": {
+    "title": "2024 Adult Compendium of Physical Activities — generic approximation",
+    "version": "2024 Adult Compendium, checked 2026-10-03"
+  },
+  "activities": [
+    {
+      "code": "warmup", "name": "热身操", "intensities": ["low", "moderate", "high"],
+      "youth": {
+        "low": {"code": "30200X", "description": "Calisthenics - Light", "mety": ["4.0", "4.1", "4.1", "4.2"], "mapping_basis": "similar_activity", "reason": "Light warm-up movements are approximated by light calisthenics; teaching and rest minutes are excluded."}
+      },
+      "generic": {"code": "02024", "description": "Calisthenics (e.g., curl ups, abdominal crunches, plank), light effort", "base_met": "2.8", "url": "https://pacompendium.com/conditioning-exercise/", "mapping_basis": "similar_activity", "reason": "Warm-up uses one light-calisthenics baseline with the product intensity adjustment once; this is not a validated pediatric intensity scale."}
+    },
+    {
+      "code": "stretching", "name": "轻柔拉伸", "intensities": ["low", "moderate", "high"], "youth": {},
+      "generic": {"code": "02101", "description": "Stretching, mild", "base_met": "2.3", "url": "https://pacompendium.com/conditioning-exercise/", "mapping_basis": "exact_activity", "reason": "No matching age-specific youth stretching entry is configured; the mild-stretching baseline is a generic approximation."}
+    },
+    {
+      "code": "dribbling", "name": "运球与反应球训练", "intensities": ["low", "moderate", "high"],
+      "youth": {
+        "moderate": {"code": "10100X", "description": "Ball Games - Bouncing, Kicking, Dribbling Ball, Reaction Ball (Moderate Intensity)", "mety": ["6.0", "6.2", "6.3", "6.5"], "mapping_basis": "similar_activity", "reason": "Basketball dribbling drills are represented by the broader moderate-intensity ball-games entry."},
+        "high": {"code": "10120X", "description": "Ball Games - Bouncing, Kicking, Dribbling Ball, Reaction Ball (Vigorous Intensity)", "mety": ["6.1", "6.3", "6.4", "6.6"], "mapping_basis": "similar_activity", "reason": "Basketball dribbling drills are represented by the broader vigorous-intensity ball-games entry."}
+      },
+      "generic": {"code": "15072", "description": "Basketball, drills, practice", "base_met": "9.3", "url": "https://pacompendium.com/sports/", "mapping_basis": "similar_activity", "reason": "Dribbling uses the broader basketball-drills baseline when no configured age/intensity-specific youth entry applies."}
+    },
+    {
+      "code": "shooting", "name": "连续投篮与捡球", "intensities": ["low", "moderate", "high"],
+      "youth": {
+        "*": {"code": "65120X", "description": "Basketball - Shooting And Retrieving A Basketball, Continuously, Without Stopping", "mety": ["5.9", "6.2", "6.4", "6.6"], "mapping_basis": "exact_activity", "reason": "The youth entry has no separate intensity variants; its published value is used without an extra factor. Include only continuous active shooting/retrieval minutes."}
+      },
+      "generic": {"code": "15070", "description": "Basketball, shooting baskets", "base_met": "5.0", "url": "https://pacompendium.com/sports/", "mapping_basis": "similar_activity", "reason": "The generic shooting entry does not establish a pediatric reference for continuous shooting and retrieval."}
+    },
+    {
+      "code": "basketball_game", "name": "篮球比赛", "intensities": ["low", "moderate", "high"],
+      "youth": {
+        "*": {"code": "65100X", "description": "Basketball - Game", "mety": ["6.7", "7.0", "7.2", "7.5"], "mapping_basis": "exact_activity", "reason": "The youth game entry has no separate intensity variants; use the published value without an extra factor and exclude breaks."}
+      },
+      "generic": {"code": "15040", "description": "Basketball, game (Taylor Code 490)", "base_met": "8.0", "url": "https://pacompendium.com/sports/", "mapping_basis": "exact_activity", "reason": "Adult game MET is used only as a clearly marked generic approximation outside a configured youth reference."}
+    },
+    {
+      "code": "jumping_jacks", "name": "开合跳", "intensities": ["low", "moderate", "high"],
+      "youth": {
+        "*": {"code": "30240X", "description": "Jumping Jacks", "mety": ["4.6", "4.7", "4.7", "4.8"], "mapping_basis": "exact_activity", "reason": "The youth jumping-jacks entry has no separate intensity variants; no extra factor is applied."}
+      },
+      "generic": {"code": "02020", "description": "Calisthenics (e.g., pushups, sit ups, pull-ups, jumping jacks, burpees, battling ropes), vigorous effort", "base_met": "7.5", "url": "https://pacompendium.com/conditioning-exercise/", "mapping_basis": "similar_activity", "reason": "Use one vigorous-calisthenics baseline with one product factor; this is a generic approximation, not an observed pediatric intensity scale."}
+    },
+    {
+      "code": "jump_rope", "name": "跳绳", "intensities": ["low", "moderate", "high"],
+      "youth": {
+        "*": {"code": "10260X", "description": "Jump Rope", "mety": ["6.9", "7.1", "7.2", "7.4"], "mapping_basis": "exact_activity", "reason": "The youth rope entry has no separate intensity variants; no extra factor is applied."}
+      },
+      "generic": {"code": "02068", "description": "Rope skipping exercise, general", "base_met": "11.0", "url": "https://pacompendium.com/conditioning-exercise/", "mapping_basis": "exact_activity", "reason": "General rope MET with the product factor is a generic approximation outside a configured youth reference."}
+    },
+    {
+      "code": "pushups", "name": "俯卧撑", "intensities": ["low", "moderate", "high"],
+      "youth": {
+        "*": {"code": "30300X", "description": "Strength Exercises - Push-Ups", "mety": ["3.9", "4.0", "4.0", "4.1"], "mapping_basis": "exact_activity", "reason": "The youth push-up entry has no separate intensity variants; no extra factor is applied. MET may underestimate anaerobic activity energy cost."}
+      },
+      "generic": {"code": "02022", "description": "Calisthenics (e.g., pushups, sit ups, pull-ups, lunges), moderate effort", "base_met": "3.8", "url": "https://pacompendium.com/conditioning-exercise/", "mapping_basis": "similar_activity", "reason": "Use one moderate-calisthenics baseline with the product factor once; anaerobic exercise energy may be underestimated."}
+    },
+    {
+      "code": "bodyweight_squats", "name": "徒手深蹲", "intensities": ["low", "moderate", "high"], "youth": {},
+      "generic": {"code": "02056", "description": "Body weight resistance exercises (e.g., squat, lunge, push-up, crunch), general", "base_met": "3.0", "url": "https://pacompendium.com/conditioning-exercise/", "mapping_basis": "similar_activity", "reason": "No youth squat entry is configured; the general body-weight resistance baseline is a generic approximation."}
+    }
+  ]
+}

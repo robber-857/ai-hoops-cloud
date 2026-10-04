@@ -33,6 +33,20 @@ class PlayerProfileService:
         previous = existing_result()
         if previous:
             return previous
+
+        # Serialize date-of-birth changes with ProfileService.update without
+        # changing the result of a retry for an already saved measurement.
+        current = self.db.scalar(
+            select(User).where(User.id == user.id).with_for_update().execution_options(populate_existing=True)
+        )
+        if current is None:
+            raise HTTPException(404, "Profile not found.")
+        previous = existing_result()
+        if previous:
+            return previous
+        if current.training_started_on is not None and payload.date_of_birth > current.training_started_on:
+            raise HTTPException(422, "Date of birth cannot be after the recorded training start date. Update your profile first.")
+
         row = PlayerProfileRevision(user_id=user.id, public_id=payload.request_id, **values)
         self.db.add(row)
         try:

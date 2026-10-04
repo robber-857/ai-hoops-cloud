@@ -1,5 +1,15 @@
 # AI Hoops Cloud
 
+## 当前开发入口（2026-10-03）
+
+- [精简训练与食材营养开发交接](docs/holiday-camp-development-handoff-2026-10-03.md)：新对话从这里开始。
+- [已确认需求](docs/holiday-camp-training-nutrition-requirements.md) · [开发与验收计划](docs/holiday-camp-development-plan.md) · [课程消耗与 AFCD](docs/holiday-camp-nutrition-spec.md) · [个人中心 UI](docs/personal-center-development-plan.md)
+- [总体进度](docs/training-camp-backend-implementation-status.md) · [现有 Training 评分专项进度](docs/training-five-template-next-phase-status-risk-plan.md)
+- [精简版操作说明](docs/holiday-camp-simplified-user-guide.md) · [本轮本地验证](docs/holiday-camp-simplified-local-validation-2026-10-03.md)
+- [2026-10-04 GitHub 提交与剩余验收](docs/holiday-camp-release-readiness-2026-10-04.md)：所选提交的独立验证、待补测试及正式发布前工作。
+
+2026-10-03 用户将本轮范围收敛为 Profile、教练记录的今日训练及估算消耗、AFCD 每100g食材营养；儿童专用参考优先，三餐配额/菜谱退出当前主流程。R1–R4 已完成本地实现：开始训练日期与年龄/BMI/年限、课程活动映射与消耗估算、冻结发布及今日汇总、独立食材查询。后端 163 项无跳过通过，前端 17 文件 206 项、类型检查、变更文件 lint 和隔离 webpack 生产构建通过。本地 `localhost:5432/ai_hoops` 在约 42MB 备份后由 `0003` 升至 `0012`，已导入官方 AFCD 1,588 条、精选 28 条。3000/8000 由用户启动；浏览器结果与用户手动确认另记本轮验证，不代表部署或生产上线。
+
 AI Hoops Cloud 是一个面向篮球训练场景的 AI 训练与运营平台。项目包含学生端训练视频上传与动作分析、训练报告、个人中心，Coach 工作台，以及 Admin 训练营后台管理能力。
 
 当前仓库采用前后端分离结构：

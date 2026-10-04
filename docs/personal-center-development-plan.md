@@ -1,6 +1,48 @@
 # 个人中心开发文档
 
-## 2026-09-27：假期班首版 UI 改版（当前执行方案）
+## 2026-10-03：精简家长端（当前执行方案）
+
+关联：[现行需求](holiday-camp-training-nutrition-requirements.md) · [开发计划](holiday-camp-development-plan.md) · [新交接](holiday-camp-development-handoff-2026-10-03.md) · [本轮验证](holiday-camp-simplified-local-validation-2026-10-03.md) · [操作说明](holiday-camp-simplified-user-guide.md)。本节替代下方三餐/菜谱UI规划；R1–R4页面、API与持久化已实现。前端17文件206项、类型、变更lint及隔离webpack构建通过；具体屏宽、登录操作和错误恢复仅采用验证文档实际记录，不以页面存在宣称真实UI验收或用户确认完成。未部署。
+
+### 概览与页面
+
+`/me` 概览聚焦三张卡片，保持现有桌面侧栏和手机工作区菜单，不重做整站外壳。
+
+| 卡片/页面 | 内容 | 主操作 |
+| --- | --- | --- |
+| Profile | 最新测量日期、身高、体重、派生 BMI、训练年限 | 查看/按需更新现有 `/me/profile` |
+| 今日训练 | 已发布个人课程、实际项目及分钟、教练反馈、估算热量或缺失状态 | 查看 `/me/class-reports/daily`，进入原单课详情 |
+| 食材营养 | 简短说明及肉/蛋/奶/蔬菜分类入口 | 查看已实现 `/foods` 简单只读浏览页 |
+
+概览不展示未实现的 Performance Score、综合体测评分、成长百分比、推荐餐单或“必须补吃”数字。没有当日发布记录时显示“暂无已发布课程”，不称孩子今天没有运动；没有新字段的旧报告明确显示未估算。
+
+### 少填写的 Profile
+
+复用 `AccountPages.tsx`、`ProfileSummaryCard.tsx` 和 `PlayerMeasurementsSection.tsx`。现有基础资料自动带出；身高/体重保持测量日期和历史，BMI自动计算；增加开始训练日期，训练年限自动显示。家长查看今日结果无需填写新的营养问卷，不增加每周次数、训练目标、身体能力量表或设备指标。
+
+开始训练日期属于基础资料，不要求每次测量重复填写；未填写时显示“未填写”。现有账号联系方式与登录注册流程不扩大。
+
+### 教练录入与家长只读
+
+`LessonEditor.tsx` 保留已有项目、实际分钟和个人参与差异。训练项目选择常用预设并可补充名称；简单低/中/高强度用于匹配有来源活动规则，后台处理 MET/METy。预览和发布复用 `LessonReportPublisher.tsx`，不再出现全天活动等级、三餐比例或餐次热量表单。
+
+`DailySummaryDetails.tsx` 展开个人训练内容并显示每日已发布课程的估算汇总；`ClassReportDetails.tsx` 显示单课项目/分钟/备注与“课程期间估算热量”。仅部分项目可算时显示已估算小计和缺失项目数，不展示误导性的完整合计。父母读自己的球员账号报告，不新增独立家庭成员登录系统。
+
+### 食材页与导航
+
+已实现 `/foods` 四类分类、简单搜索、分页和响应式卡片；每条显示易读名称、生熟状态、每100g可食部碳水/蛋白质/脂肪及来源。缺失值显示“暂无数据”。不展示配料Add、份数缩放、做法、菜谱发布、餐单选择或自动补吃量；手机实际可用性须按浏览器记录核查。
+
+食材页采用独立 `FoodNutritionList.tsx` / `FoodNutritionParts.tsx`、`services/foods.ts`和 `/training-foods`，不依赖配料选择器。来源固定官方AFCD Release 3及指纹，已核对28条中文名/食品状态，不按“最新导入”选择测试来源，不让开发ID/原始营养列名成为主要文案。
+
+个人中心、Coach、Admin 的菜谱入口改为食材营养；撤下旧全天能量/三餐工具的主流程入口。旧菜谱链接的兼容与数据保留按开发计划处理；`RecipeShared` 的通用报告组件先检查依赖，避免停用菜谱时破坏报告。沿用已有 Shooting/Dribbling/Training、任务、动作评估、趋势、消息及退出入口。
+
+### UI 验收
+
+家长登录后无需填训练或营养参数，即可看本人当天已发布内容并查食材；教练可保存/刷新/预览/发布。覆盖加载、空态、失败重试、缺资料、长名称、旧报告和部分估算；手机无整页横向溢出，菜单和角色导航保持可用。浏览器检查、真实教练/家长 UAT、部署分别记录，不能以页面存在宣称已完成。
+
+---
+
+## 2026-09-27：假期班首版 UI 改版（历史方案）
 
 本节替代下方旧版“先只做单页聚合”的规划。2026-09-27 已完成共用 layout、桌面侧栏/手机菜单和旧功能独立路由；本地合成浏览器回归通过，真实账号 UAT 与发布待执行。训练计划、身体资料、课后报告和营养/菜谱仍按后续批次实施。详见 [P0/P1 验证记录](./holiday-camp-p0-p1-validation-2026-09-27.md)。
 
@@ -66,7 +108,7 @@
 - 历史报告跳转到 `/pose-2d/report?id={report_public_id}`
 - 数据源已从前端直查 Supabase 报告表切换为 `/api/v1/me/*`
 
-因此，本文档后续章节中“建议新增”“需要补齐”的描述应理解为早期规划记录，而不是当前未完成状态。当前剩余重点请以 [training-camp-backend-next-iteration-task-breakdown.md](<D:\githubproject\ai-hoops-cloud\docs\training-camp-backend-next-iteration-task-breakdown.md>) 为准。
+因此，本文档后续章节中“建议新增”“需要补齐”的描述应理解为早期规划记录，而不是当前未完成状态。当前剩余重点请以 [本次提交与剩余验收](holiday-camp-release-readiness-2026-10-04.md) 为准；[旧运营任务拆解](training-camp-backend-next-iteration-task-breakdown.md) 保留历史上下文。
 
 ## 1. 目标
 

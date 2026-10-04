@@ -1,10 +1,10 @@
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Literal
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
 
 class PlayerProfileCreate(BaseModel):
@@ -38,6 +38,12 @@ class PlayerProfileRead(BaseModel):
     weight_kg: Decimal
     sex: Literal["female", "male"] | None
     created_at: datetime
+
+    @computed_field
+    @property
+    def bmi(self) -> Decimal:
+        height_m = self.height_cm / Decimal(100)
+        return (self.weight_kg / height_m**2).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 class PlayerProfileHistory(BaseModel):

@@ -1,9 +1,21 @@
 import { apiRequest } from "@/services/client";
+export type ActivityIntensity = "low" | "moderate" | "high";
+export type ExerciseActivity = {
+  code: string;
+  name: string;
+  intensities: ActivityIntensity[];
+};
+export type ExerciseActivities = {
+  items: ExerciseActivity[];
+  mapping_version: string;
+};
 export type LessonItem = {
   item_id: string;
   name: string;
   actual_minutes: string | null;
   notes: string | null;
+  activity_code?: string | null;
+  intensity?: ActivityIntensity | null;
 };
 export type LessonParticipant = {
   student_public_id: string;
@@ -50,6 +62,7 @@ export const lessonContent = (l: CampLesson): LessonContent => ({
   participants: l.participants,
 });
 export const campLessonService = {
+  exerciseActivities: () => apiRequest<ExerciseActivities>("/exercise-activities"),
   list: (id: string, offset = 0) =>
     apiRequest<{ items: LessonSummary[]; has_more: boolean }>(
       `${base(id)}?offset=${offset}`,

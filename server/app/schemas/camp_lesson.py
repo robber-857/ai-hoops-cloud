@@ -11,6 +11,8 @@ class LessonItem(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     item_id: UUID
     name: str = Field(min_length=1, max_length=120)
+    activity_code: str | None = Field(default=None, min_length=1, max_length=80)
+    intensity: Literal['low', 'moderate', 'high'] | None = None
     actual_minutes: Minutes | None = None
     notes: str | None = Field(default=None, max_length=1000)
 

@@ -11,7 +11,10 @@ import { AnnouncementInboxSection } from "./AnnouncementInboxSection";
 import { ProfileSummaryCard } from "./ProfileSummaryCard";
 import { NotificationInboxSection } from "./NotificationInboxSection";
 import { PlayerMeasurementsSection } from "./PlayerMeasurementsSection";
+import { ProfileBasicsSection } from "./ProfileBasicsSection";
+import { TrainingNutritionOverview } from "./TrainingNutritionOverview";
 import { routes } from "@/lib/routes";
+import { useAuthStore } from "@/store/authStore";
 import type { AccountAnalysisType } from "./types";
 
 export function AccountPageStatus() {
@@ -40,13 +43,14 @@ export function AccountPageStatus() {
 }
 
 export function AccountOverviewPage() {
-  const { dashboard, displayName, isReportsLoading, loadError } =
+  const { dashboard, displayName, isReportsLoading, loadError, user } =
     useAccountCenter();
   return (
     <>
       <h1 className="text-2xl font-semibold sm:text-3xl">
         Welcome back, {displayName}
       </h1>
+      <TrainingNutritionOverview userPublicId={user?.public_id ?? null} />
       <AccountPageStatus />
       {!isReportsLoading && !loadError && (
         <>
@@ -268,6 +272,12 @@ export function AccountProfilePage() {
         displayName={d.displayName}
         joinedLabel={joinedLabel}
       />
+      <ProfileBasicsSection onSaved={(profile) => {
+        const current = useAuthStore.getState().user;
+        if (current && current.public_id === d.user?.public_id) {
+          useAuthStore.getState().setUser({ ...current, nickname: profile.nickname, updated_at: profile.updated_at });
+        }
+      }} />
       <PlayerMeasurementsSection />
     </>
   );

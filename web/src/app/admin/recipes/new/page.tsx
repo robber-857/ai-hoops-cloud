@@ -1,4 +1,4 @@
-import { RecipeEditor } from "@/components/recipes/RecipeEditor";
+import { redirect } from "next/navigation";
 export default function NewRecipe() {
-  return <RecipeEditor />;
+  redirect("/foods");
 }

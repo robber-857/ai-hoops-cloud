@@ -8,6 +8,8 @@ import {
   type LessonItem,
   type LessonParticipant,
   type LessonHistoryEntry,
+  type ExerciseActivity,
+  type ActivityIntensity,
 } from "@/services/campLessons";
 export const lessonField =
   "mt-2 min-h-11 w-full min-w-0 rounded-lg border border-white/25 bg-[#10141b] px-3 py-2 text-base text-white focus-visible:outline-2 focus-visible:outline-[#d8ff5d]";
@@ -25,8 +27,10 @@ export function LessonEditor({
   onSaved,
   onDirty,
   onBusy,
+  disabled = false,
 }: {
   lesson: CampLesson;
+  disabled?: boolean;
   onSaved: (l: CampLesson) => void;
   onDirty: (dirty: boolean) => void;
   onBusy: (busy: boolean) => void;
@@ -41,6 +45,22 @@ export function LessonEditor({
     [historyOpen, setHistoryOpen] = useState(false);
   const requestId = useRef<string | null>(null),
     inFlight = useRef(false);
+  const [activities, setActivities] = useState<ExerciseActivity[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(true);
+  const [activitiesError, setActivitiesError] = useState("");
+  const [activitiesRetry, setActivitiesRetry] = useState(0);
+  useEffect(() => {
+    let active = true;
+    setActivitiesLoading(true);
+    setActivitiesError("");
+    campLessonService.exerciseActivities()
+      .then((value) => { if (active) setActivities(value.items); })
+      .catch((e) => {
+        if (active) setActivitiesError(e instanceof Error ? e.message : "Could not load activity standards.");
+      })
+      .finally(() => { if (active) setActivitiesLoading(false); });
+    return () => { active = false; };
+  }, [activitiesRetry]);
   useEffect(() => {
     onBusy(busy);
     return () => onBusy(false);
@@ -193,8 +213,8 @@ export function LessonEditor({
         </span>
       </div>
       <p className="mt-3 text-sm text-white/75">
-        {lesson.class_name} · Dates use {lesson.timezone}. No reports have been
-        published from this editor.
+        {lesson.class_name} · Dates use {lesson.timezone}. Save your changes,
+        then preview and publish class records below.
       </p>
       <details className="mt-4 text-sm">
         <summary className="min-h-11 cursor-pointer py-3 text-white/85">
@@ -231,7 +251,7 @@ export function LessonEditor({
           void save();
         }}
       >
-        <fieldset disabled={busy} className="min-w-0 space-y-6">
+        <fieldset disabled={busy || disabled} className="min-w-0 space-y-6">
           <div className="grid min-w-0 gap-5 sm:grid-cols-2">
             <label className="text-sm">
               Lesson title
@@ -268,10 +288,23 @@ export function LessonEditor({
           <section>
             <h3 className="text-xl font-semibold">Actual activities</h3>
             <p className="mt-2 max-w-prose text-sm text-white/75">
-              Leave unknown minutes blank. Enter 0 if an activity did not take
+              Record effective activity minutes, excluding breaks, explanations
+              and queue time. Leave unknown minutes blank. Enter 0 if an activity did not take
               place. Changing durations or activities resets participation for
               review.
             </p>
+            <p className="mt-2 max-w-prose text-sm text-white/75">
+              Choose the activity standard and intensity that match the actual
+              exercise for an energy estimate. Keep your own activity name;
+              unmatched activities can still be recorded.
+            </p>
+            {activitiesLoading && <p role="status" className="mt-3 text-sm">Loading activity standards…</p>}
+            {activitiesError && <div role="alert" className="mt-3 text-sm text-amber-200">
+              <p>{activitiesError} You can still save the training record.</p>
+              <button type="button" className={`${lessonButton} mt-2`} onClick={() => setActivitiesRetry(value => value + 1)}>
+                Reload activity standards
+              </button>
+            </div>}
             <ol className="mt-4 divide-y divide-white/20">
               {form.items.map((item, index) => (
                 <li key={item.item_id} className="min-w-0 py-5">
@@ -320,6 +353,49 @@ export function LessonEditor({
                       />
                     </label>
                   </div>
+                  <div className="mt-4 grid min-w-0 gap-4 sm:grid-cols-2">
+                    <label className="min-w-0 text-sm">
+                      Activity standard
+                      <select
+                        className={lessonField}
+                        aria-label={`Activity standard for activity ${index + 1}`}
+                        value={item.activity_code ?? ""}
+                        disabled={activitiesLoading || Boolean(activitiesError)}
+                        onChange={(e) => change({
+                          ...form,
+                          items: form.items.map(i => i.item_id === item.item_id
+                            ? { ...i, activity_code: e.target.value || null, intensity: null }
+                            : i),
+                        })}
+                      >
+                        <option value="">Custom activity / no standard selected</option>
+                        {item.activity_code && !activities.some(a => a.code === item.activity_code) &&
+                          <option value={item.activity_code}>Saved standard unavailable — reselect</option>}
+                        {activities.map(activity => <option key={activity.code} value={activity.code}>{activity.name}</option>)}
+                      </select>
+                    </label>
+                    <label className="min-w-0 text-sm">
+                      Intensity
+                      <select
+                        className={lessonField}
+                        aria-label={`Intensity for activity ${index + 1}`}
+                        value={item.intensity ?? ""}
+                        disabled={!item.activity_code || activitiesLoading || Boolean(activitiesError)}
+                        onChange={(e) => change({
+                          ...form,
+                          items: form.items.map(i => i.item_id === item.item_id
+                            ? { ...i, intensity: (e.target.value || null) as ActivityIntensity | null }
+                            : i),
+                        })}
+                      >
+                        <option value="">Select intensity</option>
+                        {item.intensity && !activities.find(a => a.code === item.activity_code)?.intensities.includes(item.intensity) &&
+                          <option value={item.intensity}>Saved intensity unavailable — reselect</option>}
+                        {activities.find(a => a.code === item.activity_code)?.intensities.map(intensity =>
+                          <option key={intensity} value={intensity}>{intensity[0].toUpperCase() + intensity.slice(1)}</option>)}
+                      </select>
+                    </label>
+                  </div>
                   <label className="mt-4 block text-sm">
                     Activity notes
                     <textarea
@@ -365,6 +441,8 @@ export function LessonEditor({
                     name: "",
                     actual_minutes: null,
                     notes: null,
+                    activity_code: null,
+                    intensity: null,
                   },
                 ])
               }
@@ -534,7 +612,7 @@ export function LessonEditor({
                   })}
                 </span>
                 <button
-                  disabled={busy}
+                  disabled={busy || disabled}
                   type="button"
                   className={lessonButton}
                   onClick={() => restore(h.version)}
@@ -547,7 +625,7 @@ export function LessonEditor({
           {more && (
             <button
               className={lessonButton}
-              disabled={busy}
+              disabled={busy || disabled}
               onClick={() => loadHistory(true)}
             >
               More history

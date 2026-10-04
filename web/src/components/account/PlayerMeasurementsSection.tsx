@@ -7,6 +7,8 @@ import {
   type PlayerMeasurement,
   type PlayerMeasurementInput,
 } from "@/services/playerProfile";
+import type { MeasurementReadBMI } from "@/services/me";
+import { ageYears, deriveBmi, measurementBmi, sydneyDateKey } from "@/lib/profile";
 
 type Form = Omit<PlayerMeasurementInput, "request_id" | "sex"> & {
   sex: "" | "female" | "male";
@@ -20,15 +22,13 @@ export function PlayerMeasurementsSection() {
   const [form, setForm] = useState<Form>(
     initialDraft.current?.values ?? {
       date_of_birth: "",
-      measured_on: new Date().toLocaleDateString("en-CA", {
-        timeZone: "Australia/Sydney",
-      }),
+      measured_on: sydneyDateKey(),
       height_cm: "",
       weight_kg: "",
       sex: "",
     },
   );
-  const [items, setItems] = useState<PlayerMeasurement[]>([]);
+  const [items, setItems] = useState<(PlayerMeasurement & MeasurementReadBMI)[]>([]);
   const [more, setMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -163,6 +163,10 @@ export function PlayerMeasurementsSection() {
     }
   };
 
+  const age = ageYears(form.date_of_birth, form.measured_on);
+  const currentAge = ageYears(form.date_of_birth);
+  const bmi = deriveBmi(form.height_cm, form.weight_kg);
+
   return (
     <section className="min-w-0 border-t border-white/15 pt-6">
       <h2 className="text-xl font-semibold">Player measurements</h2>
@@ -204,6 +208,7 @@ export function PlayerMeasurementsSection() {
             <input
               type="date"
               required
+              max={form.measured_on || undefined}
               className={fieldClass}
               value={form.date_of_birth}
               onChange={(e) => update("date_of_birth", e.target.value)}
@@ -214,6 +219,7 @@ export function PlayerMeasurementsSection() {
             <input
               type="date"
               required
+              max={sydneyDateKey()}
               className={fieldClass}
               value={form.measured_on}
               onChange={(e) => update("measured_on", e.target.value)}
@@ -259,9 +265,30 @@ export function PlayerMeasurementsSection() {
               <option value="male">Male</option>
             </select>
           </label>
-          <p className="self-center text-sm leading-6 text-white/65">
-            No nutrition estimate is generated at this stage.
-          </p>
+          <div className="grid gap-3 text-sm sm:col-span-2 sm:grid-cols-2">
+            <div className="rounded-lg border border-white/15 p-4 sm:col-span-2">
+              <p className="text-white/65">Current age · Australia/Sydney</p>
+              <output className="mt-2 block text-lg font-semibold" aria-live="polite">
+                {currentAge === null ? "Enter date of birth" : `${currentAge} years`}
+              </output>
+            </div>
+            <div className="rounded-lg border border-white/15 p-4">
+              <p className="text-white/65">Age on measurement date</p>
+              <output className="mt-2 block text-lg font-semibold" aria-live="polite">
+                {age === null ? "Enter birth and measurement dates" : `${age} years`}
+              </output>
+            </div>
+            <div className="rounded-lg border border-white/15 p-4">
+              <p className="text-white/65">BMI · calculated</p>
+              <output className="mt-2 block text-lg font-semibold" aria-live="polite">
+                {bmi === null ? "Enter height and weight" : `${bmi} kg/m²`}
+              </output>
+            </div>
+            <p className="leading-6 text-white/65 sm:col-span-2">
+              BMI is a calculated number, without an adult weight category for
+              children. It is not used to calculate video analysis scores.
+            </p>
+          </div>
           <button
             type="submit"
             disabled={!dirty || saving}
@@ -297,9 +324,14 @@ export function PlayerMeasurementsSection() {
             </p>
             <p className="mt-2 text-white/65">
               Born {item.date_of_birth} · {item.sex ?? "Sex not specified"}
+              {ageYears(item.date_of_birth, item.measured_on) !== null &&
+                ` · Age ${ageYears(item.date_of_birth, item.measured_on)} at measurement`}
+            </p>
+            <p className="mt-2 text-white/65">
+              BMI {measurementBmi(item) ?? "not available"}
             </p>
             <p className="mt-1 text-xs text-white/60">
-              Saved {new Date(item.created_at).toLocaleString("en-AU")}
+              Saved {new Date(item.created_at).toLocaleString("en-AU", { timeZone: "Australia/Sydney" })}
             </p>
           </li>
         ))}
