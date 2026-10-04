@@ -7,6 +7,7 @@
 - [总体进度](docs/training-camp-backend-implementation-status.md) · [现有 Training 评分专项进度](docs/training-five-template-next-phase-status-risk-plan.md)
 - [精简版操作说明](docs/holiday-camp-simplified-user-guide.md) · [本轮本地验证](docs/holiday-camp-simplified-local-validation-2026-10-03.md)
 - [2026-10-04 GitHub 提交与剩余验收](docs/holiday-camp-release-readiness-2026-10-04.md)：所选提交的独立验证、待补测试及正式发布前工作。
+- [2026-10-04 自动回归与 CI](docs/holiday-camp-automated-validation-2026-10-04.md)：原生日期持久化、真实课程发布/历史、食材流程及专用测试库运行方式。
 
 2026-10-03 用户将本轮范围收敛为 Profile、教练记录的今日训练及估算消耗、AFCD 每100g食材营养；儿童专用参考优先，三餐配额/菜谱退出当前主流程。R1–R4 已完成本地实现：开始训练日期与年龄/BMI/年限、课程活动映射与消耗估算、冻结发布及今日汇总、独立食材查询。后端 163 项无跳过通过，前端 17 文件 206 项、类型检查、变更文件 lint 和隔离 webpack 生产构建通过。本地 `localhost:5432/ai_hoops` 在约 42MB 备份后由 `0003` 升至 `0012`，已导入官方 AFCD 1,588 条、精选 28 条。3000/8000 由用户启动；浏览器结果与用户手动确认另记本轮验证，不代表部署或生产上线。
 

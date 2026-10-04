@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run --configLoader native"
+    "test": "vitest run --configLoader native",
+    "test:e2e": "playwright test",
+    "typecheck:e2e": "tsc --noEmit --project e2e/tsconfig.json"
   },
   "dependencies": {
     "@mediapipe/drawing_utils": "^0.3.1675466124",
@@ -36,6 +38,7 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "^4.1.13",
     "@types/node": "^20",
     "@types/react": "^19",
