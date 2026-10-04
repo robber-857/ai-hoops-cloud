@@ -1,0 +1,243 @@
+{
+  "comparison_basis": "All persisted columns, ordered by stable primary keys; no connection/runtime timestamps.",
+  "differences": [],
+  "expected_schema": "20261003_0012",
+  "read_only": true,
+  "restored": {
+    "database": "ai_hoops_restore_test",
+    "metrics": {
+      "class_report_notifications": 8,
+      "published_plans": 4,
+      "users_with_training_start": 4
+    },
+    "schema_heads": [
+      "20261003_0012"
+    ],
+    "services": {
+      "food": {
+        "selected_count": 28,
+        "sha256": "fd216bd7db2ec0990b5c48056d419fbb3302c8c5ccc1322ee3025f3bb5d196aa"
+      },
+      "historical_recalculation": false,
+      "reports": {
+        "count": 8,
+        "daily_summaries": 4,
+        "historical_count": 4,
+        "history_groups": 4,
+        "owners": 4,
+        "sha256": "8a2a272ddfff16b01e3c46bdc393f10c4e3fa28f9bbaafbb11f0c335efc493ed"
+      }
+    },
+    "tables": {
+      "alembic_version": {
+        "columns_sha256": "9abea18eaa7ae35faa0dcb51b8d840ad647dfde5d019933e07a9d87bf2a62e90",
+        "count": 1,
+        "primary_key_sha256": "7c7fcb103a3f37d9ed69887398e7b8ef14943c6aa6d6606308547e16fda09cb3",
+        "sha256": "457e178a325f2ce1ff8bad79765afcb5a0596cbd308dd94ada87f8ac5fde5cb4"
+      },
+      "camp_classes": {
+        "columns_sha256": "607eca8efee160846fa928d0bae3f81f7da581f7812d77353a83026bc6907e9e",
+        "count": 4,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "b59088b18db11eba931e2041e0672d35ff23985227127812eecfa9238e547596"
+      },
+      "camp_lesson_revisions": {
+        "columns_sha256": "9bd3d9f1717cd62672b85f0adb72da2c7828047fc2f32d04b362d6a7c3c630d3",
+        "count": 6,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "c3c2ac10bd8792ce938f3918c9c820c2550c90c8a7f3fa748cbb6287392353e3"
+      },
+      "camp_lessons": {
+        "columns_sha256": "8a74c62cbb11f57e1ea4b695bb3b9346ab08c0989083f9f6e860ebc57a6ce007",
+        "count": 2,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "c51e7e32d0514375ba9447bc2b2e7abacd0f5b4043edea7da223601a17195c20"
+      },
+      "camp_plans": {
+        "columns_sha256": "349399940ce02d9eeca72972d1412f18ae23031acb767cffd5df2a47ddcd8e98",
+        "count": 4,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "c4d67dc9070385f5e2c2fc908710c91c411edc4eb26c8e4b99024a961fcfe2b9"
+      },
+      "class_members": {
+        "columns_sha256": "f4739638debd2d30b1fe1ffb4358c0bf993bbba2a7a5ec71a84ad04637366dfe",
+        "count": 12,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "f91daf2cb3c990d50e3af64f3380ae9a4c5c20d08fa7b035dcaf450b562b549b"
+      },
+      "class_reports": {
+        "columns_sha256": "953720a2372655a41e1e82757a85fe8d228d7d076008e2091cf89c30438ca233",
+        "count": 8,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "dcedeae08f960cf735c56ad27dfba607435a038bd682c96654ccdef38e4e0d5b"
+      },
+      "energy_review_drafts": {
+        "columns_sha256": "62a33e2e3fd967802a1fb9ede7829e35d91e11ec40030b70871ced194ddfddaf",
+        "count": 0,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "food_entries": {
+        "columns_sha256": "2dd380cf208536c6e266336c137e3f84e9e6b6c995cde8567528629b9d25f8ad",
+        "count": 1588,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "e72bfe55ef6fb742382b391da70741e42cf6bca452b2f801af66e40cf0ef217a"
+      },
+      "food_releases": {
+        "columns_sha256": "0bb712bd72862d42eb353fdc94f510e86dc2fc1d57bbe45e218f497a16db8dce",
+        "count": 1,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "2e758330246e768ff2959eb7c4e029ca389e670bac14b1a37f5a87611cc9c114"
+      },
+      "lesson_publications": {
+        "columns_sha256": "1692cad1816db5639dc3ffe2399926d79fcb6ea77ee08563f98895241e80211e",
+        "count": 4,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "f0b15e81282ecb7c2b622c3fff45f868a5eb41f7d2d4e7d432456107cfd64002"
+      },
+      "notifications": {
+        "columns_sha256": "ff277f9b5a34262b33d107efc1af921c3f5a57358760e4670d56c266fd27e6da",
+        "count": 8,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "d2b5f44746b229b3ea9112cbe56c5030a26f7c7c386d76c943c1392275706585"
+      },
+      "player_profile_revisions": {
+        "columns_sha256": "2bb17e6e8bb1bc6182f6ef3ccf10d159b33930b3e22886e272d43d1ee2cdb662",
+        "count": 8,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "bb705183003f696ca055cb6aed64aa1e24fd0705fabc1d61ae35b011b7d73587"
+      },
+      "training_camps": {
+        "columns_sha256": "0b750f49ad13a2d91d11c806c0af0c17a13552e434b062d4509a60db1a80d822",
+        "count": 4,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "96e6af20b71efea08427ead0f4432380930d80c3e22e51618d07495c3477baff"
+      },
+      "users": {
+        "columns_sha256": "ad94e0fa033987fbcca2848bb1d3ab02a53412c359022e91644918102db12a2d",
+        "count": 12,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "4b92c9dbead4020919079c98e20cfb868f9d472cdb7241e46bca564c58d02da6"
+      }
+    }
+  },
+  "source": {
+    "database": "ai_hoops_e2e_test",
+    "metrics": {
+      "class_report_notifications": 8,
+      "published_plans": 4,
+      "users_with_training_start": 4
+    },
+    "schema_heads": [
+      "20261003_0012"
+    ],
+    "services": {
+      "food": {
+        "selected_count": 28,
+        "sha256": "fd216bd7db2ec0990b5c48056d419fbb3302c8c5ccc1322ee3025f3bb5d196aa"
+      },
+      "historical_recalculation": false,
+      "reports": {
+        "count": 8,
+        "daily_summaries": 4,
+        "historical_count": 4,
+        "history_groups": 4,
+        "owners": 4,
+        "sha256": "8a2a272ddfff16b01e3c46bdc393f10c4e3fa28f9bbaafbb11f0c335efc493ed"
+      }
+    },
+    "tables": {
+      "alembic_version": {
+        "columns_sha256": "9abea18eaa7ae35faa0dcb51b8d840ad647dfde5d019933e07a9d87bf2a62e90",
+        "count": 1,
+        "primary_key_sha256": "7c7fcb103a3f37d9ed69887398e7b8ef14943c6aa6d6606308547e16fda09cb3",
+        "sha256": "457e178a325f2ce1ff8bad79765afcb5a0596cbd308dd94ada87f8ac5fde5cb4"
+      },
+      "camp_classes": {
+        "columns_sha256": "607eca8efee160846fa928d0bae3f81f7da581f7812d77353a83026bc6907e9e",
+        "count": 4,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "b59088b18db11eba931e2041e0672d35ff23985227127812eecfa9238e547596"
+      },
+      "camp_lesson_revisions": {
+        "columns_sha256": "9bd3d9f1717cd62672b85f0adb72da2c7828047fc2f32d04b362d6a7c3c630d3",
+        "count": 6,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "c3c2ac10bd8792ce938f3918c9c820c2550c90c8a7f3fa748cbb6287392353e3"
+      },
+      "camp_lessons": {
+        "columns_sha256": "8a74c62cbb11f57e1ea4b695bb3b9346ab08c0989083f9f6e860ebc57a6ce007",
+        "count": 2,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "c51e7e32d0514375ba9447bc2b2e7abacd0f5b4043edea7da223601a17195c20"
+      },
+      "camp_plans": {
+        "columns_sha256": "349399940ce02d9eeca72972d1412f18ae23031acb767cffd5df2a47ddcd8e98",
+        "count": 4,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "c4d67dc9070385f5e2c2fc908710c91c411edc4eb26c8e4b99024a961fcfe2b9"
+      },
+      "class_members": {
+        "columns_sha256": "f4739638debd2d30b1fe1ffb4358c0bf993bbba2a7a5ec71a84ad04637366dfe",
+        "count": 12,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "f91daf2cb3c990d50e3af64f3380ae9a4c5c20d08fa7b035dcaf450b562b549b"
+      },
+      "class_reports": {
+        "columns_sha256": "953720a2372655a41e1e82757a85fe8d228d7d076008e2091cf89c30438ca233",
+        "count": 8,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "dcedeae08f960cf735c56ad27dfba607435a038bd682c96654ccdef38e4e0d5b"
+      },
+      "energy_review_drafts": {
+        "columns_sha256": "62a33e2e3fd967802a1fb9ede7829e35d91e11ec40030b70871ced194ddfddaf",
+        "count": 0,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "food_entries": {
+        "columns_sha256": "2dd380cf208536c6e266336c137e3f84e9e6b6c995cde8567528629b9d25f8ad",
+        "count": 1588,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "e72bfe55ef6fb742382b391da70741e42cf6bca452b2f801af66e40cf0ef217a"
+      },
+      "food_releases": {
+        "columns_sha256": "0bb712bd72862d42eb353fdc94f510e86dc2fc1d57bbe45e218f497a16db8dce",
+        "count": 1,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "2e758330246e768ff2959eb7c4e029ca389e670bac14b1a37f5a87611cc9c114"
+      },
+      "lesson_publications": {
+        "columns_sha256": "1692cad1816db5639dc3ffe2399926d79fcb6ea77ee08563f98895241e80211e",
+        "count": 4,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "f0b15e81282ecb7c2b622c3fff45f868a5eb41f7d2d4e7d432456107cfd64002"
+      },
+      "notifications": {
+        "columns_sha256": "ff277f9b5a34262b33d107efc1af921c3f5a57358760e4670d56c266fd27e6da",
+        "count": 8,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "d2b5f44746b229b3ea9112cbe56c5030a26f7c7c386d76c943c1392275706585"
+      },
+      "player_profile_revisions": {
+        "columns_sha256": "2bb17e6e8bb1bc6182f6ef3ccf10d159b33930b3e22886e272d43d1ee2cdb662",
+        "count": 8,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "bb705183003f696ca055cb6aed64aa1e24fd0705fabc1d61ae35b011b7d73587"
+      },
+      "training_camps": {
+        "columns_sha256": "0b750f49ad13a2d91d11c806c0af0c17a13552e434b062d4509a60db1a80d822",
+        "count": 4,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "96e6af20b71efea08427ead0f4432380930d80c3e22e51618d07495c3477baff"
+      },
+      "users": {
+        "columns_sha256": "ad94e0fa033987fbcca2848bb1d3ab02a53412c359022e91644918102db12a2d",
+        "count": 12,
+        "primary_key_sha256": "fc949a4dac6b077d1c847c8706688fbbd098682139e19ff26a436691c96c89f1",
+        "sha256": "4b92c9dbead4020919079c98e20cfb868f9d472cdb7241e46bca564c58d02da6"
+      }
+    }
+  },
+  "status": "passed"
+}

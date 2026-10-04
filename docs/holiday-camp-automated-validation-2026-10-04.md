@@ -14,7 +14,7 @@
 
 ## 运行方式
 
-GitHub 的 push / pull request 触及 `server`、`web` 或此 workflow 时自动运行，也可以手动 dispatch。两个 job 分别使用临时 PostgreSQL 16，数据库完全分开。CI 不发布前后端，也不操作正式数据库。
+GitHub 的 push / pull request 触及 `server`、`web` 或此 workflow 时自动运行，另包含 `workflow_dispatch` 配置。本次实际验证的是 `developbranch` 的 push 自动触发。两个 job 分别使用临时 PostgreSQL 16，数据库完全分开。CI 不发布前后端，也不操作正式数据库。
 
 本地先准备两个专用库：`ai_hoops_p2_test` 和 `ai_hoops_e2e_test`。端口可按本地测试 PostgreSQL 设置；工具拒绝正式环境、远程主机、其他库名以及 URL query 参数。第一次空库迁移执行以下命令；已有业务表的库会被拒绝，不会删除、降级或清空数据。
 
@@ -77,6 +77,27 @@ Playwright 启动和管理 3123 生产前端；调用方管理 8123 后端。必
 
 采用全新随机账号的生产前端 Chromium 整链回归：3/3 通过，16.7 秒，无跳过。成功流程连接真实 8123 API 和专用 PostgreSQL，3123 前端通过完整 lockfile `npm ci` 和 webpack 生产构建；没有使用用户的 3000/8000。开发模式曾出现 Next 16 清单错误，最终用生产构建验证，不将开发模式的失败计作业务功能通过。
 
-远程 GitHub CI 结果在首次实际运行完成后补记；本地结果不代表 Ubuntu runner 已通过。
+远程 [GitHub Actions 首次运行](https://github.com/robber-857/ai-hoops-cloud/actions/runs/37179963039) 已完成且两个 job 均成功，对应源码提交 `4fdfd961f0c68d6937ab014c1a77e672029f44c1`：
 
-仍需要真实教练/家长 UAT、正式环境备份和迁移/数据导入/部署后鉴权验证、独立库备份恢复演练。浏览器回归只覆盖 Chromium；其他浏览器日历、请求尚未完成时换账号、完整 dirty 导航和所有弱网场景仍需后续验证。
+| Ubuntu 24.04 / PostgreSQL 16 检查 | 实际结果 |
+| --- | --- |
+| 官方 AFCD 下载及核验 | 两个 job 均通过 |
+| 两个独立空库迁移 | `ai_hoops_p2_test`、`ai_hoops_e2e_test` 均 `base → 20261003_0012` 通过 |
+| 后端严格回归 | 167 tests，skipped=0、failures=0、errors=0 |
+| 前端严格回归 | 161 passed，zero skips/todo |
+| 前端及 E2E 类型检查、E2E lint、生产 webpack build | 全部通过 |
+| Chromium 三组真实 UI 场景 | 3 passed，24.2 秒，zero skips/failures |
+
+这轮本地 Windows 和远程 Ubuntu 证据分开记录；GitHub CI 成功不代表真实用户 UAT 或正式部署。
+
+### 合成测试库备份恢复
+
+在专用本地 PostgreSQL 容器中，将 `ai_hoops_e2e_test` 以 `pg_dump --format=custom` 备份，再用 `pg_restore --exit-on-error` 恢复到预先确认不存在、随后新建的 `ai_hoops_restore_test`。没有删除、清空或修改实际用户库。备份为 1,178,091 bytes，SHA-256 为 `fef0881a24a3e91e5c41cfa5b81b15e43a79b7ff3678860c8c64103645c23b0e`；备份留在本地 tmp，未提交。
+
+两个连接在有超时的 `REPEATABLE READ` / `READ ONLY` 事务中核对，结果见 [恢复一致性证据](evidence/simplified-restore-validation-20261004.json)：
+
+- 两库迁移版本均为 `20261003_0012`；15 张训练、档案、发布/报告/通知及食材表，全部持久化列按主键排序的计数、列结构和 SHA-256 相同，无差异。
+- 4 个开始训练日期、4 个已发布计划及 8 条课后通知一致；8 份报告中包含 4 份历史版本，按本人读取 detail/history/daily/mine 均一致。
+- 官方食材共 1,588 条，精选 28 条 ready；所有报告能量计算函数被替换为抛错后，历史读取仍通过，确认未重新计算。
+
+这证明合成数据的本地恢复链路。正式目标仍需自己的备份及迁移/数据导入/部署后鉴权验证，并由真实教练/家长完成 UAT。浏览器回归只覆盖 Chromium；其他浏览器日历、请求尚未完成时换账号、完整 dirty 导航和所有弱网场景仍需后续验证。
