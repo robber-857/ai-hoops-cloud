@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-05",
+  "timezone": "Australia/Sydney",
+  "source_commit": "9bc892fd3d4f89af98e94ea06e2799f3914b02fe",
+  "source_branch": "developbranch",
+  "local_environment": "Windows; isolated checkout; disposable PostgreSQL databases",
+  "backend": {
+    "failures": 0,
+    "skipped": 0,
+    "errors": 0,
+    "command": "python -m tools.run_ci_tests",
+    "tests": 190
+  },
+  "frontend": {
+    "command": "npm test",
+    "todo": 0,
+    "pending": 0,
+    "tests": 239,
+    "types_and_scoped_lint_passed": true
+  },
+  "production_build": {
+    "command": "npm run build -- --webpack",
+    "passed": true,
+    "static_pages": 42
+  },
+  "browser": {
+    "elapsed_seconds": 28.7,
+    "fixture": "fresh random synthetic accounts, stored measurements and historical template",
+    "frontend_port": 3123,
+    "command": "npm run test:e2e",
+    "failures": 0,
+    "skipped": 0,
+    "existing_training_food_scenarios": 3,
+    "api_port": 8123,
+    "browser": "Chromium",
+    "age_report_scenarios": 2,
+    "tests": 5
+  },
+  "unrelated_files": {
+    "sha256_unchanged": 45,
+    "tracked_modified": 13,
+    "untracked_excluding_temp": 32
+  },
+  "limitations": [
+    "No real video/MediaPipe inference or cloud storage validation",
+    "No production deployment or real coach/parent UAT",
+    "Scoring stays client-computed with current age scale and engine"
+  ],
+  "github_ci": {
+    "url": "https://github.com/robber-857/ai-hoops-cloud/actions/runs/37263643514",
+    "conclusion": "success",
+    "status": "completed",
+    "run_id": 37263643514,
+    "environment": "Ubuntu 24.04 / PostgreSQL 16",
+    "backend_tests": 190,
+    "frontend_tests": 239,
+    "browser_tests": 5,
+    "browser_elapsed_seconds": 33.0,
+    "zero_skips_failures_errors": true
+  }
+}

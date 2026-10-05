@@ -143,10 +143,12 @@
 | 隔离生产构建 | passed | 最终共享路由修复后 `npm run build -- --webpack` 成功，42 个静态页面；build 前设置 API 为 `http://127.0.0.1:8123/api/v1` |
 | 新增两个 Playwright 场景 | passed | Chromium 2/2，实际隔离生产前端 3123 / API 8123 / 专用 `ai_hoops_e2e_test`；最终完整运行包含 5/5 场景，28.7 秒，无跳过/失败/错误 |
 | 既有训练饮食浏览器回归 | passed | 同一最终运行中的 Profile 持久化、教练发布/家长历史和 AFCD 食材 3/3 通过；使用新随机 fixture，不复用被此前运行修改的记录 |
-| GitHub 提交与 CI | pending | 待填实际 commit、workflow run URL 和结果；本地通过不代替 CI |
+| GitHub 提交与 CI | passed | 功能提交 `9bc892fd3d4f89af98e94ea06e2799f3914b02fe` 已推送 `developbranch`；[GitHub Actions 37263643514](https://github.com/robber-857/ai-hoops-cloud/actions/runs/37263643514) 整体 success，两个 Ubuntu 24.04 / PostgreSQL 16 job 均 success：后端 190 无跳过/失败/错误；前端 239 无跳过；类型/两组 lint/webpack 42 页面成功；Chromium 5/5、33.0 秒、无跳过/失败；两个独立空库均 base → `0012` 成功、官方 AFCD 核验通过 |
 | 部署与真实用户 UAT | pending | 待填独立证据；不由 HTTP 200 或合成账户验证推断完成 |
 | 正确/典型错误实拍视频、存储与 CDN | pending | 未由本轮合成报告场景覆盖，待单独验收 |
 
 日期、环境和提交要与结果一起记录；重跑后的结果另加记录，保留原验证事实。旧规划中的 2026-09-18、2026-09-19、2026-09-22 测试与本地数据库文字仍是当日历史，参见[指标与开发计划](./training-five-template-metrics-development-plan.md)及[状态风险文档](./training-five-template-next-phase-status-risk-plan.md)。
 
 首轮浏览器新增场景因测试选择器同时匹配 Next 路由提示节点而失败，修正选择器后，成功走到保存/刷新/原报告与统计不变检查；匿名分享步骤发现父级登录保护仍拦截公开链接，属于实际功能缺陷。该缺陷已修复，增加 33 项保护路径用例和浏览器私人路由断言后，再次生产构建，以第三份新随机 fixture 完整运行 5/5 通过。早期严格后端检查的唯一失败是 CI 工具测试硬编码旧数量 167；数量边界测试已改为引用当前最低数量，最终 190 项均通过。Windows 沙箱临时缓存权限错误不计作业务测试通过。
+
+本地 Windows 与远程 Ubuntu 证据分开保存，脱敏汇总见 [验证结果 JSON](evidence/training-report-age-validation-20261005.json)。仅本批 39 个文件纳入功能提交，其余 45 个盘点文件的内容哈希保持不变；临时 3123/8123 测试服务已关闭，用户原有 3000/8000 监听进程未更换。CI 不发布前后端，也没有操作正式数据库。
