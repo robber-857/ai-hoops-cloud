@@ -25,7 +25,7 @@ export type CoachStudentRead = {
   username: string;
   nickname: string | null;
   email: string | null;
-  phone_number: string;
+  phone_number: string | null;
   status: string;
   joined_at: string | null;
   report_count: number;
@@ -52,6 +52,7 @@ export type CoachClassReportRead = {
   video_url: string | null;
   created_at: string;
   analysis_finished_at: string | null;
+  is_age_comparison?: boolean;
 };
 
 export type CoachClassReportsResponse = {
@@ -235,7 +236,7 @@ export type CoachStudentProfileRead = {
   username: string;
   nickname: string | null;
   email: string | null;
-  phone_number: string;
+  phone_number: string | null;
   status: string;
   role: string;
   report_count: number;

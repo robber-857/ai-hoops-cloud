@@ -32,7 +32,7 @@ class CoachStudentRead(BaseModel):
     username: str
     nickname: str | None = None
     email: str | None = None
-    phone_number: str
+    phone_number: str | None
     status: str
     joined_at: datetime | None = None
     report_count: int
@@ -59,6 +59,7 @@ class CoachClassReportRead(BaseModel):
     video_url: str | None = None
     created_at: datetime
     analysis_finished_at: datetime | None = None
+    is_age_comparison: bool = False
 
 
 class CoachClassReportsResponse(BaseModel):
@@ -219,7 +220,7 @@ class CoachStudentProfileRead(BaseModel):
     username: str
     nickname: str | None = None
     email: str | None = None
-    phone_number: str
+    phone_number: str | None
     status: str
     role: str
     report_count: int

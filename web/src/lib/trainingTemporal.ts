@@ -1,93 +1,295 @@
-// src/lib/trainingTemporal.ts
-
-/**
- * 单帧训练数据结构
- * 存储某一时刻的所有计算出的原始指标（如膝盖角度、躯干前倾角等）
- */
-export interface TrainingFrame {
-  time: number; // 时间戳 (秒)
-  // 存储该帧所有计算出的原始值，key 与 angles2d.ts 或 Pose2DCanvas 计算的一致
-  // 例如: { "kneeAngle": 90, "trunkLean": 5, "hipHeight": 0.5 }
-  metrics: Record<string, number>; 
+export interface TimedSignal {
+  time: number;
+  value?: number;
 }
 
-/**
- * 简单的低通滤波器 (Low Pass Filter)
- * 用于平滑数据，去除 MediaPipe 的高频抖动，让评分更稳定
- */
-export function smoothSeries(data: number[], alpha: number = 0.3): number[] {
+export interface CompleteAction {
+  startFrame: number;
+  peakFrame: number;
+  endFrame: number;
+  startTime: number;
+  peakTime: number;
+  endTime: number;
+  isComplete: true;
+}
+
+export interface UsableInterval {
+  startFrame: number;
+  endFrame: number;
+  startTime: number;
+  endTime: number;
+}
+
+type ActiveDirection = "above" | "below";
+
+export interface HysteresisCycleOptions {
+  activeDirection: ActiveDirection;
+  restThreshold: number;
+  activeThreshold: number;
+  minActiveSec?: number;
+  minRestSec?: number;
+  minCycleSec?: number;
+  maxMissingSec?: number;
+}
+
+export interface SustainedIntervalOptions {
+  enterThreshold: number;
+  exitThreshold: number;
+  minEnterSec?: number;
+  minExitSec?: number;
+  maxMissingSec?: number;
+}
+
+export function smoothSeries(data: number[], alpha = 0.3): number[] {
   if (data.length === 0) return [];
   const smoothed = [data[0]];
-  for (let i = 1; i < data.length; i++) {
-    const prev = smoothed[i - 1];
-    const curr = data[i];
-    // alpha 越小越平滑，但也越滞后
-    smoothed.push(prev + alpha * (curr - prev));
+  for (let index = 1; index < data.length; index += 1) {
+    smoothed.push(smoothed[index - 1] + alpha * (data[index] - smoothed[index - 1]));
   }
   return smoothed;
 }
 
-/**
- * 简单的波峰/波谷检测，用于数动作次数 (Reps)
- * @param series 时间序列数据
- * @param type 'min' (找波谷，如深蹲最低点) | 'max' (找波峰，如高抬腿最高点)
- * @param threshold 触发计数的阈值 (如深蹲必须低于 100度)
- * @param minDistance 两个动作之间的最小间隔帧数 (防止抖动导致重复计数)
- */
-export function detectRepetitions(
-  series: number[], 
-  type: 'min' | 'max', 
-  threshold: number, 
-  minDistance: number = 15
-): number[] {
-  const indices: number[] = [];
-  let lastIndex = -minDistance;
-
-  for (let i = 1; i < series.length - 1; i++) {
-    const prev = series[i - 1];
-    const curr = series[i];
-    const next = series[i + 1];
-
-    if (type === 'min') {
-      // 找局部最小值 (V字底)
-      if (curr < prev && curr < next && curr < threshold) {
-        if (i - lastIndex >= minDistance) {
-          indices.push(i);
-          lastIndex = i;
-        }
-      }
-    } else {
-      // 找局部最大值 (A字顶)
-      if (curr > prev && curr > next && curr > threshold) {
-        if (i - lastIndex >= minDistance) {
-          indices.push(i);
-          lastIndex = i;
-        }
-      }
-    }
-  }
-  return indices;
+export function smoothTimedSignal(samples: TimedSignal[], alpha = 0.3): TimedSignal[] {
+  let previous: number | undefined;
+  return samples.map((sample) => {
+    if (sample.value === undefined || !Number.isFinite(sample.value)) return { time: sample.time };
+    previous = previous === undefined ? sample.value : previous + alpha * (sample.value - previous);
+    return { time: sample.time, value: previous };
+  });
 }
 
-/**
- * 计算标准差 (Standard Deviation)
- * 用于评估“稳定性”
- */
-export function calculateStdDev(data: number[]): number {
-  if (data.length < 2) return 0;
-  const mean = data.reduce((a, b) => a + b, 0) / data.length;
-  const variance = data.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (data.length - 1);
+function isRestValue(value: number, options: HysteresisCycleOptions) {
+  return options.activeDirection === "above"
+    ? value <= options.restThreshold
+    : value >= options.restThreshold;
+}
+
+function isActiveValue(value: number, options: HysteresisCycleOptions) {
+  return options.activeDirection === "above"
+    ? value >= options.activeThreshold
+    : value <= options.activeThreshold;
+}
+
+function isBetterPeak(value: number, current: number, direction: ActiveDirection) {
+  return direction === "above" ? value > current : value < current;
+}
+
+export function detectHysteresisCycles(
+  samples: TimedSignal[],
+  options: HysteresisCycleOptions,
+): CompleteAction[] {
+  const minActiveSec = options.minActiveSec ?? 0.08;
+  const minRestSec = options.minRestSec ?? 0.08;
+  const minCycleSec = options.minCycleSec ?? 0.2;
+  const maxMissingSec = options.maxMissingSec ?? 0.35;
+  const actions: CompleteAction[] = [];
+
+  let phase: "seeking_rest" | "ready" | "active" = "seeking_rest";
+  let restCandidate: number | null = null;
+  let activeCandidate: number | null = null;
+  let startFrame: number | null = null;
+  let peakFrame: number | null = null;
+  let peakValue: number | null = null;
+  let lastValidTime: number | null = null;
+
+  const reset = () => {
+    phase = "seeking_rest";
+    restCandidate = null;
+    activeCandidate = null;
+    startFrame = null;
+    peakFrame = null;
+    peakValue = null;
+  };
+
+  samples.forEach((sample, index) => {
+    const value = sample.value;
+    if (value === undefined || !Number.isFinite(value)) {
+      if (lastValidTime !== null && sample.time - lastValidTime > maxMissingSec) reset();
+      return;
+    }
+    lastValidTime = sample.time;
+
+    const inRest = isRestValue(value, options);
+    const inActive = isActiveValue(value, options);
+
+    if (phase === "seeking_rest") {
+      if (!inRest) {
+        restCandidate = null;
+        return;
+      }
+      restCandidate ??= index;
+      if (sample.time - samples[restCandidate].time >= minRestSec) {
+        phase = "ready";
+        startFrame = restCandidate;
+        restCandidate = null;
+      }
+      return;
+    }
+
+    if (phase === "ready") {
+      if (!inActive) {
+        activeCandidate = null;
+        if (inRest) startFrame = index;
+        return;
+      }
+
+      activeCandidate ??= index;
+      if (sample.time - samples[activeCandidate].time >= minActiveSec) {
+        phase = "active";
+        peakFrame = activeCandidate;
+        peakValue = samples[activeCandidate].value ?? value;
+        for (let cursor = activeCandidate; cursor <= index; cursor += 1) {
+          const candidate = samples[cursor].value;
+          if (
+            candidate !== undefined &&
+            peakValue !== null &&
+            isBetterPeak(candidate, peakValue, options.activeDirection)
+          ) {
+            peakFrame = cursor;
+            peakValue = candidate;
+          }
+        }
+        activeCandidate = null;
+      }
+      return;
+    }
+
+    if (peakValue === null || isBetterPeak(value, peakValue, options.activeDirection)) {
+      peakFrame = index;
+      peakValue = value;
+    }
+
+    if (!inRest) {
+      restCandidate = null;
+      return;
+    }
+
+    restCandidate ??= index;
+    if (sample.time - samples[restCandidate].time < minRestSec) return;
+
+    if (
+      startFrame !== null &&
+      peakFrame !== null &&
+      sample.time - samples[startFrame].time >= minCycleSec
+    ) {
+      actions.push({
+        startFrame,
+        peakFrame,
+        endFrame: index,
+        startTime: samples[startFrame].time,
+        peakTime: samples[peakFrame].time,
+        endTime: sample.time,
+        isComplete: true,
+      });
+    }
+
+    phase = "ready";
+    startFrame = restCandidate;
+    restCandidate = null;
+    peakFrame = null;
+    peakValue = null;
+  });
+
+  return actions;
+}
+
+export function detectSustainedIntervals(
+  samples: TimedSignal[],
+  options: SustainedIntervalOptions,
+): UsableInterval[] {
+  const minEnterSec = options.minEnterSec ?? 0.25;
+  const minExitSec = options.minExitSec ?? 0.3;
+  const maxMissingSec = options.maxMissingSec ?? 0.35;
+  const intervals: UsableInterval[] = [];
+
+  let active = false;
+  let enterCandidate: number | null = null;
+  let exitCandidate: number | null = null;
+  let startFrame: number | null = null;
+  let lastValidFrame: number | null = null;
+  let lastValidTime: number | null = null;
+
+  samples.forEach((sample, index) => {
+    const value = sample.value;
+    if (value === undefined || !Number.isFinite(value)) {
+      if (lastValidTime !== null && sample.time - lastValidTime > maxMissingSec) {
+        if (active && startFrame !== null && lastValidFrame !== null) {
+          intervals.push({
+            startFrame,
+            endFrame: lastValidFrame,
+            startTime: samples[startFrame].time,
+            endTime: samples[lastValidFrame].time,
+          });
+        }
+        active = false;
+        enterCandidate = null;
+        exitCandidate = null;
+        startFrame = null;
+      }
+      return;
+    }
+
+    lastValidFrame = index;
+    lastValidTime = sample.time;
+
+    if (!active) {
+      if (value < options.enterThreshold) {
+        enterCandidate = null;
+        return;
+      }
+      enterCandidate ??= index;
+      if (sample.time - samples[enterCandidate].time >= minEnterSec) {
+        active = true;
+        startFrame = enterCandidate;
+        enterCandidate = null;
+      }
+      return;
+    }
+
+    if (value >= options.exitThreshold) {
+      exitCandidate = null;
+      return;
+    }
+
+    exitCandidate ??= index;
+    if (sample.time - samples[exitCandidate].time >= minExitSec && startFrame !== null) {
+      const endFrame = Math.max(startFrame, exitCandidate - 1);
+      intervals.push({
+        startFrame,
+        endFrame,
+        startTime: samples[startFrame].time,
+        endTime: samples[endFrame].time,
+      });
+      active = false;
+      enterCandidate = null;
+      exitCandidate = null;
+      startFrame = null;
+    }
+  });
+
+  if (active && startFrame !== null && lastValidFrame !== null && lastValidFrame > startFrame) {
+    intervals.push({
+      startFrame,
+      endFrame: lastValidFrame,
+      startTime: samples[startFrame].time,
+      endTime: samples[lastValidFrame].time,
+    });
+  }
+
+  return intervals;
+}
+
+export function calculateStdDev(data: number[]): number | undefined {
+  if (data.length < 2) return undefined;
+  const mean = data.reduce((sum, value) => sum + value, 0) / data.length;
+  const variance = data.reduce((sum, value) => sum + (value - mean) ** 2, 0) / (data.length - 1);
   return Math.sqrt(variance);
 }
 
-/**
- * 计算变异系数 (CV)
- * 用于评估节奏稳定性 (数值越小越稳)
- */
-export function calculateCV(data: number[]): number {
-  if (data.length === 0) return 0;
-  const mean = data.reduce((a, b) => a + b, 0) / data.length;
-  if (mean === 0) return 0;
-  const std = calculateStdDev(data);
-  return std / mean;
+export function calculateCV(data: number[]): number | undefined {
+  if (data.length < 2) return undefined;
+  const mean = data.reduce((sum, value) => sum + value, 0) / data.length;
+  if (Math.abs(mean) <= 1e-6) return undefined;
+  const deviation = calculateStdDev(data);
+  return deviation === undefined ? undefined : deviation / Math.abs(mean);
 }

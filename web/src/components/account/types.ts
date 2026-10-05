@@ -11,6 +11,7 @@ export type AccountReport = {
   grade: string;
   createdAt: string;
   linkable: boolean;
+  isAgeComparison?: boolean;
 };
 
 export type StatOverviewItem = {

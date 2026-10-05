@@ -123,6 +123,10 @@ function getErrorMessage(payload: JsonValue, fallback: string): string {
   return fallback;
 }
 
+export class ApiError extends Error {
+  constructor(message: string, public readonly status: number) { super(message); this.name = "ApiError"; }
+}
+
 export async function apiRequest<TResponse>(
   path: string,
   init: RequestInit = {},
@@ -145,7 +149,7 @@ export async function apiRequest<TResponse>(
   const payload = await parseResponse(response);
 
   if (!response.ok) {
-    throw new Error(getErrorMessage(payload, `Request failed with ${response.status}`));
+    throw new ApiError(getErrorMessage(payload, `Request failed with ${response.status}`), response.status);
   }
 
   return payload as TResponse;

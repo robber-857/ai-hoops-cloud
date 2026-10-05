@@ -15,6 +15,7 @@ export type ReportListItem = {
   video_url: string | null;
   created_at: string;
   analysis_finished_at: string | null;
+  is_age_comparison?: boolean;
 };
 
 export type SaveReportPayload = {
@@ -34,6 +35,8 @@ export type ReportRead = ReportListItem & {
   score_data: Record<string, unknown>;
   timeline_data: unknown[] | null;
   summary_data: Record<string, unknown> | null;
+  template_snapshot: Record<string, unknown> | null;
+  can_reanalyze_age?: boolean;
 };
 
 export type MyReportsResponse = {
@@ -41,6 +44,19 @@ export type MyReportsResponse = {
 };
 
 export const reportService = {
+  reanalyzeAge(reportPublicId: string, payload: {
+    request_id: string;
+    age_group: string;
+    overall_score: number;
+    grade: string;
+    score_data: Record<string, unknown>;
+  }) {
+    return apiRequest<ReportRead>(`/reports/${reportPublicId}/reanalyze-age`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
   saveReport(payload: SaveReportPayload) {
     return apiRequest<ReportRead>("/reports", {
       method: "POST",

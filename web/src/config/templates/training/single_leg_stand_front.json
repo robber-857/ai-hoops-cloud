@@ -1,0 +1,90 @@
+{
+  "version": "v1",
+  "templateId": "single_leg_stand_front",
+  "mode": "training",
+  "camera": "front",
+  "cameraInstructions": "Film from the front with the full body and both feet visible. Stand naturally on one leg.",
+  "displayName": "Single-Leg Stand",
+  "categoryWeights": { "posture": 0.4, "execution": 0.4, "consistency": 0.2 },
+  "metrics": [
+    {
+      "metricId": "P_pelvis_level",
+      "displayName": "Level Pelvis",
+      "category": "posture",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "singleLegPelvisTiltDeg",
+      "unit": "deg",
+      "params": { "L": 0, "U": 8, "margin": 12 },
+      "targetText": "Keep the hips within 8 degrees of level.",
+      "hint_good": "Your hips stayed level while you balanced.",
+      "hint_high": "One hip lifted or dropped. Imagine keeping a belt level across your waist."
+    },
+    {
+      "metricId": "P_torso_upright",
+      "displayName": "Upright Body",
+      "category": "posture",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "singleLegTorsoLeanDeg",
+      "unit": "deg",
+      "params": { "L": 0, "U": 10, "margin": 15 },
+      "targetText": "Keep the upper body within 10 degrees of upright.",
+      "hint_good": "Your upper body stayed tall and centred.",
+      "hint_high": "Your body leaned to the side. Look forward and gently brace your core."
+    },
+    {
+      "metricId": "E_foot_clearance",
+      "displayName": "Raised Foot Height",
+      "category": "execution",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "singleLegFootClearanceRatio",
+      "unit": "ratio",
+      "params": { "L": 0.08, "U": 0.35, "margin": 0.15 },
+      "targetText": "Lift the free foot clearly off the floor without raising it too high.",
+      "hint_good": "Your free foot stayed clearly off the floor at a comfortable height.",
+      "hint_low": "Lift the free foot a little higher so it does not brush the floor.",
+      "hint_high": "You do not need to lift the free foot so high. Use a relaxed position."
+    },
+    {
+      "metricId": "E_support_knee_control",
+      "displayName": "Support Knee Control",
+      "category": "execution",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "singleLegSupportKneeOffsetNorm",
+      "unit": "norm",
+      "params": { "L": 0, "U": 0.06, "margin": 0.1 },
+      "targetText": "Keep the support knee lined up between the hip and ankle.",
+      "hint_good": "Your support knee stayed well aligned.",
+      "hint_high": "The support knee moved to the side. Point it toward the toes and keep it between the hip and ankle."
+    },
+    {
+      "metricId": "C_body_sway",
+      "displayName": "Body Stability",
+      "category": "consistency",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "singleLegBodySwayStdNorm",
+      "unit": "norm",
+      "params": { "L": 0, "U": 0.08, "margin": 0.12 },
+      "targetText": "Keep the hips in a steady position while balancing.",
+      "hint_good": "Your body position stayed steady.",
+      "hint_high": "Your body moved side to side. Focus on one point in front of you."
+    },
+    {
+      "metricId": "C_pelvis_stability",
+      "displayName": "Pelvis Stability",
+      "category": "consistency",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "singleLegPelvisTiltStdDeg",
+      "unit": "deg",
+      "params": { "L": 0, "U": 5, "margin": 8 },
+      "targetText": "Keep the hips steady instead of lifting and dropping.",
+      "hint_good": "Your pelvis stayed calm and stable.",
+      "hint_high": "Your hips moved up and down. Gently engage the muscles on the support side."
+    }
+  ]
+}

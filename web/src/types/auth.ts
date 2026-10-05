@@ -2,7 +2,7 @@ export interface AuthUser {
   id: number;
   public_id: string;
   username: string;
-  phone_number: string;
+  phone_number: string | null;
   email: string | null;
   nickname: string | null;
   avatar_url: string | null;
@@ -23,7 +23,7 @@ export interface RegisterPayload {
   username: string;
   password: string;
   confirm_password: string;
-  phone_number: string;
+  phone_number: string | null;
   email: string;
   email_code: string;
 }

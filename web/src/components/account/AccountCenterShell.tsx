@@ -1,110 +1,110 @@
+"use client";
+
 import Link from "next/link";
-import { BarChart3, CircleUserRound, Dumbbell, Sparkles } from "lucide-react";
-
+import { usePathname } from "next/navigation";
 import { WorkspaceMobileMenu } from "@/components/navigation/WorkspaceMobileMenu";
+import { accountNavigation, trainingNavigation } from "./accountNavigation";
 import { routes } from "@/lib/routes";
-import { cn } from "@/lib/utils";
-
-type AccountCenterShellProps = {
-  children: React.ReactNode;
-  username: string;
-};
-
-const navItems = [
-  {
-    href: routes.pose2d.shooting,
-    label: "Shooting",
-    icon: Dumbbell,
-  },
-  {
-    href: routes.pose2d.dribbling,
-    label: "Dribbling",
-    icon: BarChart3,
-  },
-  {
-    href: routes.pose2d.training,
-    label: "Training",
-    icon: Sparkles,
-  },
-  {
-    href: routes.user.me,
-    label: "Profile",
-    icon: CircleUserRound,
-    active: true,
-  },
-];
-
-const mobileNavItems = navItems.map((item) => ({
-  href: item.href,
-  label: item.label,
-  exact: item.href === routes.user.me,
-}));
 
 export function AccountCenterShell({
   children,
   username,
-}: AccountCenterShellProps) {
+}: {
+  children: React.ReactNode;
+  username: string;
+}) {
+  const pathname = usePathname();
   return (
-    <main className="relative min-h-screen overflow-x-clip bg-[#090b0f] text-white">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(216,255,93,0.06),transparent_24%),radial-gradient(circle_at_18%_22%,rgba(216,255,93,0.05),transparent_18%),linear-gradient(180deg,#06080b_0%,#0b0f14_42%,#090b0f_100%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:64px_64px] opacity-20" />
-      <div className="pointer-events-none absolute left-[-8rem] top-24 h-72 w-72 rounded-full bg-[#d8ff5d]/10 blur-3xl" />
-      <div className="pointer-events-none absolute right-[-6rem] top-60 h-80 w-80 rounded-full bg-emerald-400/8 blur-3xl" />
-
-      <header className="sticky top-0 z-[60] border-b border-white/8 bg-[#05070bcc]/85 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-3 px-3 sm:gap-4 sm:px-6 lg:px-8">
-          <div className="min-w-0">
-            <div className="truncate font-[var(--font-display)] text-[0.68rem] uppercase tracking-[0.24em] text-[#d8ff5d]/72 sm:text-[0.72rem] sm:tracking-[0.32em]">
-              AI Hoops
-            </div>
-            <div className="truncate text-sm font-semibold text-white/86 sm:text-base">
-              Personal Center
-            </div>
-          </div>
-
-          <nav className="hidden items-center gap-2 lg:flex">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200",
-                    item.active
-                      ? "border-[#d8ff5d]/35 bg-[#d8ff5d]/12 text-[#e8ff9a]"
-                      : "border-white/10 bg-white/[0.03] text-white/68 hover:border-white/20 hover:bg-white/[0.06] hover:text-white"
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
+    <div className="min-h-screen bg-[#090b0f] text-white">
+      <a
+        href="#account-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-2 focus:z-[80] focus:bg-[#d8ff5d] focus:p-3 focus:text-black"
+      >
+        Skip to content
+      </a>
+      <header className="sticky top-0 z-[60] border-b border-white/10 bg-[#090b0f] pt-[env(safe-area-inset-top)]">
+        <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between gap-3 px-4 sm:px-6">
+          <Link
+            href={routes.home}
+            className="shrink-0 font-[var(--font-display)] text-xl font-bold text-[#d8ff5d]"
+          >
+            AI HOOPS
+          </Link>
+          <nav
+            aria-label="Training workspaces"
+            className="hidden gap-2 lg:flex"
+          >
+            {trainingNavigation.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="flex min-h-11 items-center rounded-lg px-4 text-sm text-white/80 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-[#d8ff5d]"
+              >
+                {item.label}
+              </Link>
+            ))}
           </nav>
-
-          <div className="flex min-w-0 shrink-0 items-center gap-2">
-            <div className="flex min-w-0 items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-2 sm:gap-3 sm:px-3">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#d8ff5d]/25 bg-[#d8ff5d]/12 text-sm font-semibold text-[#d8ff5d]">
+          <div className="flex items-center gap-2">
+            <Link
+              href={routes.user.me}
+              aria-label="Open personal center"
+              className="flex min-h-11 items-center gap-2 rounded-lg px-2 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-[#d8ff5d]"
+            >
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#d8ff5d]/15 font-semibold text-[#d8ff5d]">
                 {username.slice(0, 1).toUpperCase()}
               </span>
-              <div className="hidden min-w-0 sm:block">
-                <div className="max-w-36 truncate text-sm font-medium text-white">{username}</div>
-              </div>
-            </div>
+              <span className="hidden max-w-36 truncate text-sm sm:block">
+                {username}
+              </span>
+            </Link>
             <WorkspaceMobileMenu
-              items={mobileNavItems}
-              eyebrow="Athlete workspace"
-              accent="lime"
+              items={accountNavigation}
+              eyebrow="Personal center"
+              variant="drawer"
             />
           </div>
         </div>
       </header>
-
-      <div className="relative mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-5 px-3 py-5 sm:gap-6 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
-        {children}
+      <nav
+        aria-label="Mobile training workspaces"
+        className="grid grid-cols-3 border-b border-white/10 px-2 lg:hidden"
+      >
+        {trainingNavigation.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="flex min-h-12 items-center justify-center text-sm font-medium text-white/80 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-[#d8ff5d]"
+          >
+            {item.label}
+          </Link>
+        ))}
+      </nav>
+      <div className="mx-auto grid max-w-[1440px] items-start lg:grid-cols-[220px_minmax(0,1fr)]">
+        <aside className="sticky top-16 hidden min-h-[calc(100dvh-4rem)] border-r border-white/10 px-4 py-8 lg:flex lg:flex-col">
+          <nav
+            aria-label="Personal center"
+            className="flex flex-1 flex-col gap-1"
+          >
+            {accountNavigation.map((item, index) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={pathname === item.href ? "page" : undefined}
+                className={`flex min-h-12 items-center rounded-lg px-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-[#d8ff5d] ${index === accountNavigation.length - 1 ? "mt-auto" : ""} ${pathname === item.href ? "bg-[#d8ff5d]/12 text-[#e8ff9a]" : "text-white/75 hover:bg-white/5 hover:text-white"}`}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        </aside>
+        <main
+          id="account-content"
+          tabIndex={-1}
+          className="flex min-w-0 flex-col gap-6 [overflow-wrap:anywhere] px-4 py-6 pb-[max(2rem,env(safe-area-inset-bottom))] sm:px-6 lg:px-8 lg:py-8"
+        >
+          {children}
+        </main>
       </div>
-    </main>
+    </div>
   );
 }

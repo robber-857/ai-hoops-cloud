@@ -1,17 +1,20 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import UUID
 
 from fastapi import HTTPException, status
+from pydantic import ValidationError
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.achievement import Achievement
 from app.models.analysis_report import AnalysisReport
 from app.models.class_member import ClassMember
-from app.models.enums import ReportStatus, UserRole
+from app.models.enums import AnalysisType, ReportStatus, UserRole
 from app.models.notification import Notification
 from app.models.report_snapshot import ReportSnapshot
 from app.models.student_achievement import StudentAchievement
@@ -19,18 +22,30 @@ from app.models.student_growth_snapshot import StudentGrowthSnapshot
 from app.models.training_session import TrainingSession
 from app.models.training_task_assignment import TrainingTaskAssignment
 from app.models.training_template import TrainingTemplate
+from app.models.training_template_version import TrainingTemplateVersion
 from app.models.user import User
-from app.schemas.report import ReportListItem, ReportRead, SaveReportRequest
+from app.schemas.report import ReportListItem, ReportRead, SaveReportRequest, ReanalyzeReportAgeRequest, ReanalyzedScoreResult
 
 
 COACH_ROLES = {UserRole.coach, UserRole.admin}
 STUDENT_ROLES = {UserRole.user, UserRole.student}
 
 
+def _original_reports_only():
+    # Age comparisons reuse a training session; they are not new training attempts.
+    return AnalysisReport.score_data["score_context"]["source_report_public_id"].astext.is_(None)
+
+
 def _numeric_to_float(value: Decimal | float | None) -> float | None:
     if value is None:
         return None
     return float(value)
+
+
+def _is_age_comparison(report: AnalysisReport) -> bool:
+    data = report.score_data if isinstance(report.score_data, dict) else {}
+    context = data.get("score_context")
+    return isinstance(context, dict) and context.get("source_report_public_id") is not None
 
 
 def _report_list_item(report: AnalysisReport) -> ReportListItem:
@@ -52,22 +67,119 @@ def _report_list_item(report: AnalysisReport) -> ReportListItem:
         video_url=video_url,
         created_at=report.created_at,
         analysis_finished_at=report.analysis_finished_at,
+        is_age_comparison=_is_age_comparison(report),
     )
 
 
-def _report_read(report: AnalysisReport) -> ReportRead:
+def _template_snapshot_from_version(
+    version: TrainingTemplateVersion | None,
+    *,
+    template_code: str,
+    template_version: str | None,
+) -> dict | None:
+    if version is None or not isinstance(version.scoring_rules, dict):
+        return None
+    raw_template = version.scoring_rules.get("template")
+    if not isinstance(raw_template, dict):
+        return None
+    if raw_template.get("templateId", template_code) != template_code:
+        return None
+    if template_version and raw_template.get("version", template_version) != template_version:
+        return None
+
+    snapshot = deepcopy(raw_template)
+    snapshot.setdefault("templateId", template_code)
+    if template_version:
+        snapshot.setdefault("version", template_version)
+    content_hash = version.scoring_rules.get("content_hash")
+    if isinstance(content_hash, str) and content_hash:
+        snapshot["contentHash"] = content_hash
+    return snapshot
+
+
+def _score_data_with_snapshot(score_data: dict, template_snapshot: dict | None) -> dict:
+    saved = deepcopy(score_data)
+    saved.pop("template_snapshot", None)
+    if template_snapshot is not None:
+        saved["template_snapshot"] = deepcopy(template_snapshot)
+    return saved
+
+
+def _without_reanalysis_provenance(data: dict | None) -> dict | None:
+    """Only the comparison endpoint may assign comparison provenance."""
+    if data is None:
+        return None
+    saved = deepcopy(data)
+    saved.pop("source_report_public_id", None)
+    if saved.get("source") == "report_age_reanalysis":
+        saved.pop("source")
+    context = saved.get("score_context")
+    if isinstance(context, dict):
+        context.pop("source_report_public_id", None)
+        if context.get("source") == "report_age_reanalysis":
+            context.pop("source")
+    return saved
+
+
+def _frozen_age_inputs(report: AnalysisReport) -> tuple[dict, dict] | None:
+    original = report.score_data if isinstance(report.score_data, dict) else {}
+    template = original.get("template_snapshot")
+    metrics = original.get("saved_metrics")
+    if (not isinstance(template, dict) or template.get("mode") != "training"
+        or template.get("templateId") != report.template_id
+        or template.get("version") != report.template_version
+        or not isinstance(metrics, list) or not metrics
+        or any(not isinstance(metric, dict) for metric in metrics)):
+        return None
+    definitions = template.get("metrics")
+    if (not isinstance(definitions, list) or not definitions
+        or any(not isinstance(metric, dict) or not isinstance(metric.get("metricId"), str)
+               or not metric["metricId"] for metric in definitions)):
+        return None
+    ids = [metric["metricId"] for metric in definitions]
+    if len(ids) != len(set(ids)):
+        return None
+    return deepcopy(template), original
+
+
+def _report_read(report: AnalysisReport, template_snapshot: dict | None = None) -> ReportRead:
     item = _report_list_item(report)
     return ReportRead(
         **item.model_dump(),
         score_data=report.score_data,
         timeline_data=report.timeline_data,
         summary_data=report.summary_data,
+        template_snapshot=template_snapshot,
     )
 
 
 class ReportService:
     def __init__(self, db: Session) -> None:
         self.db = db
+
+    def _template_snapshot_for_report(self, report: AnalysisReport) -> dict | None:
+        score_data = report.score_data if isinstance(report.score_data, dict) else {}
+        stored_snapshot = score_data.get("template_snapshot")
+        if (
+            isinstance(stored_snapshot, dict)
+            and stored_snapshot.get("templateId") == report.template_id
+            and stored_snapshot.get("version") == report.template_version
+        ):
+            return deepcopy(stored_snapshot)
+        if not report.training_template_id or not report.template_version:
+            return None
+
+        version = self.db.scalar(
+            select(TrainingTemplateVersion).where(
+                TrainingTemplateVersion.template_id == report.training_template_id,
+                TrainingTemplateVersion.version == report.template_version,
+            )
+        )
+        return _template_snapshot_from_version(
+            version,
+            template_code=report.template_id,
+            template_version=report.template_version,
+        )
 
     def save_report(self, current_user: User, payload: SaveReportRequest) -> ReportRead:
         if current_user.role not in STUDENT_ROLES:
@@ -96,15 +208,97 @@ class ReportService:
                 detail="The training session has not completed video upload yet.",
             )
 
-        template = self.db.scalar(
-            select(TrainingTemplate).where(TrainingTemplate.template_code == payload.template_code)
+        strict_template_lock = (
+            session.analysis_type == AnalysisType.training
+            or getattr(session, "task_assignment", None) is not None
         )
+        normalized_template_code = (
+            session.template_code if strict_template_lock else payload.template_code
+        )
+        if strict_template_lock and not normalized_template_code:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This training session is missing its locked template.",
+            )
+        normalized_template_code = normalized_template_code or payload.template_code
+        if strict_template_lock and payload.template_code != normalized_template_code:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="The report template does not match the uploaded training session.",
+            )
+
+        template = self.db.scalar(
+            select(TrainingTemplate).where(TrainingTemplate.template_code == normalized_template_code)
+        )
+        resolved_template_version: TrainingTemplateVersion | None = None
+        if strict_template_lock:
+            if not template:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="The report template no longer exists in the template catalog.",
+                )
+            if template.analysis_type != session.analysis_type:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="The report template does not support this session analysis type.",
+                )
+
+            if (
+                session.template_version
+                and payload.template_version
+                and payload.template_version != session.template_version
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="The report template version does not match the uploaded training session.",
+                )
+            normalized_template_version = (
+                session.template_version
+                or payload.template_version
+                or template.current_version
+            )
+            if not normalized_template_version:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="The report template does not have a resolved version.",
+                )
+            resolved_template_version = self.db.scalar(
+                select(TrainingTemplateVersion).where(
+                    TrainingTemplateVersion.template_id == template.id,
+                    TrainingTemplateVersion.version == normalized_template_version,
+                )
+            )
+            if not resolved_template_version:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="The report template version does not exist.",
+                )
+        else:
+            normalized_template_version = payload.template_version
+
         existing_report = self.db.scalar(
             select(AnalysisReport)
-            .where(AnalysisReport.session_id == session.id)
+            .where(AnalysisReport.session_id == session.id, _original_reports_only())
             .order_by(AnalysisReport.created_at.desc())
         )
+        if strict_template_lock and existing_report and (
+            existing_report.template_id != normalized_template_code
+            or existing_report.template_version != normalized_template_version
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="An existing report is already locked to another template version.",
+            )
         is_new_report = existing_report is None
+
+        template_snapshot = _template_snapshot_from_version(
+            resolved_template_version,
+            template_code=normalized_template_code,
+            template_version=normalized_template_version,
+        )
+        if session.analysis_type == AnalysisType.training and template_snapshot is None:
+            raise HTTPException(status_code=409, detail="The locked Training template rules are incomplete.")
+        score_data = _score_data_with_snapshot(_without_reanalysis_provenance(payload.score_data), template_snapshot)
 
         now = datetime.now(timezone.utc)
         report = existing_report or AnalysisReport(
@@ -112,25 +306,25 @@ class ReportService:
             session_id=session.id,
             video_id=session.video_id,
             analysis_type=session.analysis_type,
-            template_id=payload.template_code,
+            template_id=normalized_template_code,
             training_template_id=template.id if template else None,
-            template_version=payload.template_version,
-            score_data=payload.score_data,
+            template_version=normalized_template_version,
+            score_data=score_data,
         )
 
         report.user_id = current_user.id
         report.session_id = session.id
         report.video_id = session.video_id
         report.analysis_type = session.analysis_type
-        report.template_id = payload.template_code
+        report.template_id = normalized_template_code
         report.training_template_id = template.id if template else None
-        report.template_version = payload.template_version
+        report.template_version = normalized_template_version
         report.status = ReportStatus.completed
         report.overall_score = payload.overall_score
         report.grade = payload.grade
-        report.score_data = payload.score_data
+        report.score_data = score_data
         report.timeline_data = payload.timeline_data
-        report.summary_data = payload.summary_data
+        report.summary_data = _without_reanalysis_provenance(payload.summary_data)
         report.analysis_started_at = payload.analysis_started_at or session.analysis_started_at or now
         report.analysis_finished_at = payload.analysis_finished_at or now
 
@@ -163,7 +357,7 @@ class ReportService:
                     user_id=current_user.id,
                     type="report_ready",
                     title="Your training report is ready",
-                    content=f"{payload.template_code} report has been saved.",
+                    content=f"{normalized_template_code} report has been saved.",
                     business_type="analysis_report",
                     business_id=report.id,
                     is_read=False,
@@ -189,7 +383,112 @@ class ReportService:
             .options(selectinload(AnalysisReport.session), selectinload(AnalysisReport.video))
             .where(AnalysisReport.id == report.id)
         ) or report
-        return _report_read(report)
+        return _report_read(report, self._template_snapshot_for_report(report))
+
+    def reanalyze_report_age(
+        self, current_user: User, report_public_id: UUID, payload: ReanalyzeReportAgeRequest,
+    ) -> ReportRead:
+        # Serialize retries for this source report without changing its contents.
+        source = self.db.scalar(
+            select(AnalysisReport)
+            .options(selectinload(AnalysisReport.session), selectinload(AnalysisReport.video))
+            .where(AnalysisReport.public_id == report_public_id,
+                   AnalysisReport.user_id == current_user.id,
+                   AnalysisReport.deleted_at.is_(None))
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if source is None:
+            raise HTTPException(status_code=404, detail="Report not found.")
+        if current_user.role not in STUDENT_ROLES or source.analysis_type != AnalysisType.training:
+            raise HTTPException(status_code=403, detail="Only the owner can reanalyze a Training report.")
+        if source.status != ReportStatus.completed:
+            raise HTTPException(status_code=409, detail="Wait until the original report is complete.")
+
+        existing = self.db.scalar(select(AnalysisReport).where(AnalysisReport.public_id == payload.request_id))
+        if existing is not None:
+            return self._reanalysis_retry(current_user, source.public_id, payload, existing)
+
+        frozen = _frozen_age_inputs(source)
+        if frozen is None:
+            raise HTTPException(status_code=409, detail="The saved template rules or measured values are unavailable.")
+        template, original = frozen
+        result = payload.score_data
+        try:
+            validated = ReanalyzedScoreResult.model_validate(result)
+        except ValidationError:
+            raise HTTPException(status_code=422, detail="The recalculated score has invalid fields.") from None
+        result = validated.model_dump(exclude_unset=True)
+        expected_ids = [metric["metricId"] for metric in template["metrics"]]
+        findings = result.get("findings")
+        if (not expected_ids or not isinstance(findings, list)
+            or len(findings) != len(expected_ids)
+            or [finding.get("id") for finding in findings if isinstance(finding, dict)] != expected_ids
+            or result.get("overall") != payload.overall_score or result.get("grade") != payload.grade
+            or result.get("analysisStatus") != "ready"
+            or any(not isinstance(result.get(key), dict) for key in ("weights", "availability", "breakdown"))):
+            raise HTTPException(status_code=422, detail="The recalculated score must match the locked report template.")
+
+        # Scoring uses the same client engine as initial reports. All source data and
+        # provenance come from the server, never from this request's score payload.
+        score_data = deepcopy(original)
+        for key in ("overall", "grade", "analysisStatus", "weights", "availability", "breakdown", "findings"):
+            score_data[key] = deepcopy(result[key])
+        original_context = original.get("score_context")
+        score_data["score_context"] = {
+            **deepcopy(original_context if isinstance(original_context, dict) else {}),
+            "age_group": payload.age_group,
+            "source_report_public_id": str(source.public_id),
+            "source": "report_age_reanalysis",
+        }
+        score_data = _score_data_with_snapshot(score_data, template)
+        now = datetime.now(timezone.utc)
+        report = AnalysisReport(
+            public_id=payload.request_id, user_id=source.user_id,
+            session_id=source.session_id, video_id=source.video_id,
+            analysis_type=source.analysis_type, template_id=source.template_id,
+            training_template_id=source.training_template_id, template_version=source.template_version,
+            status=ReportStatus.completed, overall_score=payload.overall_score, grade=payload.grade,
+            score_data=score_data, timeline_data=deepcopy(source.timeline_data),
+            summary_data={**deepcopy(source.summary_data if isinstance(source.summary_data, dict) else {}), "age_group": payload.age_group,
+                          "source_report_public_id": str(source.public_id), "source": "report_age_reanalysis"},
+            analysis_started_at=now, analysis_finished_at=now,
+        )
+        source_public_id = source.public_id
+        try:
+            self.db.add(report)
+            self.db.flush()
+            self.db.add(ReportSnapshot(
+                report_id=report.id, template_version=report.template_version or "v1",
+                score_data=deepcopy(report.score_data), timeline_data=deepcopy(report.timeline_data),
+                summary_data=deepcopy(report.summary_data),
+            ))
+            # No new session, task submission, achievement or training-day side effects.
+            self.db.commit()
+        except IntegrityError:
+            # Different source rows have different locks but share the UUID unique key.
+            # Roll back the whole attempt before inspecting the committed winner.
+            self.db.rollback()
+            existing = self.db.scalar(select(AnalysisReport).where(AnalysisReport.public_id == payload.request_id))
+            if existing is None:
+                raise
+            return self._reanalysis_retry(current_user, source_public_id, payload, existing)
+        except Exception:
+            self.db.rollback()
+            raise
+        return self.get_report_detail(current_user, report.public_id)
+
+    def _reanalysis_retry(self, current_user, source_public_id, payload, existing) -> ReportRead:
+        data = existing.score_data if isinstance(existing.score_data, dict) else {}
+        context = data.get("score_context")
+        context = context if isinstance(context, dict) else {}
+        if (existing.user_id != current_user.id or existing.deleted_at is not None
+            or existing.status != ReportStatus.completed or existing.analysis_type != AnalysisType.training
+            or context.get("source_report_public_id") != str(source_public_id)
+            or context.get("age_group") != payload.age_group
+            or context.get("source") != "report_age_reanalysis"):
+            raise HTTPException(status_code=409, detail="This save request was already used for another result.")
+        return self.get_report_detail(current_user, existing.public_id)
 
     def list_my_reports(self, current_user: User, limit: int = 20) -> list[ReportListItem]:
         reports = self.db.scalars(
@@ -217,7 +516,14 @@ class ReportService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You do not have permission to view this report.",
             )
-        return _report_read(report)
+        result = _report_read(report, self._template_snapshot_for_report(report))
+        result.can_reanalyze_age = (report.user_id == current_user.id
+                                   and current_user.role in STUDENT_ROLES
+                                   and report.analysis_type == AnalysisType.training
+                                   and report.status == ReportStatus.completed
+                                   and report.deleted_at is None
+                                   and _frozen_age_inputs(report) is not None)
+        return result
 
     def _can_access_report(self, current_user: User, report: AnalysisReport) -> bool:
         if current_user.role == UserRole.admin:
@@ -271,17 +577,25 @@ class ReportService:
         )
         if not report:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found.")
-        return _report_read(report)
+        return _report_read(report, self._template_snapshot_for_report(report))
 
     def _update_task_assignment(self, assignment: TrainingTaskAssignment) -> None:
-        reports = self.db.scalars(
+        stmt = (
             select(AnalysisReport)
             .join(TrainingSession, AnalysisReport.session_id == TrainingSession.id)
             .where(
                 TrainingSession.task_assignment_id == assignment.id,
                 AnalysisReport.status == ReportStatus.completed,
+                _original_reports_only(),
             )
-        ).all()
+        )
+        task_analysis_type = getattr(assignment.task, "analysis_type", None)
+        task_template_code = getattr(assignment.task, "template_code", None)
+        if task_analysis_type:
+            stmt = stmt.where(AnalysisReport.analysis_type == task_analysis_type)
+        if task_template_code:
+            stmt = stmt.where(AnalysisReport.template_id == task_template_code)
+        reports = self.db.scalars(stmt).all()
 
         assignment.completed_sessions = len({report.session_id for report in reports})
 
@@ -341,6 +655,7 @@ class ReportService:
                 AnalysisReport.user_id == student_id,
                 AnalysisReport.analysis_type == report.analysis_type,
                 func.date(AnalysisReport.created_at) == snapshot_day,
+                _original_reports_only(),
             )
         ).all()
 
@@ -367,6 +682,7 @@ class ReportService:
                 AnalysisReport.user_id == student_id,
                 AnalysisReport.analysis_type == analysis_type,
                 AnalysisReport.created_at >= current_day - timedelta(days=90),
+                _original_reports_only(),
             )
             .distinct()
             .order_by(func.date(AnalysisReport.created_at).desc())
@@ -400,7 +716,7 @@ class ReportService:
             )
         ) or 0
         best_score = self.db.scalar(
-            select(func.max(AnalysisReport.overall_score)).where(AnalysisReport.user_id == student_id)
+            select(func.max(AnalysisReport.overall_score)).where(AnalysisReport.user_id == student_id, _original_reports_only())
         )
         best_score_value = float(best_score) if best_score is not None else 0.0
 

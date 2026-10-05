@@ -19,8 +19,9 @@ import { Activity, ChevronLeft, ChevronRight, Info } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getTemplateById, type Metric } from "@/config/templates";
-import type { AngleData } from "@/lib/scoring";
+import { getTemplateById, type ActionTemplate, type Metric } from "@/config/templates";
+import type { AngleData, MetricScoreBand } from "@/lib/scoring";
+import { buildTrainingMetricChartModels } from "@/lib/trainingMetricPresentation";
 import type { FrameSample } from "@/store/analysisStore";
 
 const HIP_HIGH_TEMPLATE_ID = "dribble_front_onehand_oneside_height";
@@ -28,12 +29,6 @@ const FRONT_NARROW_CROSSOVER_TEMPLATE_ID = "dribble_front_narrow_crossover";
 const FRONT_ONEHAND_V_TEMPLATE_ID = "dribble_front_onehand_v";
 const SIDE_NARROW_CROSSOVER_TEMPLATE_ID = "dribble_side_narrow_crossover";
 const SIDE_ONEHAND_ONESIDE_TEMPLATE_ID = "dribble_side_onehand_oneside";
-const TRAINING_HIGH_KNEES_TEMPLATE_ID = "high_knees_in_place_side";
-const TRAINING_PUSHUP_PLANK_TEMPLATE_ID = "pushup_hold_high_plank";
-const TRAINING_WALL_SIT_HALF_TEMPLATE_ID = "wall_sit_half_hold";
-const TRAINING_WALL_SIT_QUARTER_TEMPLATE_ID = "wall_sit_quarter_hold";
-const TRAINING_DEEP_SQUAT_TEMPLATE_ID = "deep_squat_reps_side";
-
 type ChartPoint = {
   time: number;
   value: number;
@@ -44,8 +39,6 @@ type MetricRange = {
   max: number;
   domain: [number, number];
 };
-
-type ChartMetricConfig = Pick<Metric, "type" | "params">;
 
 type PerformanceChartItem = {
   title: string;
@@ -117,7 +110,9 @@ const GENERIC_METRIC_CONFIG: Record<
 interface Props {
   timeline: FrameSample[] | null | undefined;
   templateId: string;
+  template?: ActionTemplate | null;
   savedMetrics?: AngleData[] | null;
+  scoringContext?: Record<string, unknown>;
 }
 
 function getSavedMetric(savedMetrics: AngleData[] | null | undefined, key: string): number | null {
@@ -220,118 +215,6 @@ function buildRollingStd(points: ChartPoint[], windowSize = 10): ChartPoint[] {
     .filter((point): point is ChartPoint => point !== null);
 }
 
-function buildCumulativeDuration(points: ChartPoint[], min: number, max: number): ChartPoint[] {
-  if (points.length < 2) return [];
-
-  let total = 0;
-  return points.slice(1).map((point, index) => {
-    const prev = points[index];
-    const interval = Math.max(0, point.time - prev.time);
-    if (prev.value >= min && prev.value <= max) {
-      total += interval;
-    }
-
-    return { time: point.time, value: total };
-  });
-}
-
-function buildCumulativeRatio(points: ChartPoint[], min: number, max: number): ChartPoint[] {
-  if (points.length < 2) return [];
-
-  let goodTime = 0;
-  const startTime = points[0].time;
-  return points.map((point, index) => {
-    if (index === 0) {
-      return {
-        time: point.time,
-        value: point.value >= min && point.value <= max ? 1 : 0,
-      };
-    }
-
-    const prev = points[index - 1];
-    const interval = Math.max(0, point.time - prev.time);
-    if (prev.value >= min && prev.value <= max) {
-      goodTime += interval;
-    }
-
-    const elapsed = Math.max(0, point.time - startTime);
-    return {
-      time: point.time,
-      value: elapsed > 0 ? goodTime / elapsed : 0,
-    };
-  });
-}
-
-function detectTimelineEvents(
-  points: ChartPoint[],
-  mode: "max" | "min",
-  threshold: number,
-  minGapSec: number
-): ChartPoint[] {
-  if (points.length < 3) return [];
-
-  const events: ChartPoint[] = [];
-  for (let index = 1; index < points.length - 1; index += 1) {
-    const prev = points[index - 1];
-    const point = points[index];
-    const next = points[index + 1];
-    const isPeak =
-      mode === "max"
-        ? point.value >= prev.value && point.value > next.value && point.value >= threshold
-        : point.value <= prev.value && point.value < next.value && point.value <= threshold;
-
-    if (!isPeak) continue;
-
-    const previousEvent = events[events.length - 1];
-    if (!previousEvent || point.time - previousEvent.time >= minGapSec) {
-      events.push(point);
-    }
-  }
-
-  return events;
-}
-
-function buildEventIntervalSeries(events: ChartPoint[]): ChartPoint[] {
-  if (events.length < 2) return [];
-
-  return events.slice(1).map((event, index) => ({
-    time: event.time,
-    value: Math.max(0, event.time - events[index].time),
-  }));
-}
-
-function buildEventCadenceSeries(events: ChartPoint[]): ChartPoint[] {
-  return buildEventIntervalSeries(events)
-    .map((point) => ({
-      time: point.time,
-      value: point.value > 0 ? 60 / point.value : 0,
-    }))
-    .filter((point) => point.value > 0 && Number.isFinite(point.value));
-}
-
-function buildEventCvSeries(events: ChartPoint[], windowSize = 4): ChartPoint[] {
-  const intervals = buildEventIntervalSeries(events);
-  if (intervals.length < 2) return [];
-
-  return intervals
-    .map((point, index) => {
-      const window = intervals.slice(Math.max(0, index - windowSize + 1), index + 1);
-      if (window.length < 2) return null;
-
-      const mean = window.reduce((sum, item) => sum + item.value, 0) / window.length;
-      if (mean <= 0) return null;
-
-      const variance =
-        window.reduce((sum, item) => sum + Math.pow(item.value - mean, 2), 0) / window.length;
-
-      return {
-        time: point.time,
-        value: Math.sqrt(variance) / mean,
-      };
-    })
-    .filter((point): point is ChartPoint => point !== null);
-}
-
 function clampPercent(value: number): number {
   return Math.max(0, Math.min(100, value));
 }
@@ -345,57 +228,71 @@ function formatRangeText(range: Pick<MetricRange, "min" | "max">, decimals = 2):
   return `${formatRangeNumber(range.min, decimals)}-${formatRangeNumber(range.max, decimals)}`;
 }
 
-function getTemplateMetricConfig(
-  templateId: string,
-  computeKey: string
-): ChartMetricConfig | null {
-  const template = getTemplateById(templateId);
-  const metric = template?.metrics.find((item) => item.computeKey === computeKey);
-  return metric ? { type: metric.type, params: metric.params } : null;
-}
-
-function buildRangeFromTemplateMetric(
-  templateId: string,
-  computeKey: string,
-  fallback: MetricRange,
-  options: { toleranceMultiplier?: number } = {}
+function buildRangeFromMetric(
+  value: number | null,
+  scoreBand: MetricScoreBand | null,
 ): MetricRange {
-  const metric = getTemplateMetricConfig(templateId, computeKey);
-  if (!metric) return fallback;
+  const center = value ?? scoreBand?.target ?? 0;
+  const min = scoreBand?.min ?? center;
+  const max = scoreBand?.max ?? center;
 
-  let min = fallback.min;
-  let max = fallback.max;
+  const targetSpan = Math.max(Math.abs(max - min), 0.01);
+  const configuredMargin =
+    scoreBand && scoreBand.margin > 0
+      ? scoreBand.margin
+      : targetSpan;
+  const padding = Math.max(configuredMargin, targetSpan * 0.6, 0.05);
+  let domainMin = min - padding;
+  let domainMax = max + padding;
 
-  if (metric.type === "target" && typeof metric.params.target === "number") {
-    const tolerance =
-      (typeof metric.params.tol === "number" ? metric.params.tol : 0) *
-      (options.toleranceMultiplier ?? 1);
-    min = metric.params.target - tolerance;
-    max = metric.params.target + tolerance;
-  } else if (
-    (metric.type === "range" || metric.type === "rangeByOption") &&
-    typeof metric.params.L === "number" &&
-    typeof metric.params.U === "number"
-  ) {
-    min = metric.params.L;
-    max = metric.params.U;
+  if (min >= 0) domainMin = Math.max(0, domainMin);
+  if (value !== null) {
+    domainMin = Math.min(domainMin, value - padding * 0.15);
+    domainMax = Math.max(domainMax, value + padding * 0.15);
   }
 
-  const span = Math.max(Math.abs(max - min), 0.01);
-  const padding = Math.max(span * 0.5, 0.1);
+  if (domainMax - domainMin < 0.01) {
+    domainMax = domainMin + 1;
+  }
 
-  return {
-    min,
-    max,
-    domain: [
-      Math.min(fallback.domain[0], min - padding),
-      Math.max(fallback.domain[1], max + padding),
-    ],
-  };
+  return { min, max, domain: [domainMin, domainMax] };
+}
+
+function getMetricValueLabel(metric: Metric): string {
+  if (metric.unit === "deg") return "Degrees";
+  if (metric.unit === "ratio") return "Ratio";
+  if (metric.unit === "norm") return "Position";
+  if (metric.unit === "score") return "Score";
+  return "Result";
+}
+
+function getMetricAdvice(metric: Metric, value: number | null, range: MetricRange): string {
+  if (value === null) {
+    return metric.targetText ?? "Keep the movement clearly visible and try again.";
+  }
+  if (value < range.min) {
+    return (
+      metric.hint_low ??
+      metric.hint_bad ??
+      metric.hint_high ??
+      metric.targetText ??
+      "Move closer to the target."
+    );
+  }
+  if (value > range.max) {
+    return (
+      metric.hint_high ??
+      metric.hint_bad ??
+      metric.hint_low ??
+      metric.targetText ??
+      "Move closer to the target."
+    );
+  }
+  return metric.hint_good ?? metric.targetText ?? "This part of the movement is on target.";
 }
 
 function formatMetric(value: number | null, decimals = 2): string {
-  return value === null ? "--" : value.toFixed(decimals);
+  return value === null ? "N/A" : value.toFixed(decimals);
 }
 
 function getSummaryValue(points: ChartPoint[], savedValue: number | null): number | null {
@@ -524,18 +421,28 @@ function SummaryRange({
 function MetricLineChart({
   points,
   range,
+  target,
   label,
   accent,
   savedValue,
 }: {
   points: ChartPoint[];
   range: MetricRange;
+  target?: number;
   label: string;
   accent: string;
   savedValue: number | null;
 }) {
   if (points.length < 2) {
-    return <SummaryRange value={savedValue} range={range} label="Saved average" accent={accent} />;
+    return (
+      <SummaryRange
+        value={savedValue}
+        range={range}
+        target={target}
+        label={savedValue === null ? "Data unavailable" : "Saved average"}
+        accent={accent}
+      />
+    );
   }
 
   return (
@@ -543,6 +450,9 @@ function MetricLineChart({
       <LineChart data={points} margin={{ top: 8, right: 14, left: -18, bottom: 0 }}>
         <CartesianGrid stroke="#334155" strokeDasharray="3 3" vertical={false} opacity={0.35} />
         <ReferenceArea y1={range.min} y2={range.max} fill={accent} fillOpacity={0.12} />
+        {target !== undefined ? (
+          <ReferenceLine y={target} stroke="#e2e8f0" strokeDasharray="4 4" strokeOpacity={0.72} />
+        ) : null}
         <XAxis
           dataKey="time"
           type="number"
@@ -951,9 +861,6 @@ function TemplatePerformanceCard({
                 <h4 className="text-xl font-bold leading-tight text-slate-50">
                   {activeChart.title}
                 </h4>
-                <p className="mt-2 break-all font-mono text-xs text-slate-500">
-                  {activeChart.metricKey}
-                </p>
               </div>
             </div>
 
@@ -1174,9 +1081,6 @@ function HipHighPerformanceCard({
                 <h4 className="text-xl font-bold leading-tight text-slate-50">
                   {activeChart.title}
                 </h4>
-                <p className="mt-2 break-all font-mono text-xs text-slate-500">
-                  {activeChart.metricKey}
-                </p>
               </div>
             </div>
 
@@ -1484,9 +1388,6 @@ function FrontNarrowCrossoverPerformanceCard({
                 <h4 className="text-xl font-bold leading-tight text-slate-50">
                   {activeChart.title}
                 </h4>
-                <p className="mt-2 break-all font-mono text-xs text-slate-500">
-                  {activeChart.metricKey}
-                </p>
               </div>
             </div>
 
@@ -2168,6 +2069,7 @@ function makeLineChartItem({
   savedValue,
   decimals = 2,
   range,
+  target,
   label,
   accent,
   explanation,
@@ -2181,6 +2083,7 @@ function makeLineChartItem({
   savedValue: number | null;
   decimals?: number;
   range: MetricRange;
+  target?: number;
   label: string;
   accent: string;
   explanation: string;
@@ -2199,644 +2102,82 @@ function makeLineChartItem({
       <MetricLineChart
         points={points}
         range={range}
-        label={label}
-        accent={accent}
-        savedValue={savedValue}
-      />
-    ),
-  };
-}
-
-function makeVariationChartItem({
-  title,
-  helper,
-  metricKey,
-  valueLabel = "Variation",
-  points,
-  savedValue,
-  range,
-  target,
-  label,
-  accent,
-  explanation,
-  advice,
-}: {
-  title: string;
-  helper: string;
-  metricKey: string;
-  valueLabel?: string;
-  points: ChartPoint[];
-  savedValue: number | null;
-  range: MetricRange;
-  target: number;
-  label: string;
-  accent: string;
-  explanation: string;
-  advice: string;
-}): PerformanceChartItem {
-  return {
-    title,
-    helper,
-    metricKey,
-    valueLabel,
-    value: formatMetric(savedValue, 3),
-    accent,
-    explanation,
-    advice,
-    chart: (
-      <VariationBarChart
-        points={points}
-        savedValue={savedValue}
-        range={range}
         target={target}
         label={label}
         accent={accent}
+        savedValue={savedValue}
       />
     ),
   };
 }
 
-function HighKneesPerformanceCard({
+const TRAINING_CHART_ACCENTS = [
+  "#38bdf8",
+  "#60a5fa",
+  "#22c55e",
+  "#f59e0b",
+  "#a78bfa",
+  "#14b8a6",
+];
+
+function DataDrivenTrainingPerformanceCard({
   timeline,
+  template,
   savedMetrics,
+  scoringContext,
 }: {
   timeline: FrameSample[] | null | undefined;
+  template: ActionTemplate;
   savedMetrics?: AngleData[] | null;
+  scoringContext?: Record<string, unknown>;
 }) {
-  const torsoSaved = getSavedMetric(savedMetrics, "torsoLeanDegSide");
-  const footStrikeSaved = getSavedMetric(savedMetrics, "footStrikeOffsetXUnderHip");
-  const kneeHeightSaved = getSavedMetric(savedMetrics, "kneeToHipHeightRatioSide");
-  const cadenceSaved = getSavedMetric(savedMetrics, "cadenceSPM");
-  const heightStdSaved = getSavedMetric(savedMetrics, "stdKneeToHipHeightRatioSide");
-  const rhythmSaved = getSavedMetric(savedMetrics, "stepIntervalCV");
+  if (template.mode !== "training") return null;
 
-  const torsoPoints = chooseClosestSeries(
+  const chartModels = buildTrainingMetricChartModels(
+    template,
+    savedMetrics,
     timeline,
-    ["torsoLeanDegSide", "trunkLeanDegSide"],
-    torsoSaved
+    scoringContext,
   );
-  const footStrikePoints = buildSeries(timeline, "footStrikeOffsetXUnderHip");
-  const kneeHeightPoints = buildSeries(timeline, "kneeToHipHeightRatioSide");
-  const kneeEvents = detectTimelineEvents(kneeHeightPoints, "max", 0.5, 0.25);
-  const cadencePoints = buildEventCadenceSeries(kneeEvents);
-  const rhythmPoints = buildEventCvSeries(kneeEvents);
-  const heightStdPoints = buildRollingStd(kneeHeightPoints, 12);
+  const charts = chartModels.map(({ metric, points, savedValue, summaryValue, scoreBand }, index) => {
+      const range = buildRangeFromMetric(summaryValue, scoreBand);
+      const accent = TRAINING_CHART_ACCENTS[index % TRAINING_CHART_ACCENTS.length];
+      const scoreLabel = scoreBand
+        ? scoreBand.scoreFloorInsideBand === scoreBand.scoreCeilingInsideBand
+          ? `${scoreBand.scoreCeilingInsideBand}`
+          : `${scoreBand.scoreFloorInsideBand}-${scoreBand.scoreCeilingInsideBand}`
+        : null;
+      return makeLineChartItem({
+        title:
+          metric.displayName ??
+          metric.metricId.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()),
+        helper: scoreLabel
+          ? `${scoreLabel} pts: ${formatRangeText(range, metric.unit === "deg" ? 1 : 3)}${metric.unit === "deg" ? " deg" : ""}`
+          : "Target unavailable",
+        metricKey: metric.computeKey,
+        valueLabel: getMetricValueLabel(metric),
+        points,
+        savedValue,
+        decimals: metric.precision ?? (metric.unit === "deg" ? 1 : 3),
+        range,
+        target: scoreBand?.kind === "target" ? scoreBand.target : undefined,
+        label: metric.displayName ?? "Movement result",
+        accent,
+        explanation: metric.targetText ?? "This check compares the movement with the target zone.",
+        advice: getMetricAdvice(metric, summaryValue, range),
+      });
+    });
 
-  const charts: PerformanceChartItem[] = [
-    makeLineChartItem({
-      title: "Torso Upright",
-      helper: "Target angle -12-12 deg",
-      metricKey: "torsoLeanDegSide",
-      valueLabel: "Deg",
-      points: torsoPoints,
-      savedValue: torsoSaved,
-      decimals: 1,
-      range: { min: -12, max: 12, domain: [-35, 35] },
-      label: "Torso lean",
-      accent: "#38bdf8",
-      explanation:
-        "Shows whether the torso stays upright during high knees. Less forward or backward sway keeps the drill quick and balanced.",
-      advice:
-        "Stand tall, brace the core, and lift the knees without bending at the waist.",
-    }),
-    makeLineChartItem({
-      title: "Landing Position",
-      helper: "Target offset -0.10-0.10",
-      metricKey: "footStrikeOffsetXUnderHip",
-      valueLabel: "Offset",
-      points: footStrikePoints,
-      savedValue: footStrikeSaved,
-      decimals: 2,
-      range: { min: -0.1, max: 0.1, domain: [-0.5, 0.5] },
-      label: "Foot strike offset",
-      accent: "#60a5fa",
-      explanation:
-        "Shows where the foot lands relative to the hip. The target band means the foot is landing under the body instead of reaching forward.",
-      advice:
-        "Land under the hips, keep steps light, and avoid throwing the leg forward.",
-    }),
-    makeLineChartItem({
-      title: "Knee Height",
-      helper: "Target ratio 0.80-1.20",
-      metricKey: "kneeToHipHeightRatioSide",
-      valueLabel: "Ratio",
-      points: kneeHeightPoints,
-      savedValue: kneeHeightSaved,
-      decimals: 2,
-      range: { min: 0.8, max: 1.2, domain: [0, 1.3] },
-      label: "Knee height ratio",
-      accent: "#22c55e",
-      explanation:
-        "Shows how high the knee rises relative to the hip. Reaching the target band means the thigh is lifting close to hip height.",
-      advice:
-        "Drive the knee up with a tall chest, keep the ankle active, and avoid small low steps.",
-    }),
-    makeLineChartItem({
-      title: "Cadence",
-      helper: "Target 130-190 spm",
-      metricKey: "cadenceSPM",
-      valueLabel: "SPM",
-      points: cadencePoints,
-      savedValue: cadenceSaved,
-      decimals: 0,
-      range: { min: 130, max: 190, domain: [60, 240] },
-      label: "Cadence",
-      accent: "#f59e0b",
-      explanation:
-        "Estimates step cadence from knee-height peaks. The target range shows whether the child is changing legs fast enough while keeping height.",
-      advice:
-        "Keep the rhythm quick and even, but do not sacrifice knee height just to move faster.",
-    }),
-    makeVariationChartItem({
-      title: "Height Consistency",
-      helper: "Target variation 0.20-0.40",
-      metricKey: "stdKneeToHipHeightRatioSide",
-      points: heightStdPoints,
-      savedValue: heightStdSaved,
-      range: { min: 0.2, max: 0.4, domain: [0, 0.7] },
-      target: 0.3,
-      label: "Height variation",
-      accent: "#a78bfa",
-      explanation:
-        "Tracks whether knee height stays consistent across reps. The child should keep both legs lifting to a similar height.",
-      advice:
-        "Match left and right knee height, keep the torso tall, and hold form even when tired.",
-    }),
-    makeVariationChartItem({
-      title: "Rhythm Stability",
-      helper: "Target CV 0.10-0.30",
-      metricKey: "stepIntervalCV",
-      points: rhythmPoints,
-      savedValue: rhythmSaved,
-      range: { min: 0.1, max: 0.3, domain: [0, 0.6] },
-      target: 0.2,
-      label: "Step interval CV",
-      accent: "#2f9e68",
-      explanation:
-        "Tracks whether the time between steps stays even. A steadier rhythm makes the drill look like a controlled metronome.",
-      advice:
-        "Use a steady count, land lightly, and avoid speeding up and slowing down between steps.",
-    }),
-  ];
+  if (charts.length === 0) return null;
 
   return (
     <TemplatePerformanceCard
+      key={`${template.templateId}:${template.version}`}
       timeline={timeline}
-      subtitle="Side high knees in place"
+      subtitle={`${template.displayName} - ${template.camera === "front" ? "Front view" : "Side view"}`}
       charts={charts}
     />
   );
-}
-
-function PushupPlankPerformanceCard({
-  timeline,
-  savedMetrics,
-}: {
-  timeline: FrameSample[] | null | undefined;
-  savedMetrics?: AngleData[] | null;
-}) {
-  const bodyLineSaved = getSavedMetric(savedMetrics, "plankBodyLineDeg");
-  const elbowSaved = getSavedMetric(savedMetrics, "avgElbowAngleDeg");
-  const goodFormSaved = getSavedMetric(savedMetrics, "goodFormFrameRatio");
-  const stabilitySaved = getSavedMetric(savedMetrics, "stdPlankBodyLineDeg");
-
-  const bodyLinePoints = chooseClosestSeries(
-    timeline,
-    ["plankBodyLineDeg", "bodyLineDeg"],
-    bodyLineSaved
-  );
-  const elbowPoints = chooseClosestSeries(
-    timeline,
-    ["avgElbowAngleDeg", "elbowAngleDeg", "rightElbowAngleDeg", "leftElbowAngleDeg"],
-    elbowSaved
-  );
-  const bodyLineRange = buildRangeFromTemplateMetric(
-    TRAINING_PUSHUP_PLANK_TEMPLATE_ID,
-    "plankBodyLineDeg",
-    { min: 164, max: 180, domain: [120, 200] }
-  );
-  const bodyLineEffectiveRange = buildRangeFromTemplateMetric(
-    TRAINING_PUSHUP_PLANK_TEMPLATE_ID,
-    "plankBodyLineDeg",
-    { min: 160, max: 184, domain: [120, 200] },
-    { toleranceMultiplier: 1.5 }
-  );
-  const elbowRange = buildRangeFromTemplateMetric(
-    TRAINING_PUSHUP_PLANK_TEMPLATE_ID,
-    "avgElbowAngleDeg",
-    { min: 75, max: 95, domain: [40, 130] }
-  );
-  const goodFormRange = buildRangeFromTemplateMetric(
-    TRAINING_PUSHUP_PLANK_TEMPLATE_ID,
-    "goodFormFrameRatio",
-    { min: 0.8, max: 1, domain: [0, 1] }
-  );
-  const stabilityRange = buildRangeFromTemplateMetric(
-    TRAINING_PUSHUP_PLANK_TEMPLATE_ID,
-    "stdPlankBodyLineDeg",
-    { min: 1, max: 5, domain: [0, 10] }
-  );
-  const stabilityConfig = getTemplateMetricConfig(
-    TRAINING_PUSHUP_PLANK_TEMPLATE_ID,
-    "stdPlankBodyLineDeg"
-  );
-  const stabilityTarget =
-    typeof stabilityConfig?.params.target === "number" ? stabilityConfig.params.target : 3;
-  const goodFormPoints = buildCumulativeRatio(
-    bodyLinePoints,
-    bodyLineEffectiveRange.min,
-    bodyLineEffectiveRange.max
-  );
-  const stabilityPoints = buildRollingStd(bodyLinePoints, 12);
-
-  const charts: PerformanceChartItem[] = [
-    makeLineChartItem({
-      title: "Body Line",
-      helper: `Target angle ${formatRangeText(bodyLineRange, 0)} deg`,
-      metricKey: "plankBodyLineDeg",
-      valueLabel: "Deg",
-      points: bodyLinePoints,
-      savedValue: bodyLineSaved,
-      decimals: 1,
-      range: bodyLineRange,
-      label: "Body line angle",
-      accent: "#38bdf8",
-      explanation:
-        "Shows whether shoulders, hips, and ankles stay in one line. The target band avoids sagging hips or piking up.",
-      advice:
-        "Squeeze the glutes, brace the core, and keep the body long from shoulders to ankles.",
-    }),
-    makeLineChartItem({
-      title: "Elbow Lockout",
-      helper: `Target angle ${formatRangeText(elbowRange, 0)} deg`,
-      metricKey: "avgElbowAngleDeg",
-      valueLabel: "Deg",
-      points: elbowPoints,
-      savedValue: elbowSaved,
-      decimals: 1,
-      range: elbowRange,
-      label: "Elbow angle",
-      accent: "#a78bfa",
-      explanation:
-        "Shows whether the arms stay mostly straight without locking aggressively. The target band keeps support firm but relaxed.",
-      advice:
-        "Press the floor away, keep elbows long, and avoid letting the arms bend as the hold gets hard.",
-    }),
-    makeLineChartItem({
-      title: "Good Form Ratio",
-      helper: `Target ratio ${formatRangeText(goodFormRange, 2)}`,
-      metricKey: "goodFormFrameRatio",
-      valueLabel: "Ratio",
-      points: goodFormPoints,
-      savedValue: goodFormSaved,
-      decimals: 2,
-      range: goodFormRange,
-      label: "Good form ratio",
-      accent: "#22c55e",
-      explanation:
-        "Shows how much of the video stays inside the body-line target. A higher ratio means the hold is clean for longer.",
-      advice:
-        "Prioritize quality over time: reset if the hips sag, then rebuild the hold with a strong core.",
-    }),
-    makeVariationChartItem({
-      title: "Body Stability",
-      helper: `Target variation ${formatRangeText(stabilityRange, 1)} deg`,
-      metricKey: "stdPlankBodyLineDeg",
-      points: stabilityPoints,
-      savedValue: stabilitySaved,
-      range: stabilityRange,
-      target: stabilityTarget,
-      label: "Body line variation",
-      accent: "#2f9e68",
-      explanation:
-        "Tracks how much the body line wobbles during the hold. Smaller, steady bars mean the core is controlling the posture.",
-      advice:
-        "Breathe steadily, keep the ribs tucked, and avoid shaking the hips up and down.",
-    }),
-  ];
-
-  return (
-    <TemplatePerformanceCard
-      timeline={timeline}
-      subtitle="Side high plank hold"
-      charts={charts}
-    />
-  );
-}
-
-function WallSitPerformanceCard({
-  timeline,
-  savedMetrics,
-  variant,
-}: {
-  timeline: FrameSample[] | null | undefined;
-  savedMetrics?: AngleData[] | null;
-  variant: "half" | "quarter";
-}) {
-  const isHalf = variant === "half";
-  const kneeTarget = isHalf ? 90 : 135;
-  const kneeMin = kneeTarget - 10;
-  const kneeMax = kneeTarget + 10;
-  const holdKneeMin = kneeTarget - 15;
-  const holdKneeMax = kneeTarget + 15;
-  const kneeSafeMin = isHalf ? -0.05 : -0.1;
-  const kneeSafeMax = isHalf ? 0.08 : 0.05;
-  const stabilityTarget = isHalf ? 3 : 3.5;
-  const stabilityMin = isHalf ? 1 : 1;
-  const stabilityMax = isHalf ? 5 : 6;
-
-  const kneeSaved = getSavedMetric(savedMetrics, "avgKneeAngleDeg");
-  const trunkSaved = getSavedMetric(savedMetrics, "trunkLeanDegSide");
-  const kneePositionSaved = getSavedMetric(savedMetrics, "kneeOverToeOffsetXSide");
-  const holdSaved = getSavedMetric(savedMetrics, "holdDurationSec");
-  const stabilitySaved = getSavedMetric(savedMetrics, "stdKneeAngleDeg");
-
-  const kneePoints = chooseClosestSeries(timeline, ["avgKneeAngleDeg", "kneeAngleDeg"], kneeSaved);
-  const trunkPoints = buildSeries(timeline, "trunkLeanDegSide");
-  const kneePositionPoints = buildSeries(timeline, "kneeOverToeOffsetXSide");
-  const holdPoints = buildCumulativeDuration(kneePoints, holdKneeMin, holdKneeMax);
-  const stabilityPoints = buildRollingStd(kneePoints, 12);
-
-  const charts: PerformanceChartItem[] = [
-    makeLineChartItem({
-      title: isHalf ? "Knee Angle 90" : "Knee Angle 135",
-      helper: `Target angle ${kneeMin}-${kneeMax} deg`,
-      metricKey: "avgKneeAngleDeg",
-      valueLabel: "Deg",
-      points: kneePoints,
-      savedValue: kneeSaved,
-      decimals: 1,
-      range: { min: kneeMin, max: kneeMax, domain: [60, 170] },
-      label: "Knee angle",
-      accent: "#38bdf8",
-      explanation: isHalf
-        ? "Shows whether the knees stay near a right angle. This is the main depth check for a standard wall sit."
-        : "Shows whether the knees stay near a shallow quarter-sit angle. This keeps the drill lighter while still controlled.",
-      advice: isHalf
-        ? "Slide down until the thighs are close to parallel, keep the knees steady, and avoid rising up during the hold."
-        : "Hold the shallow bend steadily, keep the feet planted, and avoid sinking too deep for this version.",
-    }),
-    makeLineChartItem({
-      title: "Trunk Vertical",
-      helper: "Target angle -5-5 deg",
-      metricKey: "trunkLeanDegSide",
-      valueLabel: "Deg",
-      points: trunkPoints,
-      savedValue: trunkSaved,
-      decimals: 1,
-      range: { min: -5, max: 5, domain: [-25, 25] },
-      label: "Trunk lean",
-      accent: "#60a5fa",
-      explanation:
-        "Shows whether the upper body stays vertical against the wall. The target band means the back is not leaning away.",
-      advice:
-        "Keep the back tall against the wall, ribs down, and avoid folding forward as the legs fatigue.",
-    }),
-    makeLineChartItem({
-      title: "Knee Position",
-      helper: `Target offset ${kneeSafeMin}-${kneeSafeMax}`,
-      metricKey: "kneeOverToeOffsetXSide",
-      valueLabel: "Offset",
-      points: kneePositionPoints,
-      savedValue: kneePositionSaved,
-      decimals: 3,
-      range: { min: kneeSafeMin, max: kneeSafeMax, domain: [-0.35, 0.35] },
-      label: "Knee-to-toe offset",
-      accent: "#f59e0b",
-      explanation:
-        "Shows the knee position relative to the toes. Staying in the band keeps pressure controlled and the feet placed correctly.",
-      advice:
-        "Adjust the feet so the knees stay calm over the toes, then keep the lower legs still during the hold.",
-    }),
-    makeLineChartItem({
-      title: "Hold Duration",
-      helper: "Target duration 15-45 sec",
-      metricKey: "holdDurationSec",
-      valueLabel: "Sec",
-      points: holdPoints,
-      savedValue: holdSaved,
-      decimals: 1,
-      range: { min: 15, max: 45, domain: [0, 70] },
-      label: "Effective hold",
-      accent: "#22c55e",
-      explanation:
-        "Shows how much time accumulates while the knee angle stays in the target zone. The curve should climb steadily during a clean hold.",
-      advice:
-        "Hold the target depth before chasing a longer time, and reset if the knees drift out of range.",
-    }),
-    makeVariationChartItem({
-      title: "Depth Stability",
-      helper: `Target variation ${stabilityMin.toFixed(1)}-${stabilityMax.toFixed(1)} deg`,
-      metricKey: "stdKneeAngleDeg",
-      points: stabilityPoints,
-      savedValue: stabilitySaved,
-      range: { min: stabilityMin, max: stabilityMax, domain: [0, 12] },
-      target: stabilityTarget,
-      label: "Knee angle variation",
-      accent: "#2f9e68",
-      explanation:
-        "Tracks whether the wall-sit depth is wobbling. Smaller variation means the child is not sliding up and down.",
-      advice:
-        "Press the back into the wall, keep both feet grounded, and hold the same knee bend until the set ends.",
-    }),
-  ];
-
-  return (
-    <TemplatePerformanceCard
-      timeline={timeline}
-      subtitle={isHalf ? "Side wall sit half hold" : "Side wall sit quarter hold"}
-      charts={charts}
-    />
-  );
-}
-
-function DeepSquatPerformanceCard({
-  timeline,
-  savedMetrics,
-}: {
-  timeline: FrameSample[] | null | undefined;
-  savedMetrics?: AngleData[] | null;
-}) {
-  const trunkSaved = getSavedMetric(savedMetrics, "trunkLeanDegSide");
-  const kneeTravelSaved = getSavedMetric(savedMetrics, "kneeOverToeOffsetXSide");
-  const depthSaved = getSavedMetric(savedMetrics, "hipBelowKneeRatioSide");
-  const topKneeSaved = getSavedMetric(savedMetrics, "topKneeAngleDeg");
-  const tempoSaved = getSavedMetric(savedMetrics, "repTempoSec");
-  const depthStdSaved = getSavedMetric(savedMetrics, "stdHipBelowKneeRatioSidePerRep");
-  const trunkStdSaved = getSavedMetric(savedMetrics, "stdTrunkLeanDegSidePerRep");
-
-  const trunkPoints = buildSeries(timeline, "trunkLeanDegSide");
-  const kneeTravelPoints = buildSeries(timeline, "kneeOverToeOffsetXSide");
-  const depthPoints = buildSeries(timeline, "hipBelowKneeRatioSide");
-  const kneeAnglePoints = chooseClosestSeries(
-    timeline,
-    ["avgKneeAngleDeg", "kneeAngleDeg", "topKneeAngleDeg"],
-    topKneeSaved
-  );
-  const squatEvents = detectTimelineEvents(kneeAnglePoints, "min", 140, 0.5);
-  const tempoPoints = buildEventIntervalSeries(squatEvents);
-  const depthStdPoints = buildRollingStd(depthPoints, 12);
-  const trunkStdPoints = buildRollingStd(trunkPoints, 12);
-  const depthRange = buildRangeFromTemplateMetric(
-    TRAINING_DEEP_SQUAT_TEMPLATE_ID,
-    "hipBelowKneeRatioSide",
-    { min: 0, max: 0.1, domain: [-0.25, 0.45] }
-  );
-
-  const charts: PerformanceChartItem[] = [
-    makeLineChartItem({
-      title: "Trunk Lean",
-      helper: "Target range 0-45 deg",
-      metricKey: "trunkLeanDegSide",
-      valueLabel: "Deg",
-      points: trunkPoints,
-      savedValue: trunkSaved,
-      decimals: 1,
-      range: { min: 0, max: 45, domain: [0, 70] },
-      label: "Trunk lean",
-      accent: "#38bdf8",
-      explanation:
-        "Shows how much the torso leans during the squat. The target band allows a natural hinge without collapsing forward.",
-      advice:
-        "Keep the chest proud, brace the core, and let the hips sit back before the knees travel forward.",
-    }),
-    makeLineChartItem({
-      title: "Knee Travel",
-      helper: "Target offset -0.05-0.15",
-      metricKey: "kneeOverToeOffsetXSide",
-      valueLabel: "Offset",
-      points: kneeTravelPoints,
-      savedValue: kneeTravelSaved,
-      decimals: 3,
-      range: { min: -0.05, max: 0.15, domain: [-0.4, 0.45] },
-      label: "Knee travel",
-      accent: "#60a5fa",
-      explanation:
-        "Shows knee travel relative to the toe at the bottom of the squat. Controlled travel keeps balance over the feet.",
-      advice:
-        "Start by sending the hips back, then bend the knees without letting them rush far past the toes.",
-    }),
-    makeLineChartItem({
-      title: "Squat Depth",
-      helper: `Target ratio ${formatRangeText(depthRange, 2)}`,
-      metricKey: "hipBelowKneeRatioSide",
-      valueLabel: "Ratio",
-      points: depthPoints,
-      savedValue: depthSaved,
-      decimals: 3,
-      range: depthRange,
-      label: "Hip below knee ratio",
-      accent: "#22c55e",
-      explanation:
-        "Shows whether the hips reach knee level or slightly below. The target band marks a deep enough squat.",
-      advice:
-        "Sit down until the hips reach the knee line, keep heels grounded, and avoid cutting reps short.",
-    }),
-    makeLineChartItem({
-      title: "Full Extension",
-      helper: "Target angle 165-185 deg",
-      metricKey: "topKneeAngleDeg",
-      valueLabel: "Deg",
-      points: kneeAnglePoints,
-      savedValue: topKneeSaved,
-      decimals: 1,
-      range: { min: 165, max: 185, domain: [70, 190] },
-      label: "Knee angle",
-      accent: "#f59e0b",
-      explanation:
-        "Shows whether the knees straighten at the top. Full extension confirms each rep returns to the starting position.",
-      advice:
-        "Stand tall between reps, finish the hips and knees, then start the next squat under control.",
-    }),
-    makeLineChartItem({
-      title: "Rep Rhythm",
-      helper: "Target tempo 1.5-4.0 sec",
-      metricKey: "repTempoSec",
-      valueLabel: "Sec",
-      points: tempoPoints,
-      savedValue: tempoSaved,
-      decimals: 2,
-      range: { min: 1.5, max: 4, domain: [0, 6] },
-      label: "Rep interval",
-      accent: "#a78bfa",
-      explanation:
-        "Estimates the time between squat bottoms. The target range keeps reps controlled instead of bouncing or pausing too long.",
-      advice:
-        "Move with a steady down-up rhythm, control the bottom, and avoid using momentum to spring out.",
-    }),
-    makeVariationChartItem({
-      title: "Depth Consistency",
-      helper: "Target variation 0.01-0.05",
-      metricKey: "stdHipBelowKneeRatioSidePerRep",
-      points: depthStdPoints,
-      savedValue: depthStdSaved,
-      range: { min: 0.01, max: 0.05, domain: [0, 0.12] },
-      target: 0.03,
-      label: "Depth variation",
-      accent: "#14b8a6",
-      explanation:
-        "Tracks whether each squat reaches a similar depth. Consistent depth shows the child is not cutting later reps short.",
-      advice:
-        "Use the same bottom position every rep, keep the heels down, and slow the tempo if depth starts changing.",
-    }),
-    makeVariationChartItem({
-      title: "Form Consistency",
-      helper: "Target variation 2-6 deg",
-      metricKey: "stdTrunkLeanDegSidePerRep",
-      points: trunkStdPoints,
-      savedValue: trunkStdSaved,
-      range: { min: 2, max: 6, domain: [0, 14] },
-      target: 4,
-      label: "Trunk variation",
-      accent: "#2f9e68",
-      explanation:
-        "Tracks whether torso angle changes from rep to rep. Stable form means the same squat pattern is being repeated.",
-      advice:
-        "Keep the brace and chest angle consistent, especially as the set gets harder.",
-    }),
-  ];
-
-  return (
-    <TemplatePerformanceCard
-      timeline={timeline}
-      subtitle="Side deep squat reps"
-      charts={charts}
-    />
-  );
-}
-
-function TrainingPerformanceCard({
-  timeline,
-  templateId,
-  savedMetrics,
-}: {
-  timeline: FrameSample[] | null | undefined;
-  templateId: string;
-  savedMetrics?: AngleData[] | null;
-}) {
-  if (templateId === TRAINING_HIGH_KNEES_TEMPLATE_ID) {
-    return <HighKneesPerformanceCard timeline={timeline} savedMetrics={savedMetrics} />;
-  }
-
-  if (templateId === TRAINING_PUSHUP_PLANK_TEMPLATE_ID) {
-    return <PushupPlankPerformanceCard timeline={timeline} savedMetrics={savedMetrics} />;
-  }
-
-  if (templateId === TRAINING_WALL_SIT_HALF_TEMPLATE_ID) {
-    return <WallSitPerformanceCard timeline={timeline} savedMetrics={savedMetrics} variant="half" />;
-  }
-
-  if (templateId === TRAINING_WALL_SIT_QUARTER_TEMPLATE_ID) {
-    return (
-      <WallSitPerformanceCard timeline={timeline} savedMetrics={savedMetrics} variant="quarter" />
-    );
-  }
-
-  if (templateId === TRAINING_DEEP_SQUAT_TEMPLATE_ID) {
-    return <DeepSquatPerformanceCard timeline={timeline} savedMetrics={savedMetrics} />;
-  }
-
-  return null;
 }
 
 function GenericMetricTimelineCard({ timeline }: { timeline: FrameSample[] | null | undefined }) {
@@ -2958,7 +2299,6 @@ function GenericMetricTimelineCard({ timeline }: { timeline: FrameSample[] | nul
                 />
                 {config.label}
               </h4>
-              <p className="mt-1 font-mono text-xs text-slate-500">{activeKey}</p>
             </div>
 
             <div className="flex items-start gap-2">
@@ -2972,7 +2312,13 @@ function GenericMetricTimelineCard({ timeline }: { timeline: FrameSample[] | nul
   );
 }
 
-export default function MetricTimelineCard({ timeline, templateId, savedMetrics }: Props) {
+export default function MetricTimelineCard({
+  timeline,
+  templateId,
+  template,
+  savedMetrics,
+  scoringContext,
+}: Props) {
   if (templateId === HIP_HIGH_TEMPLATE_ID) {
     return <HipHighPerformanceCard timeline={timeline} savedMetrics={savedMetrics} />;
   }
@@ -2993,21 +2339,18 @@ export default function MetricTimelineCard({ timeline, templateId, savedMetrics 
     return <SideOneHandOneSidePerformanceCard timeline={timeline} savedMetrics={savedMetrics} />;
   }
 
-  if (
-    templateId === TRAINING_HIGH_KNEES_TEMPLATE_ID ||
-    templateId === TRAINING_PUSHUP_PLANK_TEMPLATE_ID ||
-    templateId === TRAINING_WALL_SIT_HALF_TEMPLATE_ID ||
-    templateId === TRAINING_WALL_SIT_QUARTER_TEMPLATE_ID ||
-    templateId === TRAINING_DEEP_SQUAT_TEMPLATE_ID
-  ) {
+  if (template?.mode === "training") {
     return (
-      <TrainingPerformanceCard
+      <DataDrivenTrainingPerformanceCard
         timeline={timeline}
-        templateId={templateId}
+        template={template}
         savedMetrics={savedMetrics}
+        scoringContext={scoringContext}
       />
     );
   }
+
+  if (getTemplateById(templateId)?.mode === "training") return null;
 
   return <GenericMetricTimelineCard timeline={timeline} />;
 }

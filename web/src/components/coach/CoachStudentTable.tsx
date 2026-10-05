@@ -58,9 +58,6 @@ export function CoachStudentTable({ students }: CoachStudentTableProps) {
                       <span className="block truncate font-semibold text-white">
                         {getStudentDisplayName(student.username, student.nickname)}
                       </span>
-                      <span className="block truncate text-xs text-white/42">
-                        @{student.username}
-                      </span>
                     </span>
                   </Link>
                 </td>

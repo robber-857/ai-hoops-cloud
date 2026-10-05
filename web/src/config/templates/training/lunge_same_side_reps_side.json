@@ -1,0 +1,92 @@
+{
+  "version": "v1",
+  "templateId": "lunge_same_side_reps_side",
+  "mode": "training",
+  "camera": "side",
+  "cameraInstructions": "Film from the side with the working leg closest to the camera and the full body visible.",
+  "displayName": "Same-Side Lunge",
+  "categoryWeights": { "posture": 0.4, "execution": 0.4, "consistency": 0.2 },
+  "metrics": [
+    {
+      "metricId": "P_bottom_trunk_lean",
+      "displayName": "Body Position at the Bottom",
+      "category": "posture",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "lungeBottomTrunkLeanDeg",
+      "unit": "deg",
+      "params": { "L": 0, "U": 25, "margin": 20 },
+      "targetText": "Keep the chest lifted with no more than 25 degrees of lean.",
+      "hint_good": "Your upper body stayed controlled at the bottom.",
+      "hint_high": "Your body leaned too far forward. Lift your chest and brace your core."
+    },
+    {
+      "metricId": "P_front_knee_position",
+      "displayName": "Front Knee Position",
+      "category": "posture",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "lungeFrontKneeOffsetNorm",
+      "unit": "norm",
+      "params": { "L": -0.1, "U": 0.35, "margin": 0.25 },
+      "targetText": "Use a comfortable step so the front knee stays naturally over the foot.",
+      "hint_good": "Your step length kept the front knee in a balanced position.",
+      "hint_low": "The front knee stayed too far back. Adjust the step so you can lower straight down.",
+      "hint_high": "The front knee moved too far forward. Lengthen the stance slightly and lower with control."
+    },
+    {
+      "metricId": "E_front_knee_depth",
+      "displayName": "Front Leg Depth",
+      "category": "execution",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "lungeFrontKneeBottomDeg",
+      "unit": "deg",
+      "params": { "L": 75, "U": 110, "margin": 25 },
+      "targetText": "Reach a front knee angle of about 75-110 degrees.",
+      "hint_good": "Your front leg reached a useful lunge depth.",
+      "hint_low": "You went very deep. Use a slightly smaller range and keep control.",
+      "hint_high": "The lunge was shallow. Lower your hips a little more."
+    },
+    {
+      "metricId": "E_rear_knee_depth",
+      "displayName": "Rear Knee Depth",
+      "category": "execution",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "lungeRearKneeBottomDeg",
+      "unit": "deg",
+      "params": { "L": 70, "U": 120, "margin": 30 },
+      "targetText": "Let the rear knee lower with the body to about 70-120 degrees.",
+      "hint_good": "Your rear knee followed the body down smoothly.",
+      "hint_low": "The rear knee folded too deeply. Reduce the range slightly and stay balanced.",
+      "hint_high": "The rear knee stayed too straight. Let it move closer to the floor."
+    },
+    {
+      "metricId": "C_depth_consistency",
+      "displayName": "Repeatable Lunge Depth",
+      "category": "consistency",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "lungeBottomKneeStdDeg",
+      "unit": "deg",
+      "params": { "L": 0, "U": 10, "margin": 15 },
+      "targetText": "Reach a similar bottom position on each lunge.",
+      "hint_good": "Each lunge reached a similar depth.",
+      "hint_high": "The lunges were different depths. Keep the same stance and control the bottom position."
+    },
+    {
+      "metricId": "C_cycle_rhythm",
+      "displayName": "Steady Lunge Rhythm",
+      "category": "consistency",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "lungeRhythmVariation",
+      "unit": "ratio",
+      "params": { "L": 0, "U": 0.25, "margin": 0.35 },
+      "targetText": "Lower and stand with an even rhythm.",
+      "hint_good": "Your lunges followed a steady rhythm.",
+      "hint_high": "Some lunges were rushed. Lower and return at the same calm pace."
+    }
+  ]
+}

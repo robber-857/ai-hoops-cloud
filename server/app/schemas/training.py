@@ -49,6 +49,11 @@ class UploadInitResponse(BaseModel):
     object_key: str
     upload_strategy: str
     upload_expires_at: datetime | None = None
+    template_code: str | None = None
+    template_version: str | None = None
+    template_public_id: UUID | None = None
+    template_version_public_id: UUID | None = None
+    template_content_hash: str | None = None
 
 
 class UploadCompleteRequest(BaseModel):
@@ -67,6 +72,8 @@ class UploadCompleteRequest(BaseModel):
 class UploadCompleteResponse(BaseModel):
     session_public_id: UUID
     upload_task_public_id: UUID
+    template_code: str | None = None
+    template_version: str | None = None
     video: VideoRead
 
 

@@ -5,6 +5,8 @@
  //} as const;
 
 export const routes = {
+  foods: "/foods",
+  recipes: "/recipes",
   home: "/",
   auth: {
     login: "/auth/login",
@@ -12,9 +14,17 @@ export const routes = {
   },
   user: {
     me: "/me",
+    plans: "/me/plans",
+    tasks: "/me/tasks",
+    reports: "/me/reports",
+    trends: "/me/trends",
+    messages: "/me/messages",
+    profile: "/me/profile",
   },
   coach: {
     home: "/coach",
+    plans: "/coach/plans",
+    lessons: "/coach/lessons",
     classes: "/coach/classes",
     reports: "/coach/reports",
     tasks: "/coach/tasks",

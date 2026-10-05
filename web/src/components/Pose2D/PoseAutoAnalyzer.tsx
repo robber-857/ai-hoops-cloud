@@ -189,6 +189,10 @@ export default function PoseAutoAnalyzer({
     if (!videoUrl) return;
 
     if (error) {
+      onProgress({
+        status: "error", processedFrames: 0, totalFrames: 0,
+        coveragePercent: 0, currentTime: 0, duration: 0, message: error,
+      });
       onError(error);
       return;
     }

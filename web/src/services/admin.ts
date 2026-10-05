@@ -64,7 +64,7 @@ export type AdminClassMemberRead = {
   username: string;
   nickname: string | null;
   email: string | null;
-  phone_number: string;
+  phone_number: string | null;
   user_role: string;
   member_role: string;
   status: string;
@@ -122,7 +122,7 @@ export type AdminUserRead = {
   username: string;
   nickname: string | null;
   email: string | null;
-  phone_number: string;
+  phone_number: string | null;
   role: AdminUserRole;
   status: AdminUserStatus;
   is_active: boolean;
@@ -287,7 +287,7 @@ export type AdminLocalTemplateSyncItem = {
   analysis_type: ReportAnalysisType;
   source_path: string;
   version: string;
-  action: "create" | "update" | "skip";
+  action: "create" | "new_version" | "draft_update" | "metadata_update" | "skip" | "blocked";
   reason: string | null;
 };
 
@@ -296,6 +296,10 @@ export type AdminLocalTemplateSyncResponse = {
   created: number;
   updated: number;
   skipped: number;
+  new_versions: number;
+  blocked: number;
+  analysis_type: ReportAnalysisType;
+  preview_token: string;
   items: AdminLocalTemplateSyncItem[];
 };
 
@@ -604,9 +608,17 @@ export const adminService = {
     });
   },
 
-  syncLocalTrainingTemplates(dryRun = true) {
+  syncLocalTrainingTemplates(
+    dryRun = true,
+    analysisType: "training" | "dribbling" | "shooting" = "training",
+    templateCodes?: string[],
+    previewToken?: string,
+  ) {
+    const query = new URLSearchParams({ dry_run: String(dryRun), analysis_type: analysisType });
+    templateCodes?.forEach((code) => query.append("template_codes", code));
+    if (previewToken) query.set("preview_token", previewToken);
     return apiRequest<AdminLocalTemplateSyncResponse>(
-      `/admin/training-templates/sync-local?dry_run=${String(dryRun)}`,
+      `/admin/training-templates/sync-local?${query.toString()}`,
       {
         method: "POST",
       },

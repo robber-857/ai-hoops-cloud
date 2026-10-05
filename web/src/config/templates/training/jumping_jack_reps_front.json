@@ -1,0 +1,91 @@
+{
+  "version": "v1",
+  "templateId": "jumping_jack_reps_front",
+  "mode": "training",
+  "camera": "front",
+  "cameraInstructions": "Film from the front with the full body, both hands, and both feet visible.",
+  "displayName": "Jumping Jack",
+  "categoryWeights": { "posture": 0.4, "execution": 0.4, "consistency": 0.2 },
+  "metrics": [
+    {
+      "metricId": "P_torso_upright",
+      "displayName": "Upright Body",
+      "category": "posture",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "jumpingJackTorsoLeanDeg",
+      "unit": "deg",
+      "params": { "L": 0, "U": 10, "margin": 15 },
+      "targetText": "Keep your body within 10 degrees of upright.",
+      "hint_good": "Great control. Your body stayed upright while you jumped.",
+      "hint_high": "Your body leaned to the side. Tighten your core and keep your chest facing forward."
+    },
+    {
+      "metricId": "P_landing_knee_alignment",
+      "displayName": "Landing Knee Alignment",
+      "category": "posture",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "jumpingJackLandingKneeOffsetNorm",
+      "unit": "norm",
+      "params": { "L": 0, "U": 0.06, "margin": 0.1 },
+      "targetText": "Land with each knee pointing in the same direction as the toes.",
+      "hint_good": "Nice landing. Your knees stayed lined up with your feet.",
+      "hint_high": "A knee moved away from the leg line. Land softly and point both knees toward the toes."
+    },
+    {
+      "metricId": "E_open_width",
+      "displayName": "Foot Opening Width",
+      "category": "execution",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "jumpingJackOpenStanceRatio",
+      "unit": "ratio",
+      "params": { "L": 1.4, "U": 2.4, "margin": 0.5 },
+      "targetText": "Open your feet to about 1.4-2.4 times shoulder width.",
+      "hint_good": "Your feet opened to a strong, controlled width.",
+      "hint_low": "Open both feet a little wider when your arms rise.",
+      "hint_high": "Bring the feet slightly closer so the landing stays controlled."
+    },
+    {
+      "metricId": "E_arm_height",
+      "displayName": "Arm Height",
+      "category": "execution",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "jumpingJackArmHeightRatio",
+      "unit": "ratio",
+      "params": { "L": 0.25, "U": 1.2, "margin": 0.3 },
+      "targetText": "Raise both hands clearly above shoulder height as the feet open.",
+      "hint_good": "Your arms rose at the right time and reached a clear height.",
+      "hint_low": "Lift both hands higher when your feet open.",
+      "hint_high": "Keep the arms long but relax the shoulders instead of forcing them upward."
+    },
+    {
+      "metricId": "C_open_width",
+      "displayName": "Repeatable Opening Width",
+      "category": "consistency",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "jumpingJackOpenWidthVariation",
+      "unit": "ratio",
+      "params": { "L": 0, "U": 0.15, "margin": 0.2 },
+      "targetText": "Make each foot opening about the same width.",
+      "hint_good": "Each jumping jack opened to a similar width.",
+      "hint_high": "Some openings were wide and others were small. Aim for the same foot position each time."
+    },
+    {
+      "metricId": "C_cycle_rhythm",
+      "displayName": "Steady Rhythm",
+      "category": "consistency",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "jumpingJackRhythmVariation",
+      "unit": "ratio",
+      "params": { "L": 0, "U": 0.2, "margin": 0.3 },
+      "targetText": "Keep an even rhythm from one jumping jack to the next.",
+      "hint_good": "Your jumping rhythm stayed even.",
+      "hint_high": "The movement sped up and slowed down. Use one steady beat."
+    }
+  ]
+}

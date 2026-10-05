@@ -9,6 +9,7 @@ import { ChevronRight, Menu, X } from "lucide-react";
 
 import { LogoutButton } from "@/components/account/LogoutButton";
 import { useAuthStore } from "@/store/authStore";
+import { WorkspaceMobileDrawer } from "./WorkspaceMobileDrawer";
 
 export type WorkspaceMobileNavItem = {
   href: string;
@@ -20,6 +21,7 @@ type WorkspaceMobileMenuProps = {
   items: WorkspaceMobileNavItem[];
   eyebrow: string;
   accent?: "lime" | "cyan";
+  variant?: "fullscreen" | "drawer";
 };
 
 const accentStyles = {
@@ -47,7 +49,11 @@ function isActivePath(pathname: string, item: WorkspaceMobileNavItem) {
   return pathname === item.href || (!item.exact && pathname.startsWith(`${item.href}/`));
 }
 
-export function WorkspaceMobileMenu({
+export function WorkspaceMobileMenu(props: WorkspaceMobileMenuProps) {
+  return props.variant === "drawer" ? <WorkspaceMobileDrawer items={props.items} title={props.eyebrow} /> : <FullscreenWorkspaceMenu {...props} />;
+}
+
+function FullscreenWorkspaceMenu({
   items,
   eyebrow,
   accent = "lime",

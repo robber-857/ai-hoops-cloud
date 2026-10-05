@@ -74,9 +74,9 @@ export function ProfileSummaryCard({
               </Badge>
             </div>
 
-            <h1 className="mt-4 break-words text-2xl font-semibold text-white sm:text-4xl">
+            <h2 className="mt-4 break-words text-2xl font-semibold text-white sm:text-4xl">
               {displayName}
-            </h1>
+            </h2>
             <p className="mt-1 break-words text-sm text-white/55 sm:text-base">@{user.username}</p>
 
             <div className="mt-5 grid gap-3 text-sm text-white/70 sm:grid-cols-2">

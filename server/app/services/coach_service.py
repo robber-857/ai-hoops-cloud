@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from app.services.display_names import staff_display_name
+from app.services.report_service import _is_age_comparison, _original_reports_only
+
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import UUID
@@ -50,7 +53,7 @@ def _numeric_to_float(value: Decimal | float | None) -> float | None:
 
 
 def _display_name(user: User) -> str:
-    return user.nickname or user.username
+    return staff_display_name(user)
 
 
 def _class_read(class_row: CampClass, student_count: int) -> CoachClassRead:
@@ -634,7 +637,7 @@ class CoachService:
             self.db.scalar(
                 select(func.count(AnalysisReport.id))
                 .join(TrainingSession, AnalysisReport.session_id == TrainingSession.id)
-                .where(TrainingSession.class_id.in_(class_ids))
+                .where(TrainingSession.class_id.in_(class_ids), _original_reports_only())
             )
             or 0
         )
@@ -645,6 +648,7 @@ class CoachService:
                 .where(
                     TrainingSession.class_id.in_(class_ids),
                     AnalysisReport.created_at >= recent_cutoff,
+                    _original_reports_only(),
                 )
             )
             or 0
@@ -833,6 +837,7 @@ class CoachService:
                 report_scope,
                 AnalysisReport.user_id.in_(student_ids),
                 AnalysisReport.status == ReportStatus.completed,
+                _original_reports_only(),
             )
             .group_by(AnalysisReport.user_id)
         ).all()
@@ -925,6 +930,7 @@ class CoachService:
                     TrainingSession.class_id.is_(None),
                 ),
                 AnalysisReport.status == ReportStatus.completed,
+                _original_reports_only(),
             )
         ).one()
 
@@ -1002,6 +1008,7 @@ class CoachService:
             .where(
                 TrainingSession.class_id.in_(class_ids),
                 AnalysisReport.created_at >= recent_cutoff,
+                _original_reports_only(),
             )
             .group_by(TrainingSession.class_id)
         ).all()
@@ -1033,4 +1040,5 @@ class CoachService:
             video_url=video_url,
             created_at=report.created_at,
             analysis_finished_at=report.analysis_finished_at,
+            is_age_comparison=_is_age_comparison(report),
         )

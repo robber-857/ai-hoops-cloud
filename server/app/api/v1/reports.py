@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, get_db
 from app.models.user import User
 from app.schemas.me import MeReportsResponse
-from app.schemas.report import ReportRead, SaveReportRequest
+from app.schemas.report import ReportRead, SaveReportRequest, ReanalyzeReportAgeRequest
 from app.services.report_service import ReportService
 
 router = APIRouter()
@@ -20,6 +20,16 @@ def save_report(
 ) -> ReportRead:
     service = ReportService(db)
     return service.save_report(current_user, payload)
+
+
+@router.post("/{report_public_id}/reanalyze-age", response_model=ReportRead, status_code=status.HTTP_201_CREATED)
+def reanalyze_report_age(
+    report_public_id: UUID,
+    payload: ReanalyzeReportAgeRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ReportRead:
+    return ReportService(db).reanalyze_report_age(current_user, report_public_id, payload)
 
 
 @router.get("/mine", response_model=MeReportsResponse, status_code=status.HTTP_200_OK)

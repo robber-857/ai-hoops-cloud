@@ -14,10 +14,12 @@ from app.core.config import settings
 from app.models.analysis_report import AnalysisReport
 from app.models.camp_class import CampClass
 from app.models.class_member import ClassMember
-from app.models.enums import StorageProvider, UploadTaskStatus, UserRole, VideoUploadStatus, VideoVisibility
+from app.models.enums import AnalysisType, StorageProvider, UploadTaskStatus, UserRole, VideoUploadStatus, VideoVisibility
 from app.models.training_session import TrainingSession
 from app.models.training_task import TrainingTask
 from app.models.training_task_assignment import TrainingTaskAssignment
+from app.models.training_template import TrainingTemplate
+from app.models.training_template_version import TrainingTemplateVersion
 from app.models.upload_task import UploadTask
 from app.models.user import User
 from app.models.video import Video
@@ -113,14 +115,24 @@ class TrainingService:
             if not class_row and task_assignment.camp_class:
                 class_row = task_assignment.camp_class
 
+        if payload.analysis_type == AnalysisType.training or task_assignment:
+            template, template_version, content_hash = self._resolve_template_context(
+                payload,
+                task_assignment,
+            )
+        else:
+            template, template_version, content_hash = None, None, None
+
         session = TrainingSession(
             student_id=current_user.id,
             camp_id=class_row.camp_id if class_row else None,
             class_id=class_row.id if class_row else None,
             task_assignment_id=task_assignment.id if task_assignment else None,
             analysis_type=payload.analysis_type,
-            template_code=payload.template_code,
-            template_version=payload.template_version,
+            template_code=template.template_code if template else payload.template_code,
+            template_version=(
+                template_version.version if template_version else payload.template_version
+            ),
             source_type="coach_task" if task_assignment else payload.source_type,
             status="uploading",
             started_at=now,
@@ -158,6 +170,11 @@ class TrainingService:
             object_key=upload_task.object_key,
             upload_strategy="client_direct_supabase",
             upload_expires_at=upload_task.presigned_url_expire_at,
+            template_code=session.template_code,
+            template_version=session.template_version,
+            template_public_id=template.public_id if template else None,
+            template_version_public_id=template_version.public_id if template_version else None,
+            template_content_hash=content_hash,
         )
 
     def complete_upload(
@@ -179,6 +196,8 @@ class TrainingService:
             return UploadCompleteResponse(
                 session_public_id=upload_task.session.public_id,
                 upload_task_public_id=upload_task.public_id,
+                template_code=upload_task.session.template_code,
+                template_version=upload_task.session.template_version,
                 video=_video_read(upload_task.video),
             )
 
@@ -225,6 +244,8 @@ class TrainingService:
         return UploadCompleteResponse(
             session_public_id=session.public_id,
             upload_task_public_id=upload_task.public_id,
+            template_code=session.template_code,
+            template_version=session.template_version,
             video=_video_read(video),
         )
 
@@ -249,6 +270,87 @@ class TrainingService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only students can upload training videos.",
             )
+
+    def _resolve_template_context(
+        self,
+        payload: UploadInitRequest,
+        task_assignment: TrainingTaskAssignment | None,
+    ) -> tuple[TrainingTemplate | None, TrainingTemplateVersion | None, str | None]:
+        template_code = payload.template_code
+
+        if task_assignment:
+            task = task_assignment.task
+            if not task.analysis_type or not task.template_code:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="This training task does not have a complete template configuration.",
+                )
+            if payload.analysis_type != task.analysis_type:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="The upload analysis type does not match the assigned training task.",
+                )
+            if template_code and template_code != task.template_code:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="The upload template does not match the assigned training task.",
+                )
+            template_code = task.template_code
+
+        if payload.analysis_type == AnalysisType.training and not template_code:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A training template is required for training video uploads.",
+            )
+
+        if not template_code:
+            if payload.template_version:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="A template code is required when a template version is provided.",
+                )
+            return None, None, None
+
+        template = self.db.scalar(
+            select(TrainingTemplate)
+            .options(selectinload(TrainingTemplate.versions))
+            .where(TrainingTemplate.template_code == template_code)
+        )
+        if not template:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Training template not found.",
+            )
+        if template.status != "active":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="The selected training template is not active.",
+            )
+        if template.analysis_type != payload.analysis_type:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="The selected template does not support this analysis type.",
+            )
+
+        requested_version = payload.template_version or template.current_version
+        active_versions = [version for version in template.versions if version.status == "active"]
+        if requested_version:
+            version = next(
+                (item for item in active_versions if item.version == requested_version),
+                None,
+            )
+        else:
+            version = next((item for item in active_versions if item.is_default), None)
+
+        if not version:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="The selected training template version is not active or does not exist.",
+            )
+
+        summary_template = version.summary_template if isinstance(version.summary_template, dict) else {}
+        content_hash = summary_template.get("content_hash")
+        return template, version, content_hash if isinstance(content_hash, str) else None
 
     def _get_class_for_student(self, student_id: int, class_public_id: UUID) -> CampClass:
         class_row = self.db.scalar(

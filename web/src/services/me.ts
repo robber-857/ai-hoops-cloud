@@ -155,7 +155,33 @@ export type MeTrendsResponse = {
   points: TrendPointRead[];
 };
 
+export type MeProfileRead = {
+  nickname: string | null;
+  training_started_on: string | null;
+  updated_at: string;
+};
+
+export type MeProfileUpdate = {
+  nickname?: string | null;
+  training_started_on?: string | null;
+  expected_updated_at?: string;
+};
+
+// Older measurement responses do not include BMI; the view can derive it.
+export type MeasurementReadBMI = { bmi?: string | number | null };
+
 export const meService = {
+  getProfile() {
+    return apiRequest<MeProfileRead>("/me/profile", { method: "GET" });
+  },
+
+  updateProfile(input: MeProfileUpdate) {
+    return apiRequest<MeProfileRead>("/me/profile", {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    });
+  },
+
   getDashboard() {
     return apiRequest<MeDashboardResponse>("/me/dashboard", {
       method: "GET",

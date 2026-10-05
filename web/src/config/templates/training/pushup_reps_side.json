@@ -1,0 +1,78 @@
+{
+  "version": "v1",
+  "templateId": "pushup_reps_side",
+  "mode": "training",
+  "camera": "side",
+  "cameraInstructions": "Film from the side with the shoulder, elbow, wrist, hip, and ankle visible for the whole movement.",
+  "displayName": "Push-Up",
+  "categoryWeights": { "posture": 0.4, "execution": 0.4, "consistency": 0.2 },
+  "metrics": [
+    {
+      "metricId": "P_body_line",
+      "displayName": "Straight Body Line",
+      "category": "posture",
+      "weight": 1,
+      "type": "range",
+      "computeKey": "pushupHipLineDeviationNorm",
+      "unit": "norm",
+      "params": { "L": 0, "U": 0.08, "margin": 0.12 },
+      "targetText": "Keep the shoulder, hip, and ankle in one straight line.",
+      "hint_good": "Your body stayed connected in one strong line.",
+      "hint_high": "Your hips moved away from the body line. Brace your stomach and keep the hips level."
+    },
+    {
+      "metricId": "E_bottom_depth",
+      "displayName": "Push-Up Depth",
+      "category": "execution",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "pushupBottomElbowDeg",
+      "unit": "deg",
+      "params": { "L": 70, "U": 105, "margin": 30 },
+      "targetText": "Reach a bottom elbow angle of about 70-105 degrees.",
+      "hint_good": "You lowered to a strong, controlled depth.",
+      "hint_low": "You lowered very deep. Use a slightly smaller range and keep the shoulders controlled.",
+      "hint_high": "The push-up was shallow. Bring your chest a little closer to the floor."
+    },
+    {
+      "metricId": "E_top_extension",
+      "displayName": "Top Arm Extension",
+      "category": "execution",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "pushupTopElbowDeg",
+      "unit": "deg",
+      "params": { "L": 155, "U": 180, "margin": 25 },
+      "targetText": "Finish each push-up with the arms nearly straight.",
+      "hint_good": "You finished the push-up with strong arm extension.",
+      "hint_low": "Push a little higher and straighten the arms before the next repetition.",
+      "hint_high": "Keep the arms straight without forcing the elbows past a comfortable position."
+    },
+    {
+      "metricId": "C_depth_consistency",
+      "displayName": "Repeatable Push-Up Depth",
+      "category": "consistency",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "pushupBottomElbowStdDeg",
+      "unit": "deg",
+      "params": { "L": 0, "U": 10, "margin": 15 },
+      "targetText": "Reach a similar depth on each push-up.",
+      "hint_good": "Your push-ups reached a similar depth.",
+      "hint_high": "The depth changed between push-ups. Choose a range you can repeat with control."
+    },
+    {
+      "metricId": "C_body_line_consistency",
+      "displayName": "Stable Body Line",
+      "category": "consistency",
+      "weight": 0.5,
+      "type": "range",
+      "computeKey": "pushupHipLineDeviationStd",
+      "unit": "norm",
+      "params": { "L": 0, "U": 0.04, "margin": 0.08 },
+      "targetText": "Keep the same strong body line throughout every push-up.",
+      "hint_good": "Your body line stayed stable across the movement.",
+      "hint_high": "Your hips became less stable between push-ups. Keep bracing your core as you get tired."
+    }
+  ]
+}

@@ -10,7 +10,7 @@ class UserRead(BaseModel):
     id: int
     public_id: UUID
     username: str
-    phone_number: str
+    phone_number: str | None = None
     email: EmailStr | None = None
     nickname: str | None = None
     avatar_url: str | None = None

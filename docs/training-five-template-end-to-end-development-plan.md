@@ -1,5 +1,20 @@
 # Training 五个新模板端到端开发计划
 
+## 0. 2026-09-18 恢复开发记录
+
+本轮在 `developbranch` 完成代码层保护，不启动或打开 3000/8000 服务，不同步目标数据库：
+
+- Shooting/Dribbling 恢复发布基准评分行为，与 Training 缺失数据策略隔离；35 组固定基准通过。
+- 原五个 Training 使用 v2，新五个使用 v1；仅版本号升级，本轮不修改已有 target/tol/L/U/margin。
+- sync-local 默认仅 Training，可指定 template_codes；完整预览、preview_token 校验、整批冲突拒绝、已发布/已引用规则不可覆盖；手动 PATCH 同样保护。
+- 统一 Training 图表按明确传入的锁定快照生成，删除旧硬编码分支；缺失保留 N/A，目标带与分数标签读取年龄生效后的共享 resolver。
+- 模板快照仅由服务端数据库规则生成，拒绝错误 code/version，不信任客户端快照；这不是服务端分数重算。
+- 前端 126 个测试、后端全量 35 个测试、类型检查、定向 Lint 通过；静态渲染不等于真实浏览器/移动端验收。
+
+尚未完成：目标 PostgreSQL 备份与版本审计、同步/真实登录业务联调、儿童正确/错误视频及旧模板冒烟、多设备布局、移动 HTTP hash 兼容、服务端评分重算、显式同视频创建新分析。未新增 Alembic revision；本轮未执行生产构建。
+
+下一步先备份并审计旧 v1，再在测试库预览/apply/二次 skip，按状态风险文档执行人工验收；不可把 SQLite 测试当成数据库已上线。
+
 ## 1. 文档目的
 
 本文档用于指导以下五个新动作模板接入现有 Training 系统：
@@ -99,7 +114,7 @@ flowchart TD
 | --- | --- | --- |
 | Training 模板列表是占位 UI | 用户无法可靠选择五个新模板 | 接入数据库目录并与本地可执行模板求交集 |
 | 上传端默认取第一个本地模板 | 选择、上传和评分可能不是同一模板 | 页面持有唯一模板上下文并在上传后锁定 |
-| 本地同步默认 `local-v1`，上传默认 `v1` | 数据库版本与报告版本漂移 | 所有 Training JSON 显式声明 `version: "v1"` |
+| 本地同步与上传版本可能漂移 | 会话与规则不一致 | Training JSON 显式版本：新五个 v1，原五个修改后 v2；上传使用锁定版本 |
 | 上传 API 不验证模板 | 会话可保存不存在或停用的模板 | 后端解析并返回规范化模板上下文 |
 | 任务模板未在后端校验 | 学生可通过参数替换 Coach 指定模板 | 上传时以任务记录为准并拒绝不一致 |
 | 报告可切换模板后覆盖 | 历史报告和任务进度可能被改变 | 已保存报告锁定模板和版本 |
@@ -142,7 +157,7 @@ flowchart TD
 本次新增五个模板不需要新建数据库表，也不需要修改现有表结构：
 
 - 新模板通过 `sync-local` 写入 `training_templates`。
-- 每个模板的 `v1` 规则写入 `training_template_versions`。
+- 五个新模板的 v1 和原五个修改模板的 v2 写入 `training_template_versions`，保留旧 v1。
 - 上传会话继续保存 `template_code` 和 `template_version`。
 - 报告继续保存 `training_template_id` 外键和版本字符串。
 
@@ -189,7 +204,7 @@ flowchart TD
 
 | 字段 | 要求 |
 | --- | --- |
-| `version` | 必填，首版统一为 `v1` |
+| `version` | 必填，采用 v1/v2/...；新模板首版 v1，修改已发布规则必须新建版本 |
 | `templateId` | 必须与数据库 `template_code` 完全一致 |
 | `mode` | 必须为 `training` |
 | `camera` | `front` 或 `side` |
@@ -301,7 +316,7 @@ flowchart TD
 
 - 在 `ActionTemplate` 中增加必填 `version`。
 - 在 `Metric` 中增加儿童可读名称、目标和方向反馈字段。
-- 为现有五个 Training JSON 增加显式 `version: "v1"`。
+- 为每个 Training JSON 增加显式版本。五个新模板从 v1 开始；原五个修改模板统一发布 v2，不得覆盖旧 v1。
 - 新增五个模板 JSON。
 - 在 `web/src/config/templates/index.ts` 注册五个新模板。
 - 增加模板启动校验：
@@ -335,7 +350,7 @@ flowchart TD
 #### 完成标准
 
 - `getAllTemplates("training")` 返回十个唯一模板。
-- 所有 Training 模板版本均为 `v1`。
+- 所有 Training 模板都有明确版本；已被报告引用的版本内容不可变。
 - JSON 中不存在时长、总次数和标准次数评分。
 - 每项指标都有具体的正向和改进反馈。
 
@@ -441,11 +456,21 @@ flowchart TD
   - 显示具体表扬或动作建议。
   - 不显示 computeKey、CV、标准差或公式。
 - 将 Training 曲线改为数据驱动：
-  - 从模板指标生成标题、目标区间和单位。
+  - 从报告锁定版本的模板快照生成标题、目标区间和单位，不读取当前模板拼接历史报告。
+  - 模板中的每个评分指标都生成且只生成一张对应图表或聚合摘要。
+  - Findings、评分卡和图表的数量、顺序及名称与锁定版本 JSON 的 `metrics` 数组一致。
+  - 指标缺少实际值时仍保留图表位置并显示 `N/A`，不能通过省略图表造成数量不一致。
+  - `range` 的 100 分区间严格读取 `[L,U]`。
+  - `target` 的 90-100 分目标区间严格读取 `[target-effectiveTol, target+effectiveTol]`，目标点为 100 分。
+  - `margin` 只显示为目标区间外的降分区，不能包含在目标区间内。
+  - 图表与评分器调用同一个 `resolveMetricScoreBand(metric, scoringContext)`，组件内不得手写阈值。
   - 对逐帧指标显示时间曲线。
   - 对聚合稳定性指标显示摘要，不制造不存在的时间曲线。
+- 保留现有 Training `target` 评分：`target ± effectiveTol` 内为 90-100 分，目标点为 100 分，区间外按 `margin` 从 90 分继续下降。图表改造不得修改该公式，也不得改变旧 Shooting/Dribbling。
 - 把 Training 专用展示从 3000 行的 `MetricTimelineCard.tsx` 中拆分，避免继续增加五组硬编码分支。
 - 已保存 Training 报告锁定模板和版本，移除自动重算和自动覆盖。
+- 保存或由后端返回报告锁定版本的模板快照，至少包含版本、metrics、分类权重和 content hash。
+- 对历史报告检测 `metrics.length !== findings.length` 或 `findings.length !== charts.length`，显示版本数据错误，不能静默混用新旧规则。
 
 #### 建议文件
 
@@ -461,6 +486,9 @@ flowchart TD
 - 低于目标和高于目标显示不同建议。
 - 每个新模板至少有一条正向反馈和一条具体改进反馈。
 - 已保存报告刷新后得分、模板和版本保持不变。
+- 每份报告满足 `lockedTemplate.metrics.length === findings.length === charts.length`。
+- 每张图表的目标区间、目标点和分数语义与评分器解析结果完全相同。
+- 深蹲旧报告“7 Checks/6 Charts”作为回归用例通过：旧版本完整显示 7 对 7，新版本完整显示 6 对 6。
 
 ### 阶段 5：后端模板同步和会话校验
 
@@ -514,7 +542,7 @@ flowchart TD
 3. 执行 `Sync local`。
 4. 再次执行 `Dry run`，所有项目应为 skip。
 5. 检查五个新 `training_templates` 记录均为 active。
-6. 检查每个模板存在一个 active/default `v1`。
+6. 检查每个模板存在正确的 active/default 版本：新五个 v1，原五个 v2；旧 v1 内容不变。
 7. 检查 JSONB 中的 `content_hash`、camera 和 metric count。
 
 #### 完成标准
@@ -522,7 +550,7 @@ flowchart TD
 - 同步重复执行不会创建重复模板或版本。
 - API 能按 Training 返回十个 active 模板。
 - 新报告的 `training_template_id` 非空。
-- 会话、报告和报告快照的版本均为 `v1`。
+- 会话、报告和报告快照使用同一锁定版本，不要求所有模板版本号相同。
 - 篡改模板代码或版本会得到明确的 4xx 响应。
 
 ### 阶段 6：Training 前端模板选择与上传锁定
@@ -596,7 +624,9 @@ flowchart TD
 
 #### 任务
 
-- 报告页按保存的模板显示名称、版本、指标和曲线。
+- 报告页按保存的模板快照显示名称、版本、指标和曲线。
+- 报告中的每个评分指标都有一张对应图表或聚合摘要，不能出现评分卡和图表数量不同。
+- 历史版本中已删除的指标仍按旧快照成对显示评分卡和图表；新版本不再显示。
 - 个人中心报告列表能通过本地注册表显示五个新模板名称。
 - Coach 报告列表能显示新模板名称。
 - Coach 可创建五个新模板的 Training 任务。
@@ -676,6 +706,12 @@ flowchart TD
 | 指标偏低 | 使用 `hint_low` |
 | 指标偏高 | 使用 `hint_high` |
 | 已保存报告刷新 | 分数、模板和版本不变 |
+| 深蹲当前版本 | 6 个指标、6 个 Findings、6 张图表 |
+| 深蹲旧版含 Rep Rhythm | 7 个指标、7 个 Findings、7 张图表 |
+| 指标数据缺失 | 对应 Finding 和图表均保留并显示 N/A |
+| `range` 指标 | 图表 100 分区间严格等于 JSON `[L,U]` |
+| `target` 指标 | 图表 90-100 分目标区间严格等于 `target ± effectiveTol`，目标点为 100 分 |
+| 修改当前 JSON 后打开旧报告 | 仍使用旧版本快照和旧目标区间 |
 
 #### 五模板人工验收
 
@@ -705,7 +741,7 @@ flowchart TD
 
 - 前端异常：回滚前端部署版本。
 - 某个模板异常：在 Admin 将该模板状态改为 inactive。
-- 规则异常：恢复上一版本 JSON，重新部署并执行 sync-local。
+- 规则异常：将未修改的旧版本重新设为当前默认，并部署匹配的前端；不得将新规则覆盖写入旧版本。若旧版本缺失，先从经核实的备份/提交恢复并审计。
 - 报告保存异常：停止新模板入口，不删除已生成报告或快照。
 - 不通过删除数据库模板记录进行回滚，避免破坏历史报告外键。
 
@@ -785,6 +821,9 @@ flowchart TD
 - 正向、偏低、偏高和缺失反馈正确。
 - 已保存报告不再切换模板重写。
 - 五个模板报告展示可用。
+- 指标、Finding、评分卡和图表按锁定版本一一对应。
+- 图表和评分器共用目标区间 resolver，没有 Training 硬编码阈值。
+- 历史报告不会出现 7 Checks/6 Charts 之类的新旧版本混合状态。
 
 ### Checkpoint D：后端绑定
 
@@ -811,7 +850,7 @@ flowchart TD
 - [ ] 每个模板显示正确的正面或侧面拍摄要求。
 - [ ] 自由训练选择的模板与上传会话一致。
 - [ ] Coach 任务模板不可被学生切换。
-- [ ] 数据库存在五个新模板和五个 active/default `v1`。
+- [ ] 数据库存在五个新模板的 active/default `v1`；原五个修改模板使用不可变的新版本策略。
 - [ ] 新报告的 `training_template_id` 非空。
 - [ ] 报告模板和版本与训练会话一致。
 - [ ] 已保存报告不能通过切换模板静默重写。
@@ -819,6 +858,11 @@ flowchart TD
 - [ ] 每个模板的 Posture、Execution 和 Consistency 输出符合指标文档。
 - [ ] 单次可评估动作的 Consistency 显示 N/A。
 - [ ] 所有报告都有实际表现、简单目标和具体反馈。
+- [ ] 每个锁定版本指标都有且只有一张评分卡和一张对应图表或聚合摘要。
+- [ ] 每份报告满足模板指标数、Findings 数和图表数相同。
+- [ ] `range` 的 100 分区间直接来自 `[L,U]`；`target` 的 90-100 分目标区间直接来自 `target ± effectiveTol`，且目标点为 100 分。
+- [ ] 图表与评分器共用同一区间解析函数，Training 图表组件不存在手写评分阈值。
+- [ ] 历史报告使用保存时的模板快照，修改当前 JSON 不改变旧报告图表。
 - [ ] 报告不显示 CV、标准差、computeKey 或公式。
 - [ ] 所有模板均不按保持时长、视频总时长或动作次数评分。
 - [ ] 现有五个 Training 模板中的禁用指标已清理。

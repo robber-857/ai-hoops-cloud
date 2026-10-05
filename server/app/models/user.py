@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import BigInteger, Boolean, DateTime, Enum as SqlEnum, Index, String, text
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, Date, DateTime, Enum as SqlEnum, Index, String, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -13,6 +13,7 @@ from app.models.mixins import PublicIdMixin, TimestampMixin
 class User(PublicIdMixin, TimestampMixin, Base):
     __tablename__ = "users"
     __table_args__ = (
+        CheckConstraint("(phone_number IS NOT NULL AND length(trim(phone_number)) > 0) OR (email IS NOT NULL AND length(trim(email)) > 0)", name="ck_users_contact_required"),
         Index("ix_users_created_at", "created_at"),
         Index(
             "ix_users_email_not_null",
@@ -25,13 +26,14 @@ class User(PublicIdMixin, TimestampMixin, Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-    phone_number: Mapped[str] = mapped_column(
+    phone_number: Mapped[str | None] = mapped_column(
         String(32),
         unique=True,
-        nullable=False,
+        nullable=True,
     )
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     nickname: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    training_started_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     is_phone_verified: Mapped[bool] = mapped_column(
         Boolean,

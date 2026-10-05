@@ -44,6 +44,8 @@ const navItems = [
     label: "Console",
     icon: LayoutDashboard,
   },
+  { href: routes.coach.plans, label: "Training plans", icon: ClipboardList },
+  { href: routes.coach.lessons, label: "Actual lessons", icon: ClipboardList },
   {
     href: routes.coach.classes,
     label: "Classes",
@@ -69,6 +71,7 @@ const navItems = [
     label: "Notifications",
     icon: Bell,
   },
+  { href: routes.foods, label: "Food nutrition", icon: ClipboardList },
 ];
 
 const mobileNavItems = navItems.map((item, index) => ({

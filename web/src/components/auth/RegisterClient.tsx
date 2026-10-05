@@ -98,7 +98,7 @@ export function RegisterClient() {
           username: form.username,
           password: form.password,
           confirm_password: form.confirm_password,
-          phone_number: form.phone_number,
+          phone_number: form.phone_number.trim() || null,
           email: form.email,
           email_code: form.email_code,
         });
@@ -167,7 +167,7 @@ export function RegisterClient() {
             <div className="rounded-[1.35rem] border border-white/10 bg-[rgba(31,32,32,0.6)] p-8 shadow-2xl backdrop-blur-2xl md:p-10">
               <div className="mb-8">
                 <h2 className="text-3xl font-bold tracking-tight text-white">Create Account</h2>
-                <p className="mt-2 text-white/60">Elevate your game to the next dimension.</p>
+                <p className="mt-2 text-white/60">Register with your verified email. A phone number is optional.</p>
               </div>
 
               <form
@@ -191,7 +191,7 @@ export function RegisterClient() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <FormLabel htmlFor="phone_number">Phone Number</FormLabel>
+                    <FormLabel htmlFor="phone_number">Phone Number (optional)</FormLabel>
                     <input
                       id="phone_number"
                       className="w-full rounded-xl border border-white/10 bg-[#000000] px-4 py-3 text-white placeholder:text-neutral-600 transition focus:border-[#ff9f4a] focus:outline-none focus:ring-1 focus:ring-[#ff9f4a]"

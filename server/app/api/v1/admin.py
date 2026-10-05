@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db
@@ -444,11 +444,19 @@ def list_training_templates(
 )
 def sync_local_training_templates(
     dry_run: bool = Query(default=True),
+    analysis_type: AnalysisType = Query(default=AnalysisType.training),
+    template_codes: list[str] | None = Query(default=None),
+    preview_token: str | None = Query(default=None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> AdminLocalTemplateSyncResponse:
+    if not dry_run and not preview_token:
+        raise HTTPException(status_code=400, detail="Run dry-run before applying and provide its preview_token.")
     service = AdminService(db)
-    return service.sync_local_training_templates(current_user, dry_run=dry_run)
+    return service.sync_local_training_templates(
+        current_user, dry_run=dry_run, analysis_type=analysis_type, template_codes=template_codes,
+        preview_token=preview_token,
+    )
 
 
 @router.post(

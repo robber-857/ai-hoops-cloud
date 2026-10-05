@@ -96,7 +96,7 @@ class AdminClassMemberRead(BaseModel):
     username: str
     nickname: str | None = None
     email: str | None = None
-    phone_number: str
+    phone_number: str | None
     user_role: str
     member_role: str
     status: str
@@ -155,7 +155,7 @@ class AdminUserRead(BaseModel):
     username: str
     nickname: str | None = None
     email: EmailStr | None = None
-    phone_number: str
+    phone_number: str | None
     role: UserRole
     status: UserStatus
     is_active: bool
@@ -377,6 +377,10 @@ class AdminLocalTemplateSyncResponse(BaseModel):
     created: int
     updated: int
     skipped: int
+    new_versions: int = 0
+    blocked: int = 0
+    analysis_type: AnalysisType = AnalysisType.training
+    preview_token: str
     items: list[AdminLocalTemplateSyncItem]
 
 

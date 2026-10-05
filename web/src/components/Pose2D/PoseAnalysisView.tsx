@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, ArrowRight, Activity, CheckCircle2, Loader2, Sparkles } from "lucide-react";
 
@@ -19,7 +19,14 @@ import { calculateRealScore } from "@/lib/scoring";
 import { routes } from "@/lib/routes";
 import { DribbleFrame } from "@/lib/dribbleTemporal";
 import { aggregateDribbleSequence } from "@/lib/dribbleCalculator";
-import { aggregateTrainingSequence } from "@/lib/trainingCalculator";
+import {
+  MIN_TRAINING_SCORING_METRICS,
+  DEFAULT_REPORT_AGE_GROUP,
+  REPORT_AGE_GROUPS,
+  prepareTrainingReport,
+  shouldCaptureTrainingFrame,
+  verifyTrainingReportTemplate,
+} from "@/lib/trainingReport";
 import { reportService } from "@/services/reports";
 import type { CompletedUploadSession } from "@/services/uploads";
 import type { AnalysisType, AngleData } from "./types";
@@ -223,12 +230,17 @@ export default function PoseAnalysisView({
     React.useState<{ time: number; requestId: number } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [ageGroup, setAgeGroup] = useState(DEFAULT_REPORT_AGE_GROUP);
   const [displayAngles, setDisplayAngles] = useState<AngleData[]>([]);
   const [captureStats, setCaptureStats] = useState<CaptureStats>(EMPTY_CAPTURE_STATS);
   const [temporalStats, setTemporalStats] = useState<CaptureStats>(EMPTY_CAPTURE_STATS);
   const [autoAnalysisProgress, setAutoAnalysisProgress] =
     useState<AutoAnalysisProgress>(EMPTY_AUTO_ANALYSIS_PROGRESS);
   const [analysisWarning, setAnalysisWarning] = useState<string | null>(null);
+  const [saveFailed, setSaveFailed] = useState(false);
+  const [analysisAttempt, setAnalysisAttempt] = useState(0);
+  const [manualCapture, setManualCapture] = useState(false);
+  const [canvasAttempt, setCanvasAttempt] = useState(0);
 
   const localUrlRef = useRef<string | null>(null);
   const allFramesRef = useRef<FrameSample[]>([]);
@@ -238,6 +250,14 @@ export default function PoseAnalysisView({
   const seekRequestIdRef = useRef(0);
   const autoAnalysisStartedAtRef = useRef<string | null>(null);
   const autoAnalysisFinishedAtRef = useRef<string | null>(null);
+  const reportSubmissionRef = useRef(false);
+  const reportViewMountedRef = useRef(true);
+  const manualTrainingCaptureRef = useRef(false);
+
+  useEffect(() => {
+    reportViewMountedRef.current = true;
+    return () => { reportViewMountedRef.current = false; };
+  }, []);
 
   useEffect(() => {
     if (propVideoUrl) {
@@ -271,6 +291,9 @@ export default function PoseAnalysisView({
     setTemporalStats(EMPTY_CAPTURE_STATS);
     setAutoAnalysisProgress(EMPTY_AUTO_ANALYSIS_PROGRESS);
     setAnalysisWarning(null);
+    setSaveFailed(false);
+    setManualCapture(false);
+    manualTrainingCaptureRef.current = false;
   }, [file, propVideoUrl]);
 
   const handleFrameCaptured = useCallback(
@@ -289,10 +312,7 @@ export default function PoseAnalysisView({
         setTemporalStats(buildTemporalStats(dribbleFramesRef.current, duration));
       } else if (analysisType === "training") {
         const currentData = trainingFramesRef.current;
-        if (
-          currentData.length > 0 &&
-          frame.t < currentData[currentData.length - 1].t - LOOP_TOLERANCE_SECONDS
-        ) {
+        if (!shouldCaptureTrainingFrame(manualTrainingCaptureRef.current, frame.t, currentData.at(-1)?.t)) {
           return;
         }
         trainingFramesRef.current.push(frame);
@@ -310,6 +330,9 @@ export default function PoseAnalysisView({
       if (isPlaying && angles.length > 0) {
         const history = allFramesRef.current;
 
+        if (analysisType === "training" &&
+          !shouldCaptureTrainingFrame(manualTrainingCaptureRef.current, time, history.at(-1)?.time)) return;
+
         if (history.length > 0) {
           const lastTime = history[history.length - 1].time;
           if (time < lastTime - LOOP_TOLERANCE_SECONDS) {
@@ -322,7 +345,7 @@ export default function PoseAnalysisView({
         setAnalysisWarning((current) => (current ? null : current));
       }
     },
-    [isPlaying, duration]
+    [isPlaying, duration, analysisType]
   );
 
   const handleProcessingChange = useCallback((processing: boolean) => {
@@ -335,6 +358,7 @@ export default function PoseAnalysisView({
   }, []);
 
   const handleVideoEnd = useCallback(() => {
+    manualTrainingCaptureRef.current = false;
     setIsPlaying(false);
     setIsProcessing(false);
     setCaptureStats(buildCaptureStats(allFramesRef.current, duration));
@@ -394,17 +418,68 @@ export default function PoseAnalysisView({
       setAnalysisWarning(
         latestStats.ready && (!needsTemporalTimeline(analysisType) || latestTemporalStats.ready)
           ? null
-          : "Automatic analysis finished, but it did not capture enough usable motion frames. Try a clearer clip or play the clip once manually."
+          : "Automatic analysis finished, but it did not capture enough usable motion frames. Try a clearer clip or choose Recapture from start."
       );
     },
     [analysisType]
   );
 
   const handleAutoAnalysisError = useCallback((message: string) => {
-    setAnalysisWarning(`${message} You can still play the clip once to collect frames manually.`);
+    setAutoAnalysisProgress((current) => ({ ...current, status: "error", message }));
+    setAnalysisWarning(`${message} Retry automatic analysis, or recapture the clip manually from the beginning.`);
   }, []);
 
+  const lockedTrainingTemplate = analysisType === "training"
+    ? getAllTemplates("training").find((template) =>
+        template.templateId === (uploadSession?.templateCode ?? templateCode))
+    : undefined;
+  const trainingReadiness = useMemo(() => analysisType === "training"
+    ? prepareTrainingReport({
+        template: lockedTrainingTemplate,
+        ageGroup,
+        frames: trainingFramesRef.current,
+        timeline: allFramesRef.current,
+        captureReady: captureStats.ready,
+        temporalReady: temporalStats.ready,
+        analyzing: autoAnalysisProgress.status === "loading" || autoAnalysisProgress.status === "analyzing",
+      })
+    : null, [analysisType, lockedTrainingTemplate, captureStats, temporalStats, autoAnalysisProgress.status, ageGroup]);
+
+  const handleRetryAutoAnalysis = () => {
+    manualTrainingCaptureRef.current = false;
+    setIsPlaying(false);
+    setManualCapture(false);
+    setAnalysisWarning(null);
+    autoAnalysisStartedAtRef.current = null;
+    autoAnalysisFinishedAtRef.current = null;
+    setAutoAnalysisProgress({ ...EMPTY_AUTO_ANALYSIS_PROGRESS, status: "loading" });
+    setAnalysisAttempt((attempt) => attempt + 1);
+  };
+
+  // Only this explicit action replaces captured data. Playback and save retries preserve it.
+  const handleManualRecapture = () => {
+    allFramesRef.current = [];
+    dribbleFramesRef.current = [];
+    trainingFramesRef.current = [];
+    latestAnglesRef.current = [];
+    setCaptureStats(EMPTY_CAPTURE_STATS);
+    setTemporalStats(EMPTY_CAPTURE_STATS);
+    setDisplayAngles([]);
+    setAnalysisWarning(null);
+    setSaveFailed(false);
+    setManualCapture(true);
+    manualTrainingCaptureRef.current = true;
+    setAutoAnalysisProgress(EMPTY_AUTO_ANALYSIS_PROGRESS);
+    setCanvasAttempt((attempt) => attempt + 1);
+    seekRequestIdRef.current += 1;
+    setPendingSeek({ time: 0, requestId: seekRequestIdRef.current });
+    setCurrentTime(0);
+    setIsPlaying(true);
+  };
+
   const handleGenerateReport = async () => {
+    if (reportSubmissionRef.current) return;
+    manualTrainingCaptureRef.current = false;
     setIsPlaying(false);
     setAnalysisWarning(null);
 
@@ -425,7 +500,7 @@ export default function PoseAnalysisView({
 
     if (!latestStats.ready) {
       setAnalysisWarning(
-        "Automatic analysis has not captured enough frames yet. Wait for it to finish or play the clip once manually."
+        "Automatic analysis has not captured enough frames yet. Wait for it to finish or choose Recapture from start."
       );
       return;
     }
@@ -443,20 +518,25 @@ export default function PoseAnalysisView({
 
     if (needsTemporalTimeline(analysisType) && !latestTemporalStats.ready) {
       setAnalysisWarning(
-        `${analysisType} reports need a full motion sequence. Collected ${currentTemporalFrames.length}/${MIN_TEMPORAL_ANALYSIS_FRAMES} sequence frames; wait for automatic analysis or play the clip once manually.`
+        `${analysisType} reports need a full motion sequence. Collected ${currentTemporalFrames.length}/${MIN_TEMPORAL_ANALYSIS_FRAMES} sequence frames; wait for automatic analysis or choose Recapture from start.`
       );
       return;
     }
 
+    reportSubmissionRef.current = true;
     setIsGeneratingReport(true);
+    setSaveFailed(false);
+    let navigatingToReport = false;
 
     try {
       const templates = getAllTemplates(analysisType);
+      const lockedTemplateCode = uploadSession?.templateCode ?? templateCode;
       const activeTemplate =
-        templates.find((template) => template.templateId === templateCode) ?? templates[0];
+        templates.find((template) => template.templateId === lockedTemplateCode)
+        ?? (analysisType === "training" ? undefined : templates[0]);
 
       if (!activeTemplate) {
-        alert("No analysis template is available for this mode.");
+        alert("The uploaded session does not have a matching analysis template.");
         setIsGeneratingReport(false);
         return;
       }
@@ -469,6 +549,11 @@ export default function PoseAnalysisView({
 
       let finalInputForScoring: AngleData[] = [];
       let detectedHandness = "right";
+      if (analysisType === "training") {
+        await verifyTrainingReportTemplate(activeTemplate, uploadSession);
+      }
+      let trainingCameraMatch: boolean | null = null;
+      let preparedTrainingScore = null;
 
       if (analysisType === "dribbling") {
         const dribbleFrames = dribbleFramesRef.current;
@@ -490,39 +575,55 @@ export default function PoseAnalysisView({
         const staticMetrics = aggregateFrames(allFramesRef.current);
         finalInputForScoring = [...staticMetrics, ...dynamicMetrics];
       } else if (analysisType === "training") {
-        const trainingFrames = trainingFramesRef.current;
-
-        console.log("Analyzing Training Data:", trainingFrames.length, "frames");
-        const computedStats = aggregateTrainingSequence(
-          trainingFrames,
-          activeTemplate,
-          allFramesRef.current
-        );
-
-        const dynamicMetrics: AngleData[] = Object.entries(computedStats)
-          .filter(([, value]) => value !== undefined)
-          .map(([key, value]) => ({
-            name: key,
-            value: value as number,
-            unit: "calc",
-          }));
-
-        finalInputForScoring = dynamicMetrics;
+        const prepared = prepareTrainingReport({
+          template: activeTemplate,
+          ageGroup,
+          frames: trainingFramesRef.current,
+          timeline: allFramesRef.current,
+          captureReady: latestStats.ready,
+          temporalReady: latestTemporalStats.ready,
+          analyzing: false,
+        });
+        if (!prepared.ready) {
+          setAnalysisWarning(prepared.reason);
+          return;
+        }
+        trainingCameraMatch = prepared.cameraMatch;
+        finalInputForScoring = prepared.metrics;
+        preparedTrainingScore = prepared.score;
       } else {
         finalInputForScoring = aggregateFrames(allFramesRef.current);
       }
 
-      if (finalInputForScoring.length < MIN_SCORING_METRICS) {
+      const minimumScoringMetrics = analysisType === "training" ? MIN_TRAINING_SCORING_METRICS : MIN_SCORING_METRICS;
+      if (finalInputForScoring.length < minimumScoringMetrics) {
         setAnalysisWarning(
-          `Only ${finalInputForScoring.length}/${MIN_SCORING_METRICS} scoring metrics were collected. Use a clearer full-body clip and try again.`
+          `Only ${finalInputForScoring.length}/${minimumScoringMetrics} scoring metrics were collected. Use a clearer full-body clip and try again.`
         );
         setIsGeneratingReport(false);
         return;
       }
 
-      const realScoreResult = calculateRealScore(activeTemplate, finalInputForScoring, {
+      const realScoreResult = preparedTrainingScore ?? calculateRealScore(activeTemplate, finalInputForScoring, {
         handedness: detectedHandness,
+        ageGroup: analysisType === "training" ? ageGroup : DEFAULT_REPORT_AGE_GROUP,
       });
+
+      if (realScoreResult.analysisStatus !== "ready") {
+        setAnalysisWarning(
+          "The clip does not contain enough clear posture and movement data for a fair score."
+        );
+        setIsGeneratingReport(false);
+        return;
+      }
+
+      const lockedTemplateVersion =
+        uploadSession.templateVersion ?? templateVersion ?? activeTemplate.version;
+      if (!lockedTemplateVersion) {
+        alert("The uploaded session does not have a locked template version.");
+        setIsGeneratingReport(false);
+        return;
+      }
 
       let longTermVideoUrl = videoUrl;
 
@@ -536,6 +637,14 @@ export default function PoseAnalysisView({
       const scoreDataToSave = {
         ...realScoreResult,
         saved_metrics: finalInputForScoring,
+        score_context: {
+          age_group: analysisType === "training" ? ageGroup : DEFAULT_REPORT_AGE_GROUP,
+          handedness: detectedHandness,
+          camera_match: trainingCameraMatch,
+          expected_camera: analysisType === "training" ? activeTemplate.camera : null,
+          camera_instructions:
+            analysisType === "training" ? activeTemplate.cameraInstructions ?? null : null,
+        },
       };
       const captureSource =
         autoAnalysisProgress.status === "ready" ? "auto_full_video" : "manual_playback";
@@ -547,16 +656,23 @@ export default function PoseAnalysisView({
       const savedReport = await reportService.saveReport({
         session_public_id: uploadSession.sessionPublicId,
         template_code: activeTemplate.templateId,
-        template_version: templateVersion ?? "v1",
+        template_version: lockedTemplateVersion,
         overall_score: realScoreResult.overall,
         grade: realScoreResult.grade,
         score_data: scoreDataToSave,
         timeline_data: allFramesRef.current,
         summary_data: {
           analysis_type: analysisType,
+          age_group: analysisType === "training" ? ageGroup : DEFAULT_REPORT_AGE_GROUP,
           handedness: detectedHandness,
           metrics_count: finalInputForScoring.length,
           template_name: activeTemplate.displayName,
+          template_version: lockedTemplateVersion,
+          template_content_hash: uploadSession.templateContentHash,
+          camera_match: trainingCameraMatch,
+          expected_camera: analysisType === "training" ? activeTemplate.camera : null,
+          camera_instructions:
+            analysisType === "training" ? activeTemplate.cameraInstructions ?? null : null,
           capture_source: captureSource,
           timeline_frames: allFramesRef.current.length,
           timeline_duration_seconds: duration,
@@ -566,11 +682,11 @@ export default function PoseAnalysisView({
             Math.round(latestTemporalStats.coveragePercent * 100) / 100,
           min_analysis_frames: MIN_ANALYSIS_FRAMES,
           min_temporal_analysis_frames: MIN_TEMPORAL_ANALYSIS_FRAMES,
-          min_scoring_metrics: MIN_SCORING_METRICS,
+          min_scoring_metrics: minimumScoringMetrics,
           analysis_data_ready:
             latestStats.ready &&
             (!needsTemporalTimeline(analysisType) || latestTemporalStats.ready) &&
-            finalInputForScoring.length >= MIN_SCORING_METRICS,
+            finalInputForScoring.length >= minimumScoringMetrics,
           auto_analysis_status: autoAnalysisProgress.status,
           auto_analysis_processed_frames: autoAnalysisProgress.processedFrames,
           auto_analysis_total_frames: autoAnalysisProgress.totalFrames,
@@ -578,6 +694,7 @@ export default function PoseAnalysisView({
         analysis_started_at: analysisStartedAt,
         analysis_finished_at: analysisFinishedAt,
       });
+      if (!reportViewMountedRef.current) return;
 
       longTermVideoUrl = savedReport.video_url ?? uploadSession.videoUrl ?? longTermVideoUrl;
       console.log("Report saved through backend, public ID:", savedReport.public_id);
@@ -591,11 +708,18 @@ export default function PoseAnalysisView({
       });
 
       router.push(`${routes.pose2d.report}?id=${savedReport.public_id}`);
+      navigatingToReport = true;
     } catch (error) {
+      if (!reportViewMountedRef.current) return;
       console.error("Analysis/Save failed:", error);
-      alert("Failed to save report to cloud. Please check console.");
+      setSaveFailed(true);
+      setAnalysisWarning(`${error instanceof Error ? error.message : "Unable to save the report."} Your captured analysis is still available. You can retry saving when the issue is resolved.`);
     } finally {
-      setIsGeneratingReport(false);
+      // A successful request stays locked while Next loads the persisted report.
+      if (reportViewMountedRef.current && !navigatingToReport) {
+        reportSubmissionRef.current = false;
+        setIsGeneratingReport(false);
+      }
     }
   };
 
@@ -603,7 +727,8 @@ export default function PoseAnalysisView({
     autoAnalysisProgress.status === "loading" || autoAnalysisProgress.status === "analyzing";
   const isAutoError = autoAnalysisProgress.status === "error";
   const requiresTemporal = needsTemporalTimeline(analysisType);
-  const analysisDataReady = captureStats.ready && (!requiresTemporal || temporalStats.ready);
+  const analysisDataReady = trainingReadiness?.ready
+    ?? (captureStats.ready && (!requiresTemporal || temporalStats.ready));
   const progressPercent = Math.round(
     requiresTemporal && captureStats.ready && !temporalStats.ready
       ? temporalStats.coveragePercent
@@ -625,6 +750,8 @@ export default function PoseAnalysisView({
       : AlertCircle;
   const analysisTitle = analysisDataReady
     ? "Analysis data ready"
+    : trainingReadiness && captureStats.ready && temporalStats.ready && !isAutoAnalyzing
+      ? "Movement needs clearer data"
     : captureStats.ready && requiresTemporal && !temporalStats.ready
       ? "Motion sequence needs more frames"
     : isAutoAnalyzing
@@ -638,12 +765,14 @@ export default function PoseAnalysisView({
         : "Waiting for video frames";
   const analysisDescription = analysisDataReady
     ? "The report will use a full-video MediaPipe timeline with enough scoring data."
+    : trainingReadiness && !isAutoAnalyzing && !isAutoError
+      ? trainingReadiness.reason
     : captureStats.ready && requiresTemporal && !temporalStats.ready
-      ? "This mode needs continuous motion frames for dynamic metrics. Let auto analysis finish or play the clip once manually."
+      ? "This mode needs continuous motion frames for dynamic metrics. Let auto analysis finish or choose Recapture from start."
     : isAutoAnalyzing
       ? "The uploaded clip is being scanned frame by frame. View Analysis unlocks when it finishes."
       : isAutoError
-        ? "Play the clip once manually, or upload a clearer clip if pose landmarks were not detected."
+        ? "Retry automatic analysis, choose Recapture from start, or upload a clearer clip if pose landmarks were not detected."
         : captureStats.samples > 0
           ? "Keep playing from the beginning until the progress reaches the end of the clip."
           : "Automatic full-video analysis starts after the MediaPipe engine loads.";
@@ -660,8 +789,8 @@ export default function PoseAnalysisView({
   const reportButtonLabel = isGeneratingReport
     ? "Saving..."
     : analysisDataReady
-      ? "View Analysis Report"
-      : "Collecting frames";
+      ? saveFailed ? "Retry saving report" : "View Analysis Report"
+      : isAutoAnalyzing || isPlaying ? "Collecting frames" : "More analysis data needed";
 
   return (
     <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]">
@@ -681,7 +810,7 @@ export default function PoseAnalysisView({
                 {analysisType}
               </div>
               <div className="rounded-full border border-sky-300/18 bg-sky-300/10 px-3 py-1.5 text-[0.68rem] uppercase tracking-[0.26em] text-sky-100/80">
-                {captureStats.ready
+                {analysisDataReady
                   ? "Report ready"
                   : isAutoAnalyzing
                     ? "Auto analysis"
@@ -703,9 +832,9 @@ export default function PoseAnalysisView({
             </div>
 
             <div className="aspect-video relative">
-              {videoUrl && (
+              {videoUrl && !manualCapture && (
                 <PoseAutoAnalyzer
-                  key={`${videoUrl}-${analysisType}`}
+                  key={`${videoUrl}-${analysisType}-${analysisAttempt}`}
                   videoUrl={videoUrl}
                   analysisType={analysisType}
                   onProgress={handleAutoAnalysisProgress}
@@ -715,6 +844,7 @@ export default function PoseAnalysisView({
               )}
 
               <Pose2DCanvas
+                key={`${videoUrl}-${canvasAttempt}`}
                 videoUrl={videoUrl}
                 isPlaying={isPlaying}
                 onVideoEnd={handleVideoEnd}
@@ -763,7 +893,7 @@ export default function PoseAnalysisView({
               <div className="flex min-w-0 items-center gap-3">
                 <div
                   className={`grid h-10 w-10 shrink-0 place-items-center rounded-full border ${
-                    captureStats.ready
+                    analysisDataReady
                       ? "border-emerald-300/25 bg-emerald-300/12 text-emerald-200"
                       : "border-sky-300/20 bg-sky-300/10 text-sky-100"
                   }`}
@@ -790,7 +920,7 @@ export default function PoseAnalysisView({
             <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/[0.06]">
               <div
                 className={`h-full rounded-full ${
-                  captureStats.ready ? "bg-emerald-300" : "bg-sky-300"
+                  analysisDataReady ? "bg-emerald-300" : "bg-sky-300"
                 }`}
                 style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}
               />
@@ -798,12 +928,19 @@ export default function PoseAnalysisView({
 
             <div className="mt-3 flex flex-col gap-2 text-xs text-white/46 sm:flex-row sm:items-center sm:justify-between">
               <span>{coverageLabel}</span>
-              <span>Full-video timeline is kept until a new upload starts.</span>
+              <span>Captured data is kept until you clear the clip or recapture from the start.</span>
             </div>
 
             {analysisWarning && (
-              <div className="mt-3 rounded-2xl border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-xs leading-5 text-amber-100/85">
+              <div role="alert" className="mt-3 rounded-2xl border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-xs leading-5 text-amber-100/85">
                 {analysisWarning}
+              </div>
+            )}
+            {!analysisDataReady && !isAutoAnalyzing && !isPlaying && !isGeneratingReport && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button variant="outline" onClick={handleRetryAutoAnalysis}>Retry automatic analysis</Button>
+                <Button variant="outline" onClick={handleManualRecapture}>Recapture from start</Button>
+                <p className="w-full text-xs text-white/50">Recapture replaces the incomplete timeline and plays the clip from the beginning.</p>
               </div>
             )}
           </div>
@@ -813,10 +950,25 @@ export default function PoseAnalysisView({
               isPlaying={isPlaying}
               onTogglePlay={() => setIsPlaying((p) => !p)}
               onClear={onClear}
-              playDisabled={isAutoAnalyzing}
+              playDisabled={isAutoAnalyzing || isGeneratingReport}
+              clearDisabled={isGeneratingReport}
             />
 
             <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+              {analysisType === "training" && (
+                <label className="text-xs text-white/65">
+                  Age Group
+                  <select
+                    aria-label="Report age group"
+                    value={ageGroup}
+                    onChange={(event) => setAgeGroup(event.target.value)}
+                    disabled={isGeneratingReport}
+                    className="mt-1 block w-full rounded-xl border border-white/15 bg-slate-950 p-2.5 text-sm text-white disabled:opacity-60"
+                  >
+                    {REPORT_AGE_GROUPS.map((age) => <option key={age} value={age}>{age} Years</option>)}
+                  </select>
+                </label>
+              )}
               <div className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-3 text-[0.72rem] uppercase tracking-[0.24em] text-white/55">
                 {isGeneratingReport ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -825,17 +977,17 @@ export default function PoseAnalysisView({
                 )}
                 {isGeneratingReport
                   ? "Saving report"
-                  : captureStats.ready
+                  : analysisDataReady
                     ? "Report ready"
                     : "Collecting timeline"}
               </div>
               <Button
                 onClick={handleGenerateReport}
-                disabled={isGeneratingReport || isAutoAnalyzing || !captureStats.ready}
+                disabled={isGeneratingReport || isAutoAnalyzing || !analysisDataReady}
                 className="min-h-12 rounded-full border border-indigo-300/20 bg-indigo-400 px-5 text-slate-950 shadow-[0_14px_35px_rgba(129,140,248,0.28)] hover:bg-indigo-300"
               >
                 {reportButtonLabel}
-                {!isGeneratingReport && captureStats.ready && <ArrowRight className="h-4 w-4" />}
+                {!isGeneratingReport && analysisDataReady && <ArrowRight className="h-4 w-4" />}
               </Button>
             </div>
           </div>

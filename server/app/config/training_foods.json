@@ -1,0 +1,244 @@
+{
+  "version": "training-foods-afcd-r3-2026-10-03-v1",
+  "release": {
+    "name": "AFCD Release 3",
+    "fingerprint": "26922a4c7b33d94d1937b9e66c8660a9322bcad72664f2da150856faa271955c",
+    "basis": "per_100g_edible_portion",
+    "source_page": "https://www.foodstandards.gov.au/science-data/food-nutrient-databases/afcd/data-files",
+    "attribution": "Food Standards Australia New Zealand (FSANZ), Australian Food Composition Database, Release 3",
+    "licence_url": "https://www.foodstandards.gov.au/science-data/monitoringnutrients/afcd/datauserlicenceagreement",
+    "sources": {
+      "food-details": {
+        "sha256": "69aa096c45cb0699db60a9c544442312e9ff09af587b99c42dc78bc26f689629",
+        "bytes": 1137444,
+        "url": "https://www.foodstandards.gov.au/sites/default/files/2025-12/AFCD%20Release%203%20-%20Food%20Details.xlsx"
+      },
+      "nutrient-profiles": {
+        "sha256": "14cb3e73dbf58987b440e6299624c0fefd7a4e61591fc1f753995d9534e0efc9",
+        "bytes": 2107021,
+        "url": "https://www.foodstandards.gov.au/sites/default/files/2025-12/AFCD%20Release%203%20-%20Nutrient%20profiles.xlsx"
+      },
+      "nutrient-details": {
+        "sha256": "7c455129a90e65d29840ecd188fa223cca8bdf0729b21efebc286884d69fafaa",
+        "bytes": 107383,
+        "url": "https://www.foodstandards.gov.au/sites/default/files/2025-12/AFCD%20Release%203%20-%20Nutrient%20details.xlsx"
+      }
+    }
+  },
+  "categories": [
+    {
+      "key": "meat",
+      "name": "肉类"
+    },
+    {
+      "key": "eggs",
+      "name": "蛋类"
+    },
+    {
+      "key": "dairy",
+      "name": "奶类"
+    },
+    {
+      "key": "vegetables",
+      "name": "蔬菜"
+    }
+  ],
+  "foods": [
+    {
+      "food_key": "F002594",
+      "name": "鸡胸肉（去皮瘦肉）",
+      "category": "meat",
+      "preparation": "生",
+      "source_name": "Chicken, breast, lean flesh, raw"
+    },
+    {
+      "food_key": "F002593",
+      "name": "鸡胸肉（去皮瘦肉）",
+      "category": "meat",
+      "preparation": "烤制，无额外加油",
+      "source_name": "Chicken, breast, lean flesh, grilled, no added fat"
+    },
+    {
+      "food_key": "F000836",
+      "name": "牛里脊（去骨瘦肉）",
+      "category": "meat",
+      "preparation": "生",
+      "source_name": "Beef, steak, boneless, fillet or tenderloin, lean, raw"
+    },
+    {
+      "food_key": "F000835",
+      "name": "牛里脊（去骨瘦肉）",
+      "category": "meat",
+      "preparation": "烤制，无额外加油",
+      "source_name": "Beef, steak, boneless, fillet or tenderloin, lean, grilled, no added fat"
+    },
+    {
+      "food_key": "F006899",
+      "name": "猪里脊（瘦肉）",
+      "category": "meat",
+      "preparation": "生",
+      "source_name": "Pork, fillet, lean, raw"
+    },
+    {
+      "food_key": "F006892",
+      "name": "猪里脊（修去可见脂肪）",
+      "category": "meat",
+      "preparation": "烘烤，无额外加油",
+      "source_name": "Pork, fillet, fully-trimmed, baked, no added fat"
+    },
+    {
+      "food_key": "F007827",
+      "name": "大西洋三文鱼（鱼柳）",
+      "category": "meat",
+      "preparation": "生",
+      "source_name": "Salmon, Atlantic, fillet, raw"
+    },
+    {
+      "food_key": "F007828",
+      "name": "大西洋三文鱼（鱼柳）",
+      "category": "meat",
+      "preparation": "蒸熟，无额外加油",
+      "source_name": "Salmon, Atlantic, fillet, steamed, no added fat"
+    },
+    {
+      "food_key": "F003729",
+      "name": "鸡蛋（全蛋）",
+      "category": "eggs",
+      "preparation": "生，去壳可食部分",
+      "source_name": "Egg, chicken, whole, raw"
+    },
+    {
+      "food_key": "F003721",
+      "name": "鸡蛋（全蛋）",
+      "category": "eggs",
+      "preparation": "煮熟，去壳可食部分",
+      "source_name": "Egg, chicken, whole, hard-boiled"
+    },
+    {
+      "food_key": "F003706",
+      "name": "鸡蛋蛋白",
+      "category": "eggs",
+      "preparation": "生",
+      "source_name": "Egg, chicken, white (albumen), raw"
+    },
+    {
+      "food_key": "F003705",
+      "name": "鸡蛋蛋白",
+      "category": "eggs",
+      "preparation": "煮熟",
+      "source_name": "Egg, chicken, white (albumen), hard-boiled"
+    },
+    {
+      "food_key": "F005634",
+      "name": "全脂牛奶",
+      "category": "dairy",
+      "preparation": "液态，约3.5%脂肪",
+      "source_name": "Milk, cow, fluid, regular fat (~3.5%)"
+    },
+    {
+      "food_key": "F005614",
+      "name": "低脂牛奶",
+      "category": "dairy",
+      "preparation": "液态，约1%脂肪",
+      "source_name": "Milk, cow, fluid, reduced fat (~1%)"
+    },
+    {
+      "food_key": "F005637",
+      "name": "脱脂牛奶",
+      "category": "dairy",
+      "preparation": "液态，约0.15%脂肪",
+      "source_name": "Milk, cow, fluid, skim (~0.15% fat)"
+    },
+    {
+      "food_key": "F009694",
+      "name": "原味酸奶",
+      "category": "dairy",
+      "preparation": "常规脂肪，约3%",
+      "source_name": "Yoghurt, natural, regular fat (~3%)"
+    },
+    {
+      "food_key": "F002414",
+      "name": "天然切达奶酪",
+      "category": "dairy",
+      "preparation": "常规脂肪",
+      "source_name": "Cheese, cheddar, natural, regular fat"
+    },
+    {
+      "food_key": "F001905",
+      "name": "西兰花",
+      "category": "vegetables",
+      "preparation": "新鲜，生",
+      "source_name": "Broccoli, fresh, raw"
+    },
+    {
+      "food_key": "F001900",
+      "name": "西兰花",
+      "category": "vegetables",
+      "preparation": "新鲜，水煮沥干",
+      "source_name": "Broccoli, fresh, boiled, drained"
+    },
+    {
+      "food_key": "F002276",
+      "name": "胡萝卜",
+      "category": "vegetables",
+      "preparation": "去皮，新鲜，生",
+      "source_name": "Carrot, mature, peeled, fresh, raw"
+    },
+    {
+      "food_key": "F002275",
+      "name": "胡萝卜",
+      "category": "vegetables",
+      "preparation": "去皮，新鲜，水煮沥干",
+      "source_name": "Carrot, mature, peeled, fresh, boiled, drained"
+    },
+    {
+      "food_key": "F008761",
+      "name": "菠菜",
+      "category": "vegetables",
+      "preparation": "成熟叶，新鲜，生",
+      "source_name": "Spinach, Mature English, fresh, raw"
+    },
+    {
+      "food_key": "F008760",
+      "name": "菠菜",
+      "category": "vegetables",
+      "preparation": "成熟叶，新鲜，水煮沥干",
+      "source_name": "Spinach, Mature English, fresh, boiled, drained"
+    },
+    {
+      "food_key": "F009193",
+      "name": "番茄",
+      "category": "vegetables",
+      "preparation": "普通番茄，生",
+      "source_name": "Tomato, common, raw"
+    },
+    {
+      "food_key": "F007320",
+      "name": "土豆",
+      "category": "vegetables",
+      "preparation": "浅色皮，去皮，水煮沥干",
+      "source_name": "Potato, pale skin, peeled, boiled, drained"
+    },
+    {
+      "food_key": "F007554",
+      "name": "南瓜",
+      "category": "vegetables",
+      "preparation": "去皮，新鲜，水煮沥干",
+      "source_name": "Pumpkin, peeled, fresh, boiled, drained"
+    },
+    {
+      "food_key": "F000430",
+      "name": "四季豆",
+      "category": "vegetables",
+      "preparation": "新鲜，水煮沥干",
+      "source_name": "Bean, green, fresh, boiled, drained"
+    },
+    {
+      "food_key": "F006535",
+      "name": "青豌豆",
+      "category": "vegetables",
+      "preparation": "新鲜，水煮沥干",
+      "source_name": "Pea, green, fresh, boiled, drained"
+    }
+  ]
+}
