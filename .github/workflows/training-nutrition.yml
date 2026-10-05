@@ -131,8 +131,8 @@ jobs:
           node --input-type=module <<'JS'
           import { readFileSync } from "node:fs";
           const report = JSON.parse(readFileSync("../tmp/frontend-unit-results.json", "utf8"));
-          // The committed HEAD suite has 161 tests; unrelated local tests are excluded.
-          if (report.success !== true || report.numTotalTests < 161 ||
+          // 161 baseline tests plus 78 age, capture, activity and share regressions.
+          if (report.success !== true || report.numTotalTests < 239 ||
               report.numPendingTests !== 0 || (report.numTodoTests ?? 0) !== 0 ||
               report.testResults.some(file => file.assertionResults.some(test => test.status !== "passed"))) {
             throw new Error("Frontend CI requires the full unit suite with zero skipped/todo tests.");
@@ -144,7 +144,19 @@ jobs:
       - name: Browser test type check
         run: npm run typecheck:e2e
       - name: Browser test and configuration lint
-        run: npx eslint e2e playwright.config.ts
+        run: npx eslint 'e2e/*.ts' playwright.config.ts
+      - name: Age report and shared Pose source lint
+        run: >-
+          npx eslint src/app/pose-2d/report/page.tsx
+          src/components/Pose2D/Controls.tsx src/components/Pose2D/PoseAnalysisView.tsx
+          src/components/Pose2D/PoseAutoAnalyzer.tsx src/hooks/useMediaPipePose.ts
+          src/services/reports.ts src/services/coach.ts src/lib/trainingReport.ts
+          src/components/account/AccountDataProvider.tsx src/components/account/types.ts
+          'src/app/coach/classes/[classPublicId]/page.tsx' src/components/coach/CoachReportTable.tsx
+          src/lib/__tests__/trainingReport.test.ts src/lib/__tests__/mediaPipePose.test.ts
+          src/lib/__tests__/poseReportSave.test.ts src/lib/__tests__/reportActivity.test.ts
+          src/components/auth/ProtectedRoute.tsx src/lib/sharedReportRoute.ts
+          src/lib/__tests__/sharedReportRoute.test.ts
       - name: Production webpack build
         run: npm run build -- --webpack
       - name: Install isolated browser backend dependencies
@@ -178,15 +190,15 @@ jobs:
           else:
               raise SystemExit("Isolated E2E API did not become healthy.")
           PY
-      - name: Browser Profile, coach publication and parent food/recovery flow
+      - name: Browser Profile, coach publication, food and age report flow
         run: |
           npm run test:e2e
           python - <<'PY'
           import xml.etree.ElementTree as ET
           report = ET.parse("e2e/.artifacts/junit.xml").getroot()
           cases = report.findall(".//testcase")
-          if len(cases) < 3 or any(case.find(tag) is not None for case in cases for tag in ("skipped", "failure", "error")):
-              raise SystemExit("Browser CI requires all three scenarios with zero skips/failures.")
+          if len(cases) < 5 or any(case.find(tag) is not None for case in cases for tag in ("skipped", "failure", "error")):
+              raise SystemExit("Browser CI requires all five scenarios with zero skips/failures.")
           print(f"Strict browser CI: {len(cases)} passed, zero skips.")
           PY
       - name: Stop this job's test API

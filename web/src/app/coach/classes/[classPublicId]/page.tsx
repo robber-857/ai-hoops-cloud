@@ -231,18 +231,20 @@ export default function CoachClassDetailPage() {
   }, [canAccessCoach, classPublicId, hasInitialized, user]);
 
   const summary = useMemo(() => {
-    const scores = reports
+    const activityReports = reports.filter((report) => !report.is_age_comparison);
+    const scores = activityReports
       .map((report) => report.overall_score)
       .filter((score): score is number => typeof score === "number" && Number.isFinite(score));
     const bestScore = scores.length > 0 ? Math.max(...scores) : null;
     const averageScore =
       scores.length > 0 ? scores.reduce((sum, score) => sum + score, 0) / scores.length : null;
-    const recentReports = reports.filter((report) => {
+    const recentReports = activityReports.filter((report) => {
       const createdAt = new Date(report.created_at).getTime();
       return Date.now() - createdAt <= 7 * 24 * 60 * 60 * 1000;
     }).length;
 
     return {
+      reportCount: activityReports.length,
       bestScore,
       averageScore,
       recentReports,
@@ -530,7 +532,7 @@ export default function CoachClassDetailPage() {
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <HeroMetric label="Students" value={students.length} helper="Active class roster" />
-          <HeroMetric label="Reports" value={reports.length} helper="Latest 50 records" />
+          <HeroMetric label="Reports" value={summary.reportCount} helper="Original training records in latest 50" />
           <HeroMetric
             label="7-day reports"
             value={summary.recentReports}

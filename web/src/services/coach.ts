@@ -52,6 +52,7 @@ export type CoachClassReportRead = {
   video_url: string | null;
   created_at: string;
   analysis_finished_at: string | null;
+  is_age_comparison?: boolean;
 };
 
 export type CoachClassReportsResponse = {

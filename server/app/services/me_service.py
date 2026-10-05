@@ -43,7 +43,7 @@ from app.schemas.me import (
 from app.schemas.report import ReportListItem
 from app.schemas.training import TrainingSessionRead
 from app.schemas.user import UserRead
-from app.services.report_service import ReportService, _report_list_item
+from app.services.report_service import ReportService, _original_reports_only, _report_list_item
 from app.services.training_service import _session_read
 
 
@@ -190,6 +190,7 @@ class MeService:
                 AnalysisReport.public_id == payload.report_public_id,
                 AnalysisReport.user_id == current_user.id,
                 AnalysisReport.status == ReportStatus.completed,
+                _original_reports_only(),
             )
         )
         if not report:
@@ -398,6 +399,7 @@ class MeService:
                 AnalysisReport.user_id == current_user.id,
                 AnalysisReport.created_at >= datetime.now(timezone.utc) - timedelta(days=days),
                 AnalysisReport.analysis_type == analysis_type if analysis_type else True,
+                _original_reports_only(),
             )
             .order_by(AnalysisReport.created_at.asc())
         ).all()
@@ -425,7 +427,7 @@ class MeService:
         now = datetime.now(timezone.utc)
         weekly_since = now - timedelta(days=7)
 
-        total_reports = self.db.scalar(select(func.count(AnalysisReport.id)).where(AnalysisReport.user_id == user_id)) or 0
+        total_reports = self.db.scalar(select(func.count(AnalysisReport.id)).where(AnalysisReport.user_id == user_id, _original_reports_only())) or 0
         total_sessions = self.db.scalar(select(func.count(TrainingSession.id)).where(TrainingSession.student_id == user_id)) or 0
         completed_sessions = self.db.scalar(
             select(func.count(TrainingSession.id)).where(
@@ -439,8 +441,8 @@ class MeService:
                 TrainingSession.created_at >= weekly_since,
             )
         ) or 0
-        best_score = self.db.scalar(select(func.max(AnalysisReport.overall_score)).where(AnalysisReport.user_id == user_id))
-        average_score = self.db.scalar(select(func.avg(AnalysisReport.overall_score)).where(AnalysisReport.user_id == user_id))
+        best_score = self.db.scalar(select(func.max(AnalysisReport.overall_score)).where(AnalysisReport.user_id == user_id, _original_reports_only()))
+        average_score = self.db.scalar(select(func.avg(AnalysisReport.overall_score)).where(AnalysisReport.user_id == user_id, _original_reports_only()))
         active_tasks = self.db.scalar(
             select(func.count(TrainingTaskAssignment.id))
             .join(TrainingTask, TrainingTaskAssignment.task_id == TrainingTask.id)
@@ -534,6 +536,7 @@ class MeService:
             .where(
                 TrainingSession.task_assignment_id == assignment_id,
                 AnalysisReport.status == ReportStatus.completed,
+                _original_reports_only(),
             )
             .order_by(
                 func.coalesce(AnalysisReport.analysis_finished_at, AnalysisReport.created_at).desc(),

@@ -10,7 +10,7 @@ if __package__ in (None, ""):
 
 from tools.training_test_support import SERVER_ROOT, UNIT_DATABASE, test_database_url
 
-MINIMUM_TESTS = 167  # Committed feature source + four PG regressions + eight tool guards.
+MINIMUM_TESTS = 190  # Baseline 167 + 17 age-report unit tests + six real PG regressions.
 
 
 def successful_without_skips(result) -> bool:

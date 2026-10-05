@@ -56,3 +56,14 @@ mutated records; reseed and rerun the complete suite.
 Failure traces/screenshots, HTML and JUnit results are in `.artifacts/` (ignored).
 These browser checks use synthetic accounts and do not replace user UAT or
 production migration/deployment checks.
+
+Two additional report-age scenarios use seeded synthetic measurements and a
+historical template deliberately different from current rules. They cover age
+preview/cancel, a one-shot 503 and idempotent retry, the save lock, refresh,
+unchanged original measurements/template/report and dashboard statistics,
+anonymous read-only sharing, missing historical rules, loading retry and failed
+ID changes without stale report contents. Their successful reads/writes use the
+real dedicated API and PostgreSQL. The playable tracked demo does not generate
+the stored measurements: these scenarios do not prove MediaPipe inference,
+object-storage upload or real Training video quality. Reseed old fixture files
+to include the new randomly scoped `age_reports` entries.

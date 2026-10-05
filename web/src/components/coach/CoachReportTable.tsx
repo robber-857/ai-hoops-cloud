@@ -67,7 +67,7 @@ export function CoachReportTable({ reports, returnTo }: CoachReportTableProps) {
                 </td>
                 <td className="px-4 py-4 text-white/62">
                   <div className="max-w-[16rem] truncate">
-                    {getTemplateDisplayName(report.template_code)}
+                    {getTemplateDisplayName(report.template_code)}{report.is_age_comparison ? " · Age comparison" : ""}
                   </div>
                 </td>
                 <td className="px-4 py-4 text-right">

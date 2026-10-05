@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import type { Pose as PoseType, Results, PoseConfig, LandmarkConnectionArray, NormalizedLandmarkList } from '@mediapipe/pose';
+import type { Pose as PoseType, PoseConfig, LandmarkConnectionArray, NormalizedLandmarkList } from '@mediapipe/pose';
 
 // 为动态加载的全局变量提供类型定义
 declare global {
@@ -16,8 +16,11 @@ declare global {
 
 // 辅助函数：加载脚本
 // 动态注入脚本：避免重复加载
+const scriptLoads = new Map<string, Promise<void>>();
 const loadScript = (src: string): Promise<void> => {
-  return new Promise((resolve, reject) => {
+  const pending = scriptLoads.get(src);
+  if (pending) return pending;
+  const loading = new Promise<void>((resolve, reject) => {
     if (document.querySelector(`script[src="${src}"]`)) {
       return resolve();
     }
@@ -25,9 +28,15 @@ const loadScript = (src: string): Promise<void> => {
     script.src = src;
     script.crossOrigin = 'anonymous';
     script.onload = () => resolve();
-    script.onerror = (err) => reject(new Error(`Script load error for ${src}: ${err}`));
+    script.onerror = (err) => {
+      script.remove();
+      scriptLoads.delete(src);
+      reject(new Error(`Script load error for ${src}: ${err}`));
+    };
     document.body.appendChild(script);
   });
+  scriptLoads.set(src, loading);
+  return loading;
 };
 //轮询等待全局对象：waitForGlobal<T>(name) 每 100ms 检查一次，默认 3s 超时。
 // 辅助函数：轮询检查全局变量是否可用

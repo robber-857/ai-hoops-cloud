@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, Suspense, useMemo, useRef } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation"; 
+import { useRouter, useSearchParams } from "next/navigation";
 import { AccountEntryButton } from "@/components/account/AccountEntryButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +20,7 @@ import {
 } from "@/config/templates";
 import { calculateRealScore, ScoreResult, Grade, AngleData } from "@/lib/scoring";
 import { mergeTrainingTimelineMetrics } from "@/lib/trainingCalculator";
+import { rescoreTrainingReportForAge } from "@/lib/trainingReport";
 import { useAnalysisStore, FrameSample } from "@/store/analysisStore";
 import MetricTimelineCard from "@/components/Pose2D/MetricTimelineCard";
 import { ChevronLeft, Download, Activity, CheckCircle2, AlertCircle, Check, Link as LinkIcon, AlertTriangle } from "lucide-react";
@@ -259,11 +260,17 @@ function ReportContent() {
   const user = useAuthStore((state) => state.user);
 
   const searchParams = useSearchParams();
+  const router = useRouter();
   const reportId = searchParams.get('id');
   const isSharedView = searchParams.get("share") === "1";
   const returnTo = getSafeReturnTo(searchParams.get("returnTo"));
 
   const [ageGroup, setAgeGroup] = useState<string>(DEFAULT_AGE_GROUP);
+  const [savedAgeGroup, setSavedAgeGroup] = useState(DEFAULT_AGE_GROUP);
+  const [canReanalyzeAge, setCanReanalyzeAge] = useState(false);
+  const [ageSaveError, setAgeSaveError] = useState<string | null>(null);
+  const ageSaveRequestRef = useRef<{ key: string; id: string } | null>(null);
+  const ageSaveInFlightRef = useRef(false);
   const [selectedMode, setSelectedMode] = useState<ActionTemplate['mode']>("dribbling");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   
@@ -286,6 +293,13 @@ function ReportContent() {
 
   const [isMounted, setIsMounted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [reportLoadError, setReportLoadError] = useState<string | null>(null);
+  const [reportLoadAttempt, setReportLoadAttempt] = useState(0);
+  const [loadedReportKey, setLoadedReportKey] = useState<string | null>(null);
+  const reportKey = `${reportId}:${isSharedView}:${user?.public_id ?? "anonymous"}`;
+  const reportKeyRef = useRef(reportKey);
+  reportKeyRef.current = reportKey;
+  const reportViewMountedRef = useRef(true);
   const [isCopied, setIsCopied] = useState(false);
   const persistedReportSignatureRef = useRef<string | null>(null);
   const performanceCurveRef = useRef<HTMLDivElement | null>(null);
@@ -293,7 +307,11 @@ function ReportContent() {
   const [findingsCardHeight, setFindingsCardHeight] = useState<number | null>(null);
   const [persistedScoringOptions, setPersistedScoringOptions] = useState<Record<string, unknown>>({});
 
-  useEffect(() => setIsMounted(true), []);
+  useEffect(() => {
+    reportViewMountedRef.current = true;
+    setIsMounted(true);
+    return () => { reportViewMountedRef.current = false; };
+  }, []);
 
   // 1. 初始化模板 (本地模式)
   useEffect(() => {
@@ -351,13 +369,30 @@ function ReportContent() {
   useEffect(() => {
     const reportPublicId = reportId;
     if (!reportPublicId) return;
+    let cancelled = false;
 
     async function fetchReport(publicId: string) {
       setLoading(true);
+      setLoadedReportKey(null);
+      setReportLoadError(null);
+      setCanReanalyzeAge(false);
+      setAgeSaveError(null);
+      setReportSyncState("idle");
+      ageSaveInFlightRef.current = false;
+      setDbResult(null);
+      setDbTimeline(null);
+      setDbVideoUrl(null);
+      setDbSavedMetrics(null);
+      setDbSessionPublicId(null);
+      setDbTemplateSnapshot(null);
+      setDbTemplateSnapshotError(null);
+      setDbCameraContext(null);
       try {
         const data = isSharedView
           ? await reportService.getSharedReport(publicId)
           : await reportService.getReport(publicId);
+        if (cancelled) return;
+        setLoadedReportKey(reportKey);
         const scoreData = data.score_data as unknown as SavedScoreData;
         const persistedAgeGroup = getPersistedAgeGroup(scoreData);
         setPersistedScoringOptions(scoreData.score_context || {});
@@ -396,10 +431,10 @@ function ReportContent() {
               : null,
         });
         setAgeGroup(persistedAgeGroup);
+        setSavedAgeGroup(persistedAgeGroup);
+        setCanReanalyzeAge(data.can_reanalyze_age === true && !isSharedView);
 
-        if (Array.isArray(scoreData.saved_metrics)) {
-          setDbSavedMetrics(scoreData.saved_metrics);
-        }
+        setDbSavedMetrics(Array.isArray(scoreData.saved_metrics) ? scoreData.saved_metrics : null);
 
         if (
           data.analysis_type === "shooting" ||
@@ -420,16 +455,19 @@ function ReportContent() {
           );
         }
       } catch (e) {
-        console.error(e);
+        if (!cancelled) {
+          setReportLoadError(e instanceof Error ? e.message : "Could not load this report. Please retry.");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
     fetchReport(reportPublicId);
-  }, [isSharedView, reportId]);
+    return () => { cancelled = true; };
+  }, [isSharedView, reportId, reportKey, reportLoadAttempt]);
 
   useEffect(() => {
-    if (isSharedView || !reportId || !dbSessionPublicId || !dbSavedMetrics || !dbResult || !selectedTemplateId) {
+    if (isSharedView || !reportId || loading || loadedReportKey !== reportKey || !dbSessionPublicId || !dbSavedMetrics || !dbResult || !selectedTemplateId) {
       return;
     }
 
@@ -499,6 +537,9 @@ function ReportContent() {
     dbTemplateVersion,
     dbTimeline,
     isSharedView,
+    loading,
+    loadedReportKey,
+    reportKey,
     reportId,
     selectedTemplateId,
   ]);
@@ -516,7 +557,47 @@ function ReportContent() {
     });
   };
 
-  const finalResult = reportId ? dbResult : result;
+  const isTrainingAgePreview = Boolean(reportId) && selectedMode === "training" && ageGroup !== savedAgeGroup;
+  const agePreviewResult = useMemo(() => isTrainingAgePreview
+    ? rescoreTrainingReportForAge(dbTemplateSnapshot, dbSavedMetrics, ageGroup, persistedScoringOptions)
+    : null, [isTrainingAgePreview, dbTemplateSnapshot, dbSavedMetrics, ageGroup, persistedScoringOptions]);
+  const finalResult = reportId ? (isTrainingAgePreview ? agePreviewResult : dbResult) : result;
+  const handleSaveAgeReport = async () => {
+    if (!reportId || !canReanalyzeAge || !isTrainingAgePreview || agePreviewResult?.analysisStatus !== "ready" || ageSaveInFlightRef.current) return;
+    ageSaveInFlightRef.current = true;
+    setReportSyncState("saving");
+    setAgeSaveError(null);
+    const key = `${reportId}:${ageGroup}`;
+    const savingReportKey = reportKey;
+    let navigatingToReport = false;
+    try {
+      if (ageSaveRequestRef.current?.key !== key) {
+        ageSaveRequestRef.current = { key, id: crypto.randomUUID() };
+      }
+      const saved = await reportService.reanalyzeAge(reportId, {
+        request_id: ageSaveRequestRef.current.id,
+        age_group: ageGroup,
+        overall_score: agePreviewResult.overall,
+        grade: agePreviewResult.grade,
+        score_data: { ...agePreviewResult },
+      });
+      if (!reportViewMountedRef.current || reportKeyRef.current !== savingReportKey) return;
+      const params = new URLSearchParams({ id: saved.public_id });
+      if (returnTo) params.set("returnTo", returnTo);
+      // Keep controls locked until the new persisted report has loaded.
+      setLoading(true);
+      router.push(`${routes.pose2d.report}?${params.toString()}`);
+      navigatingToReport = true;
+    } catch (error) {
+      if (!reportViewMountedRef.current || reportKeyRef.current !== savingReportKey) return;
+      setAgeSaveError(error instanceof Error ? error.message : "Could not save the new report. Please retry.");
+      setReportSyncState("error");
+    } finally {
+      if (reportViewMountedRef.current && !navigatingToReport && reportKeyRef.current === savingReportKey) {
+        ageSaveInFlightRef.current = false;
+      }
+    }
+  };
   const finalVideoUrl = reportId ? dbVideoUrl : currentVideoUrl;
   const finalTimeline = reportId ? dbTimeline : currentTimeline;
   const rawFinalSavedMetrics = reportId ? dbSavedMetrics : currentAngles;
@@ -649,7 +730,18 @@ function ReportContent() {
 
   if (!isMounted) return null;
 
-  if (loading) {
+  if (reportId && reportLoadError && !loading) {
+    return <div className="report-shell flex min-h-screen items-center justify-center p-6 text-white">
+      <div className="max-w-lg space-y-4 rounded-2xl border border-white/10 p-6">
+        <h1 className="text-xl font-semibold">Could not load report</h1>
+        <p role="alert">{reportLoadError}</p>
+        <Button onClick={() => setReportLoadAttempt((attempt) => attempt + 1)}>Retry loading report</Button>
+        <Link href={backHref} className="ml-4 underline">Back</Link>
+      </div>
+    </div>;
+  }
+
+  if (loading || (reportId && loadedReportKey !== reportKey)) {
      return (
         <div className="report-shell relative min-h-screen overflow-x-hidden flex items-center justify-center">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_18%,rgba(225,29,72,0.24),transparent_24%),radial-gradient(circle_at_84%_12%,rgba(59,130,246,0.18),transparent_22%),radial-gradient(circle_at_52%_58%,rgba(255,255,255,0.05),transparent_34%),linear-gradient(180deg,#05070c_0%,#0a1018_38%,#070b12_100%)]" />
@@ -675,7 +767,7 @@ function ReportContent() {
         ? "Saved"
         : reportSyncState === "error"
           ? "Save failed"
-          : "Ready";
+          : isTrainingAgePreview ? "Preview · unsaved" : "Ready";
 
   return (
     <div className="report-shell min-h-screen text-slate-900 font-sans pb-20 relative overflow-x-hidden">
@@ -735,6 +827,7 @@ function ReportContent() {
                 variant="default"
                 size="sm"
                 onClick={handleShare}
+                disabled={isTrainingAgePreview || reportSyncState === "saving"}
                 className="gap-2 bg-white text-[#E35757] hover:bg-white/90 h-8 px-2 sm:h-9 sm:px-4 font-bold shadow-sm transition-all active:scale-95"
               >
                 {isCopied ? <Check className="w-4 h-4" /> : <LinkIcon className="w-4 h-4" />}
@@ -769,7 +862,7 @@ function ReportContent() {
                   onChange={(e) => setSelectedTemplateId(e.target.value)}
                   disabled={
                     Boolean(reportId) &&
-                    (!dbSavedMetrics || selectedTemplate?.mode === "training")
+                    (!dbSavedMetrics || selectedMode === "training")
                   }
                 >
                   {templates.map((t) => (
@@ -792,8 +885,14 @@ function ReportContent() {
                 <select
                   className="report-select w-full appearance-none text-sm rounded-xl p-2.5 pr-9 outline-none cursor-pointer transition-all disabled:cursor-not-allowed disabled:opacity-60"
                   value={ageGroup}
-                  onChange={(e) => setAgeGroup(e.target.value)}
-                  disabled={Boolean(reportId) && selectedTemplate?.mode === "training"}
+                  aria-label="Age Group"
+                  onChange={(e) => {
+                    setAgeGroup(e.target.value);
+                    setAgeSaveError(null);
+                    setReportSyncState("idle");
+                  }}
+                  disabled={Boolean(reportId) && selectedMode === "training" &&
+                    (isSharedView || !canReanalyzeAge || !dbTemplateSnapshot || !dbSavedMetrics?.length || reportSyncState === "saving")}
                 >
                   {Object.keys(globalConfig.ageToleranceScale).map((age) => (
                     <option key={age} value={age}>
@@ -821,6 +920,20 @@ function ReportContent() {
               </Badge>
             )}
           </div>
+          {isTrainingAgePreview && (
+            <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-white/75">
+              <p className="w-full">Preview for ages {ageGroup}. Save as a new report to keep this result. The original report and measured values stay unchanged.</p>
+              <Button onClick={handleSaveAgeReport} disabled={reportSyncState === "saving" || agePreviewResult?.analysisStatus !== "ready" || !canReanalyzeAge}>
+                {reportSyncState === "saving" ? "Saving…" : "Save as new report"}
+              </Button>
+              <Button variant="outline" disabled={reportSyncState === "saving"} onClick={() => {
+                setAgeGroup(savedAgeGroup);
+                setAgeSaveError(null);
+                setReportSyncState("idle");
+              }}>Cancel</Button>
+              {ageSaveError && <p role="alert" className="w-full text-red-300">{ageSaveError}</p>}
+            </div>
+          )}
         </section>
 
         {hasCameraMismatch && (

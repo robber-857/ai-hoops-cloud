@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.services.display_names import staff_display_name
+from app.services.report_service import _original_reports_only
 
 import hashlib
 import json
@@ -1784,6 +1785,7 @@ class AdminService:
             .where(
                 AnalysisReport.user_id.in_(user_ids),
                 AnalysisReport.deleted_at.is_(None),
+                _original_reports_only(),
             )
             .group_by(AnalysisReport.user_id)
         ).all()

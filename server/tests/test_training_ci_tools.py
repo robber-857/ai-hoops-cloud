@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import unittest
 
 from tools.fetch_training_food_sources import pinned_config, verify_source
-from tools.run_ci_tests import successful_without_skips
+from tools.run_ci_tests import MINIMUM_TESTS, successful_without_skips
 from tools.training_test_support import (
     E2E_DATABASE, REPO_ROOT, TMP_ROOT, UNIT_DATABASE,
     local_tmp_path, require_database_identity, test_database_url, test_service_url,
@@ -77,13 +77,13 @@ class TrainingTestToolGuards(unittest.TestCase):
                 verify_source(modified, source, "synthetic")
 
     def test_ci_rejects_skipped_empty_incomplete_or_failed_suites(self):
-        def result(tests=167, skipped=(), passed=True):
+        def result(tests=MINIMUM_TESTS, skipped=(), passed=True):
             return SimpleNamespace(testsRun=tests, skipped=skipped, wasSuccessful=lambda: passed)
 
         self.assertTrue(successful_without_skips(result()))
         self.assertFalse(successful_without_skips(result(skipped=[("case", "missing database")])))
         self.assertFalse(successful_without_skips(result(tests=0)))
-        self.assertFalse(successful_without_skips(result(tests=166)))
+        self.assertFalse(successful_without_skips(result(tests=MINIMUM_TESTS - 1)))
         self.assertFalse(successful_without_skips(result(passed=False)))
 
 

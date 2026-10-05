@@ -127,7 +127,7 @@ function normalizeAnalysisType(
   return template?.mode ?? "shooting";
 }
 
-function normalizeReport(row: ReportListItem): AccountReport | null {
+export function normalizeReport(row: ReportListItem): AccountReport | null {
   const analysisType = normalizeAnalysisType(
     row.analysis_type,
     row.template_code,
@@ -146,12 +146,17 @@ function normalizeReport(row: ReportListItem): AccountReport | null {
     id: row.public_id,
     analysisType,
     templateCode: row.template_code ?? null,
-    templateName: template?.displayName ?? row.template_code ?? "Motion review",
+    templateName: `${template?.displayName ?? row.template_code ?? "Motion review"}${row.is_age_comparison ? " · Age comparison" : ""}`,
     score,
     grade: row.grade ?? getGrade(score),
     createdAt,
     linkable: true,
+    isAgeComparison: row.is_age_comparison === true,
   };
+}
+
+export function selectActivityReports(reports: AccountReport[]): AccountReport[] {
+  return reports.filter((report) => !report.isAgeComparison);
 }
 
 function formatRelativeTime(input: string): string {
@@ -341,7 +346,7 @@ function getScoreGateLabel(
   return `Score gate ${bestScore}/${Math.round(targets.targetScore)} pts`;
 }
 
-function findCandidateReports(
+export function findCandidateReports(
   task: TaskSummaryRead,
   reports: AccountReport[],
 ): AccountReport[] {
@@ -349,7 +354,7 @@ function findCandidateReports(
     task.analysis_type,
     task.template_code,
   );
-  return reports
+  return selectActivityReports(reports)
     .filter((report) => report.linkable)
     .filter((report) => report.analysisType === analysisType)
     .filter(
@@ -703,19 +708,20 @@ function useAccountData() {
         new Date(right.createdAt).getTime() -
         new Date(left.createdAt).getTime(),
     );
-    const latestReport = sortedReports[0] ?? null;
-    const weeklyReports = sortedReports.filter((report) =>
+    const activityReports = selectActivityReports(sortedReports);
+    const latestReport = activityReports[0] ?? null;
+    const weeklyReports = activityReports.filter((report) =>
       isWithinLastDays(report.createdAt, 7),
     );
-    const scores = sortedReports.map((report) => report.score);
+    const scores = activityReports.map((report) => report.score);
     const bestScore = Math.max(...scores, 0);
     const reportTrendPointsByType =
-      buildTrendPointsByTypeFromReports(sortedReports);
+      buildTrendPointsByTypeFromReports(activityReports);
     const trendPointsByType =
       backendTrendPointsByType && hasTrendData(backendTrendPointsByType)
         ? backendTrendPointsByType
         : reportTrendPointsByType;
-    const streak = computeStreakDays(sortedReports);
+    const streak = computeStreakDays(activityReports);
     const liveStats = reportSource === "live" ? backendStats : null;
 
     const stats: StatOverviewItem[] = liveStats
@@ -751,7 +757,7 @@ function useAccountData() {
       : [
           {
             label: "Total reports",
-            value: String(sortedReports.length),
+            value: String(activityReports.length),
             helper:
               reportSource === "live"
                 ? "Pulled from your history"

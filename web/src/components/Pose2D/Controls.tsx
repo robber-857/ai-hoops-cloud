@@ -62,6 +62,7 @@ interface ControlsProps {
   onTogglePlay: () => void;
   onClear: () => void;
   playDisabled?: boolean;
+  clearDisabled?: boolean;
 }
 
 export default function Controls({
@@ -69,6 +70,7 @@ export default function Controls({
   onTogglePlay,
   onClear,
   playDisabled = false,
+  clearDisabled = false,
 }: ControlsProps) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -88,6 +90,7 @@ export default function Controls({
 
       <Button
         onClick={onClear}
+        disabled={clearDisabled}
         variant="destructive"
         size="lg"
         className="min-h-12 rounded-full border border-rose-300/15 bg-rose-400/90 px-5 text-white hover:bg-rose-400"

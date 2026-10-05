@@ -59,6 +59,7 @@ class CoachClassReportRead(BaseModel):
     video_url: str | None = None
     created_at: datetime
     analysis_finished_at: datetime | None = None
+    is_age_comparison: bool = False
 
 
 class CoachClassReportsResponse(BaseModel):

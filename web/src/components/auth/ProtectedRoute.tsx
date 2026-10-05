@@ -4,6 +4,7 @@ import { Suspense, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { routes } from "@/lib/routes";
+import { isPublicSharedReportRoute } from "@/lib/sharedReportRoute";
 import { useAuthStore } from "@/store/authStore";
 
 type ProtectedRouteProps = {
@@ -30,16 +31,19 @@ function ProtectedRouteInner({ children }: ProtectedRouteProps) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isInitializing = useAuthStore((state) => state.isInitializing);
   const hasInitialized = useAuthStore((state) => state.hasInitialized);
+  const isPublicReport = isPublicSharedReportRoute(pathname, searchParams);
 
   useEffect(() => {
-    if (!hasInitialized || isInitializing || isAuthenticated) {
+    if (isPublicReport || !hasInitialized || isInitializing || isAuthenticated) {
       return;
     }
 
     const query = searchParams.toString();
     const nextPath = query ? `${pathname}?${query}` : pathname;
     router.replace(`${routes.auth.login}?next=${encodeURIComponent(nextPath)}`);
-  }, [hasInitialized, isAuthenticated, isInitializing, pathname, router, searchParams]);
+  }, [hasInitialized, isAuthenticated, isInitializing, isPublicReport, pathname, router, searchParams]);
+
+  if (isPublicReport) return <>{children}</>;
 
   if (!hasInitialized || isInitializing) {
     return (

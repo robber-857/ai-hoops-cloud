@@ -80,6 +80,7 @@ def seed(url, payload: dict, base_url: str, api_url: str):
             for label, member_role in (("coach", "coach"), ("parent", "student"), ("peer", "student")):
                 db.add(ClassMember(class_id=klass.id, user_id=users[label].id, member_role=member_role))
             db.commit()
+            age_reports = seed_age_reports(db, users["parent"], namespace, base_url)
             today = datetime.now(ZoneInfo("Australia/Sydney")).date()
             service = CampPlanService(db)
             plan = service.create(users["coach"], klass.public_id, PlanCreate(
@@ -93,6 +94,7 @@ def seed(url, payload: dict, base_url: str, api_url: str):
             published = service.publish(users["coach"], klass.public_id, plan.public_id, plan.version)
             return {
                 "namespace": namespace, "base_url": base_url, "api_url": api_url,
+                "age_reports": age_reports,
                 "accounts": accounts,
                 "class": {"public_id": str(klass.public_id), "name": klass.name},
                 "plan": {
@@ -109,6 +111,70 @@ def seed(url, payload: dict, base_url: str, api_url: str):
             }
     finally:
         engine.dispose()
+
+
+def seed_age_reports(db, owner, namespace: str, base_url: str) -> dict:
+    """Synthetic stored measurements, not real video/MediaPipe analysis evidence."""
+    from copy import deepcopy
+    from app.models import AnalysisReport, TrainingSession, Video
+    from app.models.enums import AnalysisType, ReportStatus, VideoUploadStatus
+
+    source = Path(__file__).resolve().parents[2] / "web/src/config/templates/training/wall_sit_half_hold.json"
+    template = json.loads(source.read_text(encoding="utf-8"))
+    template["version"] = "e2e-historical-v1"
+    # Deliberately differ from current rules: the browser must use the saved rules.
+    template["metrics"][0]["params"]["tol"] = 4
+    metrics = [
+        {"name": "trunkLeanDegSide", "value": 7, "unit": "deg"},
+        {"name": "kneeOverToeOffsetXSide", "value": 0.12, "unit": "norm"},
+        {"name": "avgKneeAngleDeg", "value": 108, "unit": "deg"},
+        {"name": "stdKneeAngleDeg", "value": 7, "unit": "deg"},
+    ]
+    score_data = {
+        "overall": 70, "grade": "C", "analysisStatus": "ready",
+        "weights": template["categoryWeights"],
+        "availability": {"posture": True, "execution": True, "consistency": True},
+        "breakdown": {"posture": 70, "execution": 70, "consistency": 70},
+        "findings": [{
+            "id": metric["metricId"], "title": metric["displayName"], "score": 70,
+            "isPositive": False, "isMissing": False, "state": "high",
+            "actualValue": str(metrics[index]["value"]), "targetText": metric["targetText"],
+            "hint": "Synthetic stored measurement for persistence tests.", "category": metric["category"],
+        } for index, metric in enumerate(template["metrics"])],
+        "saved_metrics": metrics, "template_snapshot": template,
+        "score_context": {"age_group": "16-18", "handedness": "right", "camera_match": True},
+    }
+    reports = {}
+    for label in ("source", "missing_rules"):
+        video = Video(
+            user_id=owner.id, bucket_name="synthetic-e2e", object_key=f"{namespace}/{label}.mp4",
+            file_name=f"{label}.mp4", content_type="video/mp4", file_size=1,
+            upload_status=VideoUploadStatus.uploaded,
+            # A tracked demo is playable; its motion did not produce these measurements.
+            url=f"{base_url}/demos/dribbling/front_onehand-v.mp4",
+        )
+        db.add(video)
+        db.flush()
+        session = TrainingSession(
+            student_id=owner.id, video_id=video.id, analysis_type=AnalysisType.training,
+            template_code=template["templateId"], template_version=template["version"], status="completed",
+        )
+        db.add(session)
+        db.flush()
+        saved = deepcopy(score_data)
+        if label == "missing_rules":
+            saved.pop("template_snapshot")
+        report = AnalysisReport(
+            user_id=owner.id, session_id=session.id, video_id=video.id, analysis_type=AnalysisType.training,
+            template_id=template["templateId"], template_version=template["version"],
+            status=ReportStatus.completed, overall_score=70, grade="C", score_data=saved,
+            timeline_data=[], summary_data={"age_group": "16-18", "capture_source": "synthetic_e2e"},
+        )
+        db.add(report)
+        db.flush()
+        reports[label] = str(report.public_id)
+    db.commit()
+    return reports
 
 
 def main(argv=None) -> int:

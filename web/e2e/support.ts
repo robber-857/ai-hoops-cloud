@@ -14,6 +14,7 @@ export type E2ESeed = {
   accounts: { parent: SeedAccount; coach: SeedAccount; peer: SeedAccount };
   class: { public_id: string; name: string };
   plan: { public_id: string; title: string };
+  age_reports: { source: string; missing_rules: string };
   base_url?: string;
   api_url?: string;
 };
@@ -26,6 +27,9 @@ function readSeed(): E2ESeed {
   const seed = JSON.parse(readFileSync(path, "utf8")) as E2ESeed;
   if (!seed.namespace || !seed.class?.public_id || !seed.plan?.public_id) {
     throw new Error("E2E fixture must contain a namespace, class and published plan.");
+  }
+  if (!seed.age_reports?.source || !seed.age_reports.missing_rules) {
+    throw new Error("Reseed: the browser fixture must include dedicated synthetic age reports.");
   }
   for (const role of ["parent", "coach", "peer"] as const) {
     const account = seed.accounts?.[role];
