@@ -2,6 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { meService, type MeProfileRead } from "@/services/me";
+import { useLanguagePreference } from "./LanguagePreferenceProvider";
+import { ProfileDateInput } from "./ProfileDateInput";
+import { parseDateInput } from "@/lib/dateInput";
+import { normalizeLanguage, type AppLanguage } from "@/lib/language";
 import {
   isValidPastDate,
   sydneyDateKey,
@@ -16,51 +20,41 @@ export function ProfileBasicsSection({
 }: {
   onSaved?: (profile: MeProfileRead) => void;
 }) {
+  const preference = useLanguagePreference();
   const [profile, setProfile] = useState<MeProfileRead | null>(null);
   const [nickname, setNickname] = useState("");
   const [startedOn, setStartedOn] = useState("");
+  const [language, setLanguage] = useState<AppLanguage>("en");
   const [today, setToday] = useState("");
-  const [loading, setLoading] = useState(true);
+  const loading = preference.loading;
   const [saving, setSaving] = useState(false);
-  const [loadError, setLoadError] = useState("");
+  const loadError = preference.error;
   const [saveError, setSaveError] = useState("");
   const [saved, setSaved] = useState(false);
-  const [retry, setRetry] = useState(0);
   const inFlight = useRef(false);
+  const savedVersion = useRef<string | null>(null);
   const dirty =
     profile !== null &&
     (nickname !== (profile.nickname ?? "") ||
-      startedOn !== (profile.training_started_on ?? ""));
+      startedOn !== (profile.training_started_on ?? "") ||
+      language !== normalizeLanguage(profile.preferred_language));
 
   useEffect(() => {
     setToday(sydneyDateKey());
-    let active = true;
-    setLoading(true);
-    setLoadError("");
-    meService
-      .getProfile()
-      .then((value) => {
-        if (!active) return;
-        setProfile(value);
-        setNickname(value.nickname ?? "");
-        setStartedOn(value.training_started_on ?? "");
-        setSaveError("");
-        setSaved(false);
-      })
-      .catch((error) => {
-        if (active) {
-          setLoadError(
-            error instanceof Error ? error.message : "Could not load profile.",
-          );
-        }
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [retry]);
+    const value = preference.profile;
+    if (value) {
+      if (savedVersion.current === value.updated_at) {
+        savedVersion.current = null;
+        return;
+      }
+      setProfile(value);
+      setNickname(value.nickname ?? "");
+      setStartedOn(value.training_started_on ?? "");
+      setLanguage(normalizeLanguage(value.preferred_language));
+      setSaveError("");
+      setSaved(false);
+    }
+  }, [preference.profile]);
 
   useEffect(() => {
     if (!dirty) return;
@@ -89,8 +83,9 @@ export function ProfileBasicsSection({
     if (!profile || inFlight.current) return;
     const currentToday = sydneyDateKey();
     setToday(currentToday);
-    if (startedOn && !isValidPastDate(startedOn, currentToday)) {
-      setSaveError("Enter a valid training start date on or before today.");
+    const trainingDate = startedOn ? parseDateInput(startedOn) : null;
+    if (startedOn && (!trainingDate || !isValidPastDate(trainingDate, currentToday))) {
+      setSaveError("Enter a valid training start date in yyyy/mm/dd format on or before today.");
       return;
     }
     inFlight.current = true;
@@ -100,12 +95,16 @@ export function ProfileBasicsSection({
     try {
       const value = await meService.updateProfile({
         nickname: nickname.trim() || null,
-        training_started_on: startedOn || null,
+        training_started_on: trainingDate,
+        preferred_language: language,
         expected_updated_at: profile.updated_at,
       });
       setProfile(value);
       setNickname(value.nickname ?? "");
       setStartedOn(value.training_started_on ?? "");
+      setLanguage(normalizeLanguage(value.preferred_language));
+      savedVersion.current = value.updated_at;
+      preference.refresh(value);
       setSaved(true);
       onSaved?.(value);
     } catch (error) {
@@ -124,7 +123,7 @@ export function ProfileBasicsSection({
     if (dirty && !window.confirm("Reload saved profile and replace your unsaved changes?")) {
       return;
     }
-    setRetry((value) => value + 1);
+    preference.reload();
   }
 
   return (
@@ -174,22 +173,40 @@ export function ProfileBasicsSection({
           </label>
           <label className="min-w-0 text-sm">
             Started training on
-            <input
-              type="date"
+            <ProfileDateInput
               className={fieldClass}
-              max={today || undefined}
+              maxDate={today || undefined}
               value={startedOn}
-              onChange={(event) => {
-                setStartedOn(event.target.value);
+              onChange={(value) => {
+                setStartedOn(value);
                 setSaved(false);
                 setSaveError("");
               }}
             />
           </label>
+          <label className="min-w-0 text-sm sm:col-span-2">
+            Language
+            <select
+              aria-label="Language"
+              className={fieldClass}
+              value={language}
+              onChange={(event) => {
+                setLanguage(normalizeLanguage(event.target.value));
+                setSaved(false);
+                setSaveError("");
+              }}
+            >
+              <option value="en">English</option>
+              <option value="zh-CN">中文（简体）</option>
+            </select>
+            <span className="mt-2 block text-xs text-white/65">
+              Used for Food nutrition. Saved to your account.
+            </span>
+          </label>
           <div className="rounded-lg border border-white/15 p-4 text-sm sm:col-span-2">
             <p className="text-white/65">Training experience</p>
             <output className="mt-2 block text-lg font-semibold" aria-live="polite">
-              {today ? trainingDurationLabel(startedOn, today) : "Not recorded"}
+              {today ? trainingDurationLabel(parseDateInput(startedOn), today) : "Not recorded"}
             </output>
           </div>
           <button

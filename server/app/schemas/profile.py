@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from typing import Literal
 from zoneinfo import ZoneInfo
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
@@ -9,6 +10,7 @@ class ProfileRead(BaseModel):
 
     nickname: str | None
     training_started_on: date | None
+    preferred_language: Literal["en", "zh-CN"]
     updated_at: datetime
 
 
@@ -17,6 +19,7 @@ class ProfileUpdate(BaseModel):
 
     nickname: str | None = Field(default=None, max_length=100)
     training_started_on: date | None = None
+    preferred_language: Literal["en", "zh-CN"] = "en"
     expected_updated_at: AwareDatetime | None = None
 
     @field_validator("nickname")

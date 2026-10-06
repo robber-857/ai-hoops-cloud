@@ -1,4 +1,4 @@
-"""Verify a fresh base-to-0012 migration on a disposable database only.
+"""Verify a fresh migration to the expected head on a disposable database only.
 
 Refuses populated schemas, dotenv defaults, production environments and remote
 hosts. Does not create/drop databases, downgrade migrations, or delete data.

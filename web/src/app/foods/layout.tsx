@@ -5,11 +5,13 @@ import { AccountCenterShell } from "@/components/account/AccountCenterShell";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { CoachShell } from "@/components/coach/CoachShell";
 import { useAuthStore } from "@/store/authStore";
+import { LanguagePreferenceProvider } from "@/components/account/LanguagePreferenceProvider";
 
 export default function FoodLayout({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
   return (
     <ProtectedRoute>
+      <LanguagePreferenceProvider key={user?.public_id ?? "anonymous"}>
       {user?.role === "admin" ? (
         <AdminShell user={user} title="Food nutrients" breadcrumb={["Food nutrients"]}>
           {children}
@@ -23,6 +25,7 @@ export default function FoodLayout({ children }: { children: React.ReactNode }) 
           {children}
         </AccountCenterShell>
       )}
+      </LanguagePreferenceProvider>
     </ProtectedRoute>
   );
 }

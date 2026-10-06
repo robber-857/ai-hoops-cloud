@@ -1,4 +1,5 @@
 import { apiRequest } from "@/services/client";
+import { resolveFoodSearch } from "@/lib/foodLanguage";
 
 export type FoodCategory = "meat" | "eggs" | "dairy" | "vegetables";
 export type TrainingFood = {
@@ -37,7 +38,7 @@ export type TrainingFoodPage = {
 
 export const foodService = {
   list: (category: FoodCategory | "" = "", query = "", offset = 0) => {
-    const params = new URLSearchParams({ query, offset: String(offset), limit: "20" });
+    const params = new URLSearchParams({ query: resolveFoodSearch(query), offset: String(offset), limit: "20" });
     if (category) params.set("category", category);
     return apiRequest<TrainingFoodPage>(`/training-foods?${params}`);
   },

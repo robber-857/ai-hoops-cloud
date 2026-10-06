@@ -44,11 +44,13 @@ server is using this checkout's `.next` directory. The backend lifecycle remains
 with the caller/CI workflow. Production mode also keeps these checks independent
 of development manifest/hot-reload state.
 
-The three serial scenarios cover native Profile date input and persistence,
-append-only measurement/BMI history and re-login, identity isolation, coach
+The four serial scenarios cover fixed `yyyy/mm/dd` Profile date input with ISO
+API persistence, append-only measurement/BMI history and re-login, identity isolation, coach
 standards/intensity/individual minutes, preview fingerprints and a real 409 after
 a new measurement, parent read-only reports and frozen publication history,
-official food search/categories/pagination, a one-shot 503 followed by a real API
+official food search/categories/pagination, English by default and a saved Chinese
+preference across refresh/re-login/account switches, invalid date editing and a
+failed language save followed by retry, a one-shot food 503 followed by a real API
 retry, responsive widths and mobile menu keyboard navigation. Successful data
 flows are never mocked. A failed scenario is not automatically retried against
 mutated records; reseed and rerun the complete suite.

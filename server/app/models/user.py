@@ -14,6 +14,7 @@ class User(PublicIdMixin, TimestampMixin, Base):
     __tablename__ = "users"
     __table_args__ = (
         CheckConstraint("(phone_number IS NOT NULL AND length(trim(phone_number)) > 0) OR (email IS NOT NULL AND length(trim(email)) > 0)", name="ck_users_contact_required"),
+        CheckConstraint("preferred_language IN ('en', 'zh-CN')", name="ck_users_preferred_language"),
         Index("ix_users_created_at", "created_at"),
         Index(
             "ix_users_email_not_null",
@@ -34,6 +35,9 @@ class User(PublicIdMixin, TimestampMixin, Base):
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     nickname: Mapped[str | None] = mapped_column(String(100), nullable=True)
     training_started_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    preferred_language: Mapped[str] = mapped_column(
+        String(5), default="en", server_default=text("'en'"), nullable=False,
+    )
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     is_phone_verified: Mapped[bool] = mapped_column(
         Boolean,

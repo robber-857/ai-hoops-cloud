@@ -1,4 +1,5 @@
 import { apiRequest } from "@/services/client";
+import type { AppLanguage } from "@/lib/language";
 import type { AuthUser } from "@/types/auth";
 import type { ReportAnalysisType, ReportListItem } from "@/services/reports";
 import type { VideoRead } from "@/services/uploads";
@@ -158,12 +159,14 @@ export type MeTrendsResponse = {
 export type MeProfileRead = {
   nickname: string | null;
   training_started_on: string | null;
+  preferred_language: AppLanguage;
   updated_at: string;
 };
 
 export type MeProfileUpdate = {
   nickname?: string | null;
   training_started_on?: string | null;
+  preferred_language?: AppLanguage;
   expected_updated_at?: string;
 };
 
