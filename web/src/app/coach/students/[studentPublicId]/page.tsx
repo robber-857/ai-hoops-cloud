@@ -12,6 +12,9 @@ import {
 } from "lucide-react";
 
 import { CoachReportTable } from "@/components/coach/CoachReportTable";
+import { ReportPagination } from "@/components/ReportPagination";
+import { formatDateInput } from "@/lib/dateInput";
+import { ageYears, trainingDurationLabel } from "@/lib/profile";
 import { CoachShell } from "@/components/coach/CoachShell";
 import {
   formatDateTime,
@@ -67,6 +70,8 @@ export default function CoachStudentProfilePage() {
   const isInitializing = useAuthStore((state) => state.isInitializing);
   const [profile, setProfile] = useState<CoachStudentProfileRead | null>(null);
   const [reports, setReports] = useState<CoachClassReportRead[]>([]);
+  const [reportPage, setReportPage] = useState(1);
+  const [reportTotal, setReportTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,7 +89,7 @@ export default function CoachStudentProfilePage() {
 
     void Promise.all([
       coachService.getStudentProfile(studentPublicId),
-      coachService.listStudentReports(studentPublicId, 50),
+      coachService.listStudentReports(studentPublicId, 10, (reportPage - 1) * 10),
     ])
       .then(([profileResponse, reportsResponse]) => {
         if (!isActive) {
@@ -92,6 +97,9 @@ export default function CoachStudentProfilePage() {
         }
         setProfile(profileResponse);
         setReports(reportsResponse.items);
+        setReportTotal(reportsResponse.total);
+        const lastPage = Math.max(1, Math.ceil(reportsResponse.total / 10));
+        if (reportPage > lastPage) setReportPage(lastPage);
       })
       .catch((fetchError) => {
         if (!isActive) {
@@ -108,7 +116,7 @@ export default function CoachStudentProfilePage() {
     return () => {
       isActive = false;
     };
-  }, [canAccessCoach, hasInitialized, studentPublicId, user]);
+  }, [canAccessCoach, hasInitialized, studentPublicId, user, reportPage]);
 
   const displayName = useMemo(() => {
     if (!profile) {
@@ -203,6 +211,21 @@ export default function CoachStudentProfilePage() {
           animate={{ opacity: 1, y: 0 }}
           className="rounded-lg border border-white/10 bg-white/[0.055] p-5 backdrop-blur-2xl"
         >
+          <h2 className="text-xl font-bold text-white">Player profile</h2>
+          <p className="mt-2 text-sm text-white/60">Latest details saved by the player or parent.</p>
+          <dl className="my-5 grid grid-cols-2 gap-4 text-sm">
+            {[
+              ["Started training on", formatDateInput(profile?.training_started_on) || "Not recorded"],
+              ["Training experience", trainingDurationLabel(profile?.training_started_on)],
+              ["Date of birth", formatDateInput(profile?.latest_measurement?.date_of_birth) || "Not recorded"],
+              ["Age", ageYears(profile?.latest_measurement?.date_of_birth)?.toString() ?? "Not recorded"],
+              ["Height", profile?.latest_measurement ? `${profile.latest_measurement.height_cm} cm` : "Not recorded"],
+              ["Weight", profile?.latest_measurement ? `${profile.latest_measurement.weight_kg} kg` : "Not recorded"],
+              ["Sex", profile?.latest_measurement?.sex ?? "Not recorded"],
+              ["BMI", profile?.latest_measurement?.bmi ?? "Not recorded"],
+              ["Measured on", formatDateInput(profile?.latest_measurement?.measured_on) || "Not recorded"],
+            ].map(([label, value]) => <div key={label}><dt className="text-white/55">{label}</dt><dd className="mt-1 text-white">{value}</dd></div>)}
+          </dl>
           <div className="flex items-center gap-3">
             <Trophy className="h-5 w-5 text-[#d8ff5d]" />
             <h2 className="font-[var(--font-display)] text-xl font-bold text-white">
@@ -248,10 +271,10 @@ export default function CoachStudentProfilePage() {
               Recent reports
             </h2>
           </div>
-          <CoachReportTable
+          {isLoading ? <p role="status">Loading reports…</p> : error ? null : <><CoachReportTable
             reports={reports}
             returnTo={routes.coach.studentProfile(studentPublicId)}
-          />
+          /><ReportPagination key={reportPage} page={reportPage} total={reportTotal} onChange={setReportPage} /></>}
         </motion.section>
       </div>
     </CoachShell>

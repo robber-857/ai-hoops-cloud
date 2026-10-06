@@ -1,6 +1,8 @@
 "use client";
 
 import { staffName } from "@/lib/staffNames";
+import Link from "next/link";
+import { routes } from "@/lib/routes";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
@@ -391,6 +393,7 @@ export default function AdminUsersPage() {
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex justify-end gap-2">
+                          {(item.role === "student" || item.role === "user") && <Link href={routes.coach.studentProfile(item.public_id)} className="inline-flex min-h-9 items-center rounded-lg border border-white/20 px-3 text-xs text-white">Player profile</Link>}
                           <button
                             type="button"
                             onClick={() => loadSelectedUser(item.public_id)}

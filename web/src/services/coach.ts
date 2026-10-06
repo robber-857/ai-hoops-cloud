@@ -239,6 +239,8 @@ export type CoachStudentProfileRead = {
   phone_number: string | null;
   status: string;
   role: string;
+  training_started_on: string | null;
+  latest_measurement: (import("./playerProfile").PlayerMeasurement & { bmi: string }) | null;
   report_count: number;
   best_score: number | null;
   last_report_at: string | null;
@@ -248,6 +250,7 @@ export type CoachStudentProfileRead = {
 
 export type CoachStudentReportsResponse = {
   items: CoachClassReportRead[];
+  total: number;
 };
 
 function buildQuery(params: Record<string, string | number | boolean | null | undefined>) {
@@ -393,9 +396,9 @@ export const coachService = {
     });
   },
 
-  listStudentReports(studentPublicId: string, limit = 50) {
+  listStudentReports(studentPublicId: string, limit = 50, offset = 0) {
     return apiRequest<CoachStudentReportsResponse>(
-      `/coach/students/${studentPublicId}/reports?limit=${limit}`,
+      `/coach/students/${studentPublicId}/reports?limit=${limit}&offset=${offset}`,
       {
         method: "GET",
       },

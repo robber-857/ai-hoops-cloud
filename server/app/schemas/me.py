@@ -119,6 +119,7 @@ class MeDashboardResponse(BaseModel):
 
 class MeReportsResponse(BaseModel):
     items: list[ReportListItem]
+    total: int = 0
 
 
 class MeSessionsResponse(BaseModel):

@@ -163,8 +163,18 @@ class MeService:
             recent_achievements=recent_achievements,
         )
 
-    def get_reports(self, current_user: User, limit: int = 20) -> MeReportsResponse:
-        return MeReportsResponse(items=self._get_recent_reports(current_user.id, limit=limit))
+    def get_reports(self, current_user: User, limit: int = 20, offset: int = 0, analysis_type=None) -> MeReportsResponse:
+        filters = [AnalysisReport.user_id == current_user.id]
+        if analysis_type is not None:
+            filters.append(AnalysisReport.analysis_type == analysis_type)
+        total = int(self.db.scalar(select(func.count(AnalysisReport.id)).where(*filters)) or 0)
+        reports = self.db.scalars(
+            select(AnalysisReport)
+            .options(selectinload(AnalysisReport.session), selectinload(AnalysisReport.video))
+            .where(*filters).order_by(AnalysisReport.created_at.desc(), AnalysisReport.id.desc())
+            .limit(limit).offset(offset)
+        ).all()
+        return MeReportsResponse(items=[_report_list_item(report) for report in reports], total=total)
 
     def get_sessions(self, current_user: User, limit: int = 20) -> MeSessionsResponse:
         return MeSessionsResponse(items=self._get_recent_sessions(current_user.id, limit=limit))
