@@ -39,7 +39,7 @@ function participant(editor: Locator, lesson: CampLesson, account: SeedAccount) 
   if (!roster) throw new Error("The dedicated class fixture is missing an expected student.");
   const label = roster.contact ? `${roster.name} (${roster.contact})` : roster.name;
   const selection = editor.getByRole("combobox", { name: `Participation for ${label}`, exact: true });
-  const container = editor.locator("tbody tr").filter({ has: selection });
+  const container = editor.locator("tbody tr").filter({ has: editor.page().getByRole("combobox", { name: `Participation for ${label}`, exact: true }) });
   return { selection, container, label };
 }
 
