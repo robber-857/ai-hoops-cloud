@@ -1,6 +1,6 @@
-/** Staff-facing names never fall back to account IDs or login identifiers. */
-export function staffName(user: { nickname?: string | null }) {
-  return user.nickname?.trim() || "Name not added";
+/** Prefer the nickname, then the registered username. */
+export function staffName(user: { nickname?: string | null; username?: string | null }) {
+  return user.nickname?.trim() || user.username?.trim() || "Name not added";
 }
 export function staffContact(user: {
   email?: string | null;

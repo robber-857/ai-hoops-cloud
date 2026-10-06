@@ -1,10 +1,18 @@
 import { describe, it, expect } from "vitest";
 import { staffName, staffContact } from "../staffNames";
+import { getStudentDisplayName } from "@/components/coach/coachUtils";
 describe("staff-facing identity labels", () => {
   it("uses the recorded name and trims whitespace", () => {
-    expect(staffName({ nickname: "  林小明  " })).toBe("林小明");
+    expect(staffName({ nickname: "  林小明  ", username: "elton" })).toBe("林小明");
   });
-  it("never substitutes an account identifier for a missing name", () => {
+  it.each([null, "", "  "])("uses the registered username for nickname %j", (nickname) => {
+    expect(staffName({ nickname, username: "elton" })).toBe("elton");
+    expect(getStudentDisplayName("elton", nickname)).toBe("elton");
+  });
+  it("keeps the nickname in coach student labels", () => {
+    expect(getStudentDisplayName("elton", "  Elton  ")).toBe("Elton");
+  });
+  it("uses a placeholder only when both names are missing", () => {
     expect(staffName({ nickname: null })).toBe("Name not added");
     expect(staffName({ nickname: "  " })).toBe("Name not added");
   });
