@@ -33,7 +33,7 @@ export function PaginatedAnalysisReports() {
     <h1 className="text-2xl font-semibold sm:text-3xl">Analysis reports</h1>
     <p className="text-sm text-white/65">All saved reports, 10 per page.</p>
     <label className="flex flex-wrap items-center gap-3 text-sm">Analysis type
-      <select value={type} onChange={e => { setType(e.target.value); setPage(1); }} className="min-h-11 rounded-lg border border-white/20 bg-[#10141b] px-3">
+      <select aria-label="Analysis type" value={type} onChange={e => { setType(e.target.value); setPage(1); }} className="min-h-11 rounded-lg border border-white/20 bg-[#10141b] px-3">
         <option value="all">All types</option><option value="shooting">Shooting</option><option value="dribbling">Dribbling</option><option value="training">Training</option>
       </select>
     </label>
