@@ -63,6 +63,5 @@ export function getTemplateDisplayName(templateCode: string | null | undefined) 
 }
 
 export function getStudentDisplayName(username: string, nickname: string | null) {
-  void username;
-  return staffName({ nickname });
+  return staffName({ username, nickname });
 }
