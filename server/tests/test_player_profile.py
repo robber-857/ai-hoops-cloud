@@ -33,9 +33,9 @@ def payload(**changes):
 
 class PlayerProfileValidationTests(unittest.TestCase):
     def test_age_boundaries_and_dates(self):
-        for birth in ("2022-09-27", "2007-09-28"):
+        for birth in ("2026-09-27", "2025-09-27", "2022-09-28", "2022-09-27", "2007-09-28", "2007-09-27", "2000-06-01", "1940-01-01"):
             payload(date_of_birth=birth)
-        for birth in ("2022-09-28", "2007-09-27"):
+        for birth in ("2026-09-28", "2027-01-01"):
             with self.assertRaises(ValidationError): payload(date_of_birth=birth)
         with self.assertRaises(ValidationError): payload(measured_on=str(date.today() + timedelta(days=3)))
 
@@ -94,6 +94,12 @@ class PlayerProfilePostgresTests(unittest.TestCase):
                 self.db.execute(text(sql), {"id":row.public_id}); self.db.commit()
             self.db.rollback()
         self.assertEqual(len(self.service.history(self.user).items), 1)
+
+    def test_measurements_for_all_ages_round_trip(self):
+        for birth in ("2026-09-27", "2025-09-27", "2000-06-01", "1940-01-01"):
+            saved = self.service.create(self.user, payload(date_of_birth=birth))
+            self.assertEqual(saved.date_of_birth.isoformat(), birth)
+        self.assertEqual(len(self.service.history(self.user).items), 4)
 
     def test_cross_user_read_and_request_collision(self):
         first = payload(); self.service.create(self.user, first)

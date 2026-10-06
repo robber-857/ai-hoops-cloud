@@ -42,7 +42,8 @@ export function LessonEditor({
     [notice, setNotice] = useState(""),
     [history, setHistory] = useState<LessonHistoryEntry[]>([]),
     [more, setMore] = useState(false),
-    [historyOpen, setHistoryOpen] = useState(false);
+    [historyOpen, setHistoryOpen] = useState(false),
+    [search, setSearch] = useState("");
   const requestId = useRef<string | null>(null),
     inFlight = useRef(false);
   const [activities, setActivities] = useState<ExerciseActivity[]>([]);
@@ -53,13 +54,25 @@ export function LessonEditor({
     let active = true;
     setActivitiesLoading(true);
     setActivitiesError("");
-    campLessonService.exerciseActivities()
-      .then((value) => { if (active) setActivities(value.items); })
-      .catch((e) => {
-        if (active) setActivitiesError(e instanceof Error ? e.message : "Could not load activity standards.");
+    campLessonService
+      .exerciseActivities()
+      .then((value) => {
+        if (active) setActivities(value.items);
       })
-      .finally(() => { if (active) setActivitiesLoading(false); });
-    return () => { active = false; };
+      .catch((e) => {
+        if (active)
+          setActivitiesError(
+            e instanceof Error
+              ? e.message
+              : "Could not load activity standards.",
+          );
+      })
+      .finally(() => {
+        if (active) setActivitiesLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [activitiesRetry]);
   useEffect(() => {
     onBusy(busy);
@@ -206,15 +219,15 @@ export function LessonEditor({
       className="mt-8 min-w-0 border-t border-white/20 pt-6"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-2xl font-semibold">Record actual lesson</h2>
+        <h2 className="text-2xl font-semibold">Today’s training</h2>
         <span className="text-sm text-white/75">
-          Saved version {lesson.version}
+          Draft saved · v{lesson.version}
           {dirty ? " · Unsaved changes" : ""}
         </span>
       </div>
       <p className="mt-3 text-sm text-white/75">
-        {lesson.class_name} · Dates use {lesson.timezone}. Save your changes,
-        then preview and publish class records below.
+        {lesson.class_name} · Dates use {lesson.timezone}. Record activities,
+        confirm attendance, then publish to students.
       </p>
       <details className="mt-4 text-sm">
         <summary className="min-h-11 cursor-pointer py-3 text-white/85">
@@ -275,7 +288,7 @@ export function LessonEditor({
             </label>
           </div>
           <label className="block text-sm">
-            Lesson notes
+            Message to students (optional)
             <textarea
               className={lessonField}
               maxLength={2000}
@@ -285,26 +298,29 @@ export function LessonEditor({
               }
             />
           </label>
-          <section>
-            <h3 className="text-xl font-semibold">Actual activities</h3>
-            <p className="mt-2 max-w-prose text-sm text-white/75">
-              Record effective activity minutes, excluding breaks, explanations
-              and queue time. Leave unknown minutes blank. Enter 0 if an activity did not take
-              place. Changing durations or activities resets participation for
-              review.
+          <section id="session-activities" className="scroll-mt-28">
+            <h3 className="text-xl font-semibold">1. What did you train?</h3>
+            <p className="mt-2 text-sm text-white/75">
+              Enter active minutes for each activity, excluding breaks. Use 0
+              for activities you skipped.
             </p>
-            <p className="mt-2 max-w-prose text-sm text-white/75">
-              Choose the activity standard and intensity that match the actual
-              exercise for an energy estimate. Keep your own activity name;
-              unmatched activities can still be recorded.
-            </p>
-            {activitiesLoading && <p role="status" className="mt-3 text-sm">Loading activity standards…</p>}
-            {activitiesError && <div role="alert" className="mt-3 text-sm text-amber-200">
-              <p>{activitiesError} You can still save the training record.</p>
-              <button type="button" className={`${lessonButton} mt-2`} onClick={() => setActivitiesRetry(value => value + 1)}>
-                Reload activity standards
-              </button>
-            </div>}
+            {activitiesLoading && (
+              <p role="status" className="mt-3 text-sm">
+                Loading activity standards…
+              </p>
+            )}
+            {activitiesError && (
+              <div role="alert" className="mt-3 text-sm text-amber-200">
+                <p>{activitiesError} You can still save the training record.</p>
+                <button
+                  type="button"
+                  className={`${lessonButton} mt-2`}
+                  onClick={() => setActivitiesRetry((value) => value + 1)}
+                >
+                  Reload activity standards
+                </button>
+              </div>
+            )}
             <ol className="mt-4 divide-y divide-white/20">
               {form.items.map((item, index) => (
                 <li key={item.item_id} className="min-w-0 py-5">
@@ -353,67 +369,118 @@ export function LessonEditor({
                       />
                     </label>
                   </div>
-                  <div className="mt-4 grid min-w-0 gap-4 sm:grid-cols-2">
-                    <label className="min-w-0 text-sm">
-                      Activity standard
-                      <select
+                  <details className="mt-3 text-sm">
+                    <summary className="cursor-pointer py-2 text-white/65">
+                      Activity notes & energy estimate (optional)
+                    </summary>
+                    <div className="mt-2 grid min-w-0 gap-4 sm:grid-cols-2">
+                      <label className="min-w-0 text-sm">
+                        Activity standard
+                        <select
+                          className={lessonField}
+                          aria-label={`Activity standard for activity ${index + 1}`}
+                          value={item.activity_code ?? ""}
+                          disabled={
+                            activitiesLoading || Boolean(activitiesError)
+                          }
+                          onChange={(e) =>
+                            change({
+                              ...form,
+                              items: form.items.map((i) =>
+                                i.item_id === item.item_id
+                                  ? {
+                                      ...i,
+                                      activity_code: e.target.value || null,
+                                      intensity: null,
+                                    }
+                                  : i,
+                              ),
+                            })
+                          }
+                        >
+                          <option value="">
+                            Custom activity / no standard selected
+                          </option>
+                          {item.activity_code &&
+                            !activities.some(
+                              (a) => a.code === item.activity_code,
+                            ) && (
+                              <option value={item.activity_code}>
+                                Saved standard unavailable — reselect
+                              </option>
+                            )}
+                          {activities.map((activity) => (
+                            <option key={activity.code} value={activity.code}>
+                              {activity.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="min-w-0 text-sm">
+                        Intensity
+                        <select
+                          className={lessonField}
+                          aria-label={`Intensity for activity ${index + 1}`}
+                          value={item.intensity ?? ""}
+                          disabled={
+                            !item.activity_code ||
+                            activitiesLoading ||
+                            Boolean(activitiesError)
+                          }
+                          onChange={(e) =>
+                            change({
+                              ...form,
+                              items: form.items.map((i) =>
+                                i.item_id === item.item_id
+                                  ? {
+                                      ...i,
+                                      intensity: (e.target.value ||
+                                        null) as ActivityIntensity | null,
+                                    }
+                                  : i,
+                              ),
+                            })
+                          }
+                        >
+                          <option value="">Select intensity</option>
+                          {item.intensity &&
+                            !activities
+                              .find((a) => a.code === item.activity_code)
+                              ?.intensities.includes(item.intensity) && (
+                              <option value={item.intensity}>
+                                Saved intensity unavailable — reselect
+                              </option>
+                            )}
+                          {activities
+                            .find((a) => a.code === item.activity_code)
+                            ?.intensities.map((intensity) => (
+                              <option key={intensity} value={intensity}>
+                                {intensity[0].toUpperCase() +
+                                  intensity.slice(1)}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
+                    </div>
+                    <label className="mt-4 block text-sm">
+                      Activity notes
+                      <textarea
                         className={lessonField}
-                        aria-label={`Activity standard for activity ${index + 1}`}
-                        value={item.activity_code ?? ""}
-                        disabled={activitiesLoading || Boolean(activitiesError)}
-                        onChange={(e) => change({
-                          ...form,
-                          items: form.items.map(i => i.item_id === item.item_id
-                            ? { ...i, activity_code: e.target.value || null, intensity: null }
-                            : i),
-                        })}
-                      >
-                        <option value="">Custom activity / no standard selected</option>
-                        {item.activity_code && !activities.some(a => a.code === item.activity_code) &&
-                          <option value={item.activity_code}>Saved standard unavailable — reselect</option>}
-                        {activities.map(activity => <option key={activity.code} value={activity.code}>{activity.name}</option>)}
-                      </select>
+                        maxLength={1000}
+                        value={item.notes || ""}
+                        onChange={(e) =>
+                          change({
+                            ...form,
+                            items: form.items.map((i) =>
+                              i.item_id === item.item_id
+                                ? { ...i, notes: e.target.value || null }
+                                : i,
+                            ),
+                          })
+                        }
+                      />
                     </label>
-                    <label className="min-w-0 text-sm">
-                      Intensity
-                      <select
-                        className={lessonField}
-                        aria-label={`Intensity for activity ${index + 1}`}
-                        value={item.intensity ?? ""}
-                        disabled={!item.activity_code || activitiesLoading || Boolean(activitiesError)}
-                        onChange={(e) => change({
-                          ...form,
-                          items: form.items.map(i => i.item_id === item.item_id
-                            ? { ...i, intensity: (e.target.value || null) as ActivityIntensity | null }
-                            : i),
-                        })}
-                      >
-                        <option value="">Select intensity</option>
-                        {item.intensity && !activities.find(a => a.code === item.activity_code)?.intensities.includes(item.intensity) &&
-                          <option value={item.intensity}>Saved intensity unavailable — reselect</option>}
-                        {activities.find(a => a.code === item.activity_code)?.intensities.map(intensity =>
-                          <option key={intensity} value={intensity}>{intensity[0].toUpperCase() + intensity.slice(1)}</option>)}
-                      </select>
-                    </label>
-                  </div>
-                  <label className="mt-4 block text-sm">
-                    Activity notes
-                    <textarea
-                      className={lessonField}
-                      maxLength={1000}
-                      value={item.notes || ""}
-                      onChange={(e) =>
-                        change({
-                          ...form,
-                          items: form.items.map((i) =>
-                            i.item_id === item.item_id
-                              ? { ...i, notes: e.target.value || null }
-                              : i,
-                          ),
-                        })
-                      }
-                    />
-                  </label>
+                  </details>
                   <button
                     className={`${lessonButton} mt-3`}
                     type="button"
@@ -450,129 +517,219 @@ export function LessonEditor({
               Add actual activity
             </button>
           </section>
-          <section className="border-t border-white/20 pt-6">
-            <h3 className="text-xl font-semibold">Player participation</h3>
-            <p className="mt-2 max-w-prose text-sm text-white/75">
-              The roster was captured when this lesson was created. Confirm each
-              player explicitly; unconfirmed players have no assumed attendance.
+          <section
+            id="session-attendance"
+            className="scroll-mt-28 border-t border-white/20 pt-6"
+          >
+            <h3 className="text-xl font-semibold">2. Who attended?</h3>
+            <p className="mt-2 text-sm text-white/75">
+              Confirm the class together, then adjust individual students. Early
+              departures and partial attendance need individual minutes.
             </p>
+            <div className="my-4 flex flex-wrap items-center gap-3">
+              <input
+                aria-label="Find student"
+                placeholder="Find student…"
+                className={`${lessonField} !mt-0 sm:!w-64`}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <button
+                type="button"
+                className={lessonButton}
+                disabled={
+                  unknownMinutes ||
+                  !form.participants.some((p) => p.status === "unconfirmed")
+                }
+                onClick={() =>
+                  change({
+                    ...form,
+                    participants: form.participants.map((p) =>
+                      p.status !== "unconfirmed"
+                        ? p
+                        : {
+                            ...p,
+                            status: "present",
+                            items: form.items.map((i) => ({
+                              item_id: i.item_id,
+                              minutes: i.actual_minutes,
+                            })),
+                          },
+                    ),
+                  })
+                }
+              >
+                Mark all unconfirmed present
+              </button>
+              <span className="text-sm text-white/65" role="status">
+                {
+                  form.participants.filter((p) => p.status !== "unconfirmed")
+                    .length
+                }
+                /{form.participants.length} confirmed · applies to the whole
+                class
+              </span>
+            </div>
             {unknownMinutes && (
-              <p className="mt-3 text-sm text-amber-200">
-                Enter all actual minutes before recording full or partial
-                attendance. You can still save unknowns and absences.
+              <p className="mb-3 text-sm text-amber-200">
+                First enter the missing activity minutes in step 1 to enable
+                attendance. You can still mark absences and save a draft.
               </p>
             )}
-            <div className="mt-4 divide-y divide-white/20">
-              {form.participants.map((p, index) => {
-                const person = lesson.roster.find(
-                  (r) => r.student_public_id === p.student_public_id,
-                );
-                const name = person?.name || "Name not added";
-                const label = person?.contact
-                  ? `${name} (${person.contact})`
-                  : name;
-                return (
-                  <div key={p.student_public_id} className="min-w-0 py-6">
-                    <div className="grid min-w-0 items-center gap-4 sm:grid-cols-2">
-                      <div>
-                        <h4 className="break-words text-lg font-semibold">
-                          {name}
-                        </h4>
-                        {person?.contact && (
-                          <p className="mt-1 break-words text-sm text-white/70">
-                            {person.contact}
-                          </p>
-                        )}
-                      </div>
-                      <label className="text-sm">
-                        Participation
-                        <select
-                          aria-label={`Participation for ${label}`}
-                          className={lessonField}
-                          value={p.status}
-                          onChange={(e) =>
-                            status(
-                              index,
-                              e.target.value as LessonParticipant["status"],
-                            )
-                          }
-                        >
-                          {Object.entries(statusLabels).map(([k, label]) => (
-                            <option
-                              key={k}
-                              value={k}
-                              disabled={
-                                unknownMinutes &&
-                                !["unconfirmed", "absent"].includes(k)
-                              }
-                            >
-                              {label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
-                    {["partial", "left_early"].includes(p.status) ? (
-                      <div className="mt-4 grid min-w-0 gap-4 sm:grid-cols-2">
-                        {form.items.map((item) => (
-                          <label
-                            key={item.item_id}
-                            className="min-w-0 break-words text-sm"
+            {!form.participants.length && (
+              <p className="text-amber-200">
+                This session has no students. Check the class roster before
+                starting a new session.
+              </p>
+            )}
+            <div className="max-h-[560px] overflow-auto rounded-lg border border-white/15">
+              <table className="w-full min-w-[680px] text-left text-sm">
+                <caption className="sr-only">
+                  Student attendance and individual feedback
+                </caption>
+                <thead className="sticky top-0 z-10 bg-[#151b25] text-white/65">
+                  <tr>
+                    <th className="p-3">Student</th>
+                    <th className="p-3">Attendance</th>
+                    <th className="p-3">Minutes</th>
+                    <th className="p-3">Student note (optional)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/10">
+                  {form.participants.map((p, index) => {
+                    const person = lesson.roster.find(
+                      (r) => r.student_public_id === p.student_public_id,
+                    );
+                    const name = person?.name || "Name not added";
+                    const label = person?.contact
+                      ? `${name} (${person.contact})`
+                      : name;
+                    if (
+                      search &&
+                      !label.toLowerCase().includes(search.toLowerCase())
+                    )
+                      return null;
+                    const partial = ["partial", "left_early"].includes(
+                      p.status,
+                    );
+                    return (
+                      <tr
+                        key={p.student_public_id}
+                        className="align-top hover:bg-white/[0.025]"
+                      >
+                        <th scope="row" className="max-w-56 p-3 font-medium">
+                          <span className="block break-words">{name}</span>
+                          <span className="mt-1 block break-all text-xs font-normal text-white/50">
+                            {person?.contact}
+                          </span>
+                        </th>
+                        <td className="w-48 p-3">
+                          <select
+                            aria-label={`Participation for ${label}`}
+                            className={`${lessonField} !mt-0`}
+                            value={p.status}
+                            onChange={(e) =>
+                              status(
+                                index,
+                                e.target.value as LessonParticipant["status"],
+                              )
+                            }
                           >
-                            {item.name} · player minutes
-                            <input
-                              type="number"
-                              inputMode="decimal"
-                              className={lessonField}
-                              required
-                              min="0"
-                              max={item.actual_minutes ?? 1440}
-                              step="0.01"
-                              value={
-                                p.items.find((i) => i.item_id === item.item_id)
-                                  ?.minutes ?? ""
-                              }
-                              onChange={(e) =>
-                                player(index, {
-                                  items: p.items.map((i) =>
-                                    i.item_id === item.item_id
-                                      ? {
-                                          ...i,
-                                          minutes: e.target.value || null,
-                                        }
-                                      : i,
-                                  ),
-                                })
-                              }
-                            />
-                          </label>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="mt-3 text-sm text-white/75">
-                        {p.status === "unconfirmed"
-                          ? "Minutes unknown"
-                          : p.status === "absent"
-                            ? "0 minutes · absent"
-                            : `${form.items.reduce((n, i) => n + Number(i.actual_minutes || 0), 0)} minutes · all activities`}
-                      </p>
-                    )}
-                    <label className="mt-4 block text-sm">
-                      Player notes
-                      <textarea
-                        aria-label={`Notes for ${label}`}
-                        className={lessonField}
-                        maxLength={1000}
-                        value={p.notes || ""}
-                        onChange={(e) =>
-                          player(index, { notes: e.target.value || null })
-                        }
-                      />
-                    </label>
-                  </div>
-                );
-              })}
+                            {Object.entries(statusLabels).map(([k, text]) => (
+                              <option
+                                key={k}
+                                value={k}
+                                disabled={
+                                  unknownMinutes &&
+                                  !["unconfirmed", "absent"].includes(k)
+                                }
+                              >
+                                {text}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="min-w-32 p-3">
+                          {partial ? (
+                            <div className="space-y-2">
+                              {form.items.map((item) => (
+                                <label
+                                  key={item.item_id}
+                                  className="block text-xs"
+                                >
+                                  {item.name}
+                                  <input
+                                    aria-label={`${item.name} minutes for ${label}`}
+                                    type="number"
+                                    inputMode="decimal"
+                                    required
+                                    min="0"
+                                    max={item.actual_minutes ?? 1440}
+                                    step="0.01"
+                                    className={`${lessonField} !mt-1`}
+                                    value={
+                                      p.items.find(
+                                        (i) => i.item_id === item.item_id,
+                                      )?.minutes ?? ""
+                                    }
+                                    onChange={(e) =>
+                                      player(index, {
+                                        items: p.items.map((i) =>
+                                          i.item_id === item.item_id
+                                            ? {
+                                                ...i,
+                                                minutes: e.target.value || null,
+                                              }
+                                            : i,
+                                        ),
+                                      })
+                                    }
+                                  />
+                                </label>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="block py-3 text-white/70">
+                              {p.status === "unconfirmed"
+                                ? "—"
+                                : p.status === "absent"
+                                  ? "0"
+                                  : form.items.reduce(
+                                      (n, i) =>
+                                        n + Number(i.actual_minutes || 0),
+                                      0,
+                                    )}
+                            </span>
+                          )}
+                        </td>
+                        <td className="min-w-52 p-3">
+                          <input
+                            aria-label={`Notes for ${label}`}
+                            className={`${lessonField} !mt-0`}
+                            placeholder="Add feedback…"
+                            maxLength={1000}
+                            value={p.notes || ""}
+                            onChange={(e) =>
+                              player(index, { notes: e.target.value || null })
+                            }
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
+            {search &&
+              !lesson.roster.some((p) =>
+                `${p.name} ${p.contact || ""}`
+                  .toLowerCase()
+                  .includes(search.toLowerCase()),
+              ) && (
+                <p className="mt-3 text-sm text-white/65">
+                  No matching students. Clear the search to see everyone.
+                </p>
+              )}
           </section>
           <div className="flex flex-wrap gap-3">
             <button
@@ -580,21 +737,30 @@ export function LessonEditor({
               disabled={!dirty}
               className="min-h-11 rounded-lg bg-[#d8ff5d] px-5 font-semibold text-black disabled:opacity-50"
             >
-              {busy ? "Saving…" : "Save lesson record"}
+              {busy ? "Saving…" : "Save draft"}
             </button>
             <button
               type="button"
               className={lessonButton}
               onClick={() => loadHistory()}
             >
-              View saved history
+              Saved versions
             </button>
           </div>
         </fieldset>
       </form>
       {historyOpen && (
         <section className="mt-8 border-t border-white/20 pt-5">
-          <h3 className="text-xl font-semibold">Saved history</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-semibold">Saved history</h3>
+            <button
+              type="button"
+              className={lessonButton}
+              onClick={() => setHistoryOpen(false)}
+            >
+              Close history
+            </button>
+          </div>
           <p className="mt-2 text-sm text-white/75">
             Loading a previous version only changes this editor. Save it as a
             new version to restore it.

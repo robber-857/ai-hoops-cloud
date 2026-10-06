@@ -1,7 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { formatDateInput, formatProfileDateTime, parseDateInput, validateDateInput } from "../dateInput";
+import { formatDateInput, formatProfileDateTime, maskDateInput, parseDateInput, validateDateInput } from "../dateInput";
 
 describe("Profile date input", () => {
+  it("inserts slashes for digits, pasted dates, and partial edits", () => {
+    for (const value of ["20120601", "2012/06/01", "2012-06-01"]) {
+      expect(maskDateInput(value)).toBe("2012/06/01");
+      expect(parseDateInput(maskDateInput(value))).toBe("2012-06-01");
+    }
+    expect(maskDateInput("20120")).toBe("2012/0");
+    expect(maskDateInput("2012060")).toBe("2012/06/0");
+    expect(maskDateInput("")).toBe("");
+    expect(validateDateInput(maskDateInput("20260230")).error).not.toBeNull();
+  });
   it("normalizes visible dates and old ISO values to the same API value", () => {
     expect(parseDateInput("2014/01/09")).toBe("2014-01-09");
     expect(parseDateInput("2014-01-09")).toBe("2014-01-09");

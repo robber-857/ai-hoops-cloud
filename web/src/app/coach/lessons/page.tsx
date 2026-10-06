@@ -138,7 +138,7 @@ export default function CoachLessonsPage() {
       setDirty(false);
       requestId.current = null;
       setNotice(
-        "Lesson created. Actual minutes are unknown and every player is unconfirmed.",
+        "Session started. Add the actual training minutes, then confirm attendance below.",
       );
       setReload((v) => v + 1);
     } catch (e) {
@@ -201,13 +201,13 @@ export default function CoachLessonsPage() {
   return (
     <CoachShell
       user={user}
-      title="Actual lessons"
-      breadcrumb={["Actual lessons"]}
+      title="Actual session"
+      breadcrumb={["Actual session"]}
     >
       <div className="min-w-0 max-w-5xl text-white">
         <p className="max-w-prose text-white/75">
-          Record what happened in class. Start from a published plan, enter
-          actual activities, then review each player’s participation.
+          Tell students what you trained today. Record activities, check
+          attendance, and publish their session summary.
         </p>
         {error && (
           <div role="alert" className="mt-5 text-red-200">
@@ -262,124 +262,137 @@ export default function CoachLessonsPage() {
         )}
         {classId && (
           <>
-            <form
-              className="mt-8 border-t border-white/20 pt-6"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void create();
-              }}
-            >
-              <h2 className="text-xl font-semibold">Start a lesson</h2>
-              <fieldset
-                disabled={busy || loading}
-                className="mt-5 min-w-0 space-y-4"
+            <details open={!selected} className="mt-6">
+              <summary className="cursor-pointer py-2 font-medium">
+                Start a new session
+              </summary>
+              <form
+                className="mt-8 border-t border-white/20 pt-6"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void create();
+                }}
               >
-                <div className="grid min-w-0 gap-5 sm:grid-cols-2">
-                  <label className="min-w-0 text-sm">
-                    Published plan
-                    <select
-                      required
-                      aria-label="Published plan"
-                      className={lessonField}
-                      value={planId}
-                      onChange={(e) => {
-                        setPlanId(e.target.value);
-                        requestId.current = null;
-                      }}
+                <h2 className="text-xl font-semibold">
+                  Choose a plan and date
+                </h2>
+                <fieldset
+                  disabled={busy || loading}
+                  className="mt-5 min-w-0 space-y-4"
+                >
+                  <div className="grid min-w-0 gap-5 sm:grid-cols-2">
+                    <label className="min-w-0 text-sm">
+                      Published plan
+                      <select
+                        required
+                        aria-label="Published plan"
+                        className={lessonField}
+                        value={planId}
+                        onChange={(e) => {
+                          setPlanId(e.target.value);
+                          requestId.current = null;
+                        }}
+                      >
+                        <option value="">Select a plan</option>
+                        {plans.map((p) => (
+                          <option key={p.public_id} value={p.public_id}>
+                            {p.title} · {p.planned_on} ·{" "}
+                            {p.student_name || "Class plan"}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="min-w-0 text-sm">
+                      Lesson date
+                      <input
+                        className={lessonField}
+                        type="date"
+                        required
+                        value={date}
+                        onChange={(e) => {
+                          setDate(e.target.value);
+                          requestId.current = null;
+                        }}
+                      />
+                    </label>
+                  </div>
+                  {!loading && !plans.length && (
+                    <p className="text-sm text-white/75">
+                      No published plans in this page. Publish a plan first, or
+                      load older plans.
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      className={lessonButton}
+                      type="submit"
+                      disabled={!planId}
                     >
-                      <option value="">Select a plan</option>
-                      {plans.map((p) => (
-                        <option key={p.public_id} value={p.public_id}>
-                          {p.title} · {p.planned_on} ·{" "}
-                          {p.student_name || "Class plan"}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="min-w-0 text-sm">
-                    Lesson date
-                    <input
-                      className={lessonField}
-                      type="date"
-                      required
-                      value={date}
-                      onChange={(e) => {
-                        setDate(e.target.value);
-                        requestId.current = null;
-                      }}
-                    />
-                  </label>
-                </div>
-                {!loading && !plans.length && (
-                  <p className="text-sm text-white/75">
-                    No published plans in this page. Publish a plan first, or
-                    load older plans.
+                      Start session
+                    </button>
+                    {morePlans && (
+                      <button
+                        className={lessonButton}
+                        type="button"
+                        onClick={() => loadMore("plans")}
+                      >
+                        Load older plans
+                      </button>
+                    )}
+                  </div>
+                </fieldset>
+              </form>
+            </details>
+            <details className="mt-4">
+              <summary className="cursor-pointer py-2 font-medium">
+                Previous sessions ({lessons.length}
+                {more ? "+" : ""})
+              </summary>
+              <section className="mt-8 border-t border-white/20 pt-6">
+                <h2 className="text-xl font-semibold">Saved lessons</h2>
+                {!loading && !error && !lessons.length && (
+                  <p className="mt-4 text-white/75">
+                    No actual lessons recorded for this class yet.
                   </p>
                 )}
-                <div className="flex flex-wrap gap-3">
+                <ul className="mt-4 divide-y divide-white/15">
+                  {lessons.map((l) => (
+                    <li
+                      key={l.public_id}
+                      className="flex flex-wrap items-center justify-between gap-3 py-4"
+                    >
+                      <div className="min-w-0 break-words">
+                        <h3 className="font-semibold">{l.title}</h3>
+                        <p className="mt-1 text-sm text-white/75">
+                          {l.held_on} · Version {l.version} ·{" "}
+                          {l.unconfirmed_count} unconfirmed ·{" "}
+                          {l.missing_minutes_count} activities without minutes
+                        </p>
+                      </div>
+                      <button
+                        className={lessonButton}
+                        disabled={busy || loading}
+                        onClick={() => open(l.public_id)}
+                      >
+                        Open lesson
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                {more && (
                   <button
                     className={lessonButton}
-                    type="submit"
-                    disabled={!planId}
+                    disabled={busy || loading}
+                    onClick={() => loadMore("lessons")}
                   >
-                    Create lesson record
+                    Load more lessons
                   </button>
-                  {morePlans && (
-                    <button
-                      className={lessonButton}
-                      type="button"
-                      onClick={() => loadMore("plans")}
-                    >
-                      Load older plans
-                    </button>
-                  )}
-                </div>
-              </fieldset>
-            </form>
-            <section className="mt-8 border-t border-white/20 pt-6">
-              <h2 className="text-xl font-semibold">Saved lessons</h2>
-              {!loading && !error && !lessons.length && (
-                <p className="mt-4 text-white/75">
-                  No actual lessons recorded for this class yet.
-                </p>
-              )}
-              <ul className="mt-4 divide-y divide-white/15">
-                {lessons.map((l) => (
-                  <li
-                    key={l.public_id}
-                    className="flex flex-wrap items-center justify-between gap-3 py-4"
-                  >
-                    <div className="min-w-0 break-words">
-                      <h3 className="font-semibold">{l.title}</h3>
-                      <p className="mt-1 text-sm text-white/75">
-                        {l.held_on} · Version {l.version} ·{" "}
-                        {l.unconfirmed_count} unconfirmed ·{" "}
-                        {l.missing_minutes_count} activities without minutes
-                      </p>
-                    </div>
-                    <button
-                      className={lessonButton}
-                      disabled={busy || loading}
-                      onClick={() => open(l.public_id)}
-                    >
-                      Open lesson
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              {more && (
-                <button
-                  className={lessonButton}
-                  disabled={busy || loading}
-                  onClick={() => loadMore("lessons")}
-                >
-                  Load more lessons
-                </button>
-              )}
-            </section>
+                )}
+              </section>
+            </details>
             {selected && (
               <LessonEditor
-              key={`editor:${selected.public_id}:${selected.version}`}
+                key={`editor:${selected.public_id}:${selected.version}`}
                 lesson={selected}
                 disabled={busy}
                 onDirty={setDirty}
@@ -388,13 +401,26 @@ export default function CoachLessonsPage() {
                   setSelected(lesson);
                   setDirty(false);
                   setNotice(
-                    `Lesson saved as version ${lesson.version}. Earlier versions are unchanged.`,
+                    "Draft saved. Review step 3 below to publish to students.",
+                  );
+                  requestAnimationFrame(() =>
+                    document
+                      .getElementById("session-publish")
+                      ?.scrollIntoView({ block: "start" }),
                   );
                   setReload((v) => v + 1);
                 }}
               />
             )}
-            {selected && <LessonReportPublisher key={`publisher:${selected.public_id}:${selected.version}`} lesson={selected} disabled={dirty || busy} onBusy={setBusy} />}
+            {selected && (
+              <LessonReportPublisher
+                key={`publisher:${selected.public_id}:${selected.version}`}
+                lesson={selected}
+                disabled={dirty || busy}
+                dirty={dirty}
+                onBusy={setBusy}
+              />
+            )}
           </>
         )}
       </div>

@@ -102,7 +102,7 @@ class RecipeService:
 
     def snapshot(self, content):
         ingredients = []
-        for item in content.ingredients:
+        for index, item in enumerate(content.ingredients):
             food = self.db.scalar(
                 select(FoodEntry).where(
                     FoodEntry.release_id == item.release_id,
@@ -112,7 +112,7 @@ class RecipeService:
             if not food:
                 raise HTTPException(
                     422,
-                    f"Selected food {item.food_key} is not available in that release.",
+                    f"Ingredient {index + 1} is unavailable. Remove it and select a food again from the food search.",
                 )
             release = self.db.get(FoodRelease, item.release_id)
             manifest = release.manifest

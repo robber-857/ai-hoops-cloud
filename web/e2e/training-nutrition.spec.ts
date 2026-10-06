@@ -39,8 +39,8 @@ function participant(editor: Locator, lesson: CampLesson, account: SeedAccount) 
   if (!roster) throw new Error("The dedicated class fixture is missing an expected student.");
   const label = roster.contact ? `${roster.name} (${roster.contact})` : roster.name;
   const selection = editor.getByRole("combobox", { name: `Participation for ${label}`, exact: true });
-  const container = editor.locator("div.py-6").filter({ has: selection });
-  return { selection, container };
+  const container = editor.locator("tbody tr").filter({ has: selection });
+  return { selection, container, label };
 }
 
 async function saveLesson(page: Page, lesson: CampLesson) {
@@ -49,21 +49,21 @@ async function saveLesson(page: Page, lesson: CampLesson) {
   const previewResponse = page.waitForResponse(async r =>
     apiResponse(r, /\/report-preview$/) && r.ok() &&
     (await r.json() as ReportPreview).lesson_version === lesson.version + 1);
-  await section(page, "Record actual lesson").getByRole("button", { name: "Save lesson record", exact: true }).click();
+  await section(page, "Today’s training").getByRole("button", { name: "Save draft", exact: true }).click();
   const saved = await savedResponse;
   expect(saved.ok()).toBe(true);
   const next = await saved.json() as CampLesson;
   const preview = await (await previewResponse).json() as ReportPreview;
   expect(preview.blockers).toEqual([]);
   expect(preview.preview_fingerprint).toMatch(/^[a-f0-9]{64}$/);
-  await expect(page.getByRole("heading", { name: "Record actual lesson", exact: true })).toHaveCount(1);
+  await expect(page.getByRole("heading", { name: "Today’s training", exact: true })).toHaveCount(1);
   return { lesson: next, preview };
 }
 
 async function publish(page: Page, lesson: CampLesson, preview: ReportPreview) {
   const pending = page.waitForResponse(r =>
     apiResponse(r, `/coach/classes/${lesson.class_public_id}/lessons/${lesson.public_id}/publish-reports`, "POST"));
-  await section(page, "Publish class records").getByRole("button", { name: "Publish saved class records", exact: true }).click();
+  await section(page, "3. Publish to students").getByRole("button", { name: /^Publish to \d+ students$/ }).click();
   const response = await pending;
   expect(response.ok()).toBe(true);
   expect(response.request().postDataJSON()).toMatchObject({
@@ -154,11 +154,11 @@ test.describe("simplified training and food nutrition with real dedicated APIs",
     await page.getByRole("combobox", { name: "Published plan", exact: true }).selectOption(seed.plan.public_id);
     await fillDate(page.getByLabel("Lesson date", { exact: true }), dates.today);
     const createdResponse = page.waitForResponse(r => apiResponse(r, `/coach/classes/${seed.class.public_id}/lessons`, "POST"));
-    await page.getByRole("button", { name: "Create lesson record", exact: true }).click();
+    await page.getByRole("button", { name: "Start session", exact: true }).click();
     const created = await createdResponse;
     expect(created.ok()).toBe(true);
     let lesson = await created.json() as CampLesson;
-    let editor = section(page, "Record actual lesson");
+    let editor = section(page, "Today’s training");
     const title = `UI Training ${seed.namespace}`;
     await editor.getByLabel("Lesson title", { exact: true }).fill(title);
     await expect(editor.getByLabel("Actual minutes", { exact: true })).toHaveCount(2);
@@ -167,6 +167,7 @@ test.describe("simplified training and food nutrition with real dedicated APIs",
     for (let index = 0; index < 2; index++) {
       await editor.getByLabel(`Activity ${index + 1}`, { exact: true }).fill(names[index]);
       await editor.getByLabel("Actual minutes", { exact: true }).nth(index).fill(index === 0 ? "10" : "20");
+      await editor.getByText("Activity notes & energy estimate (optional)", { exact: true }).nth(index).click();
       await editor.getByRole("combobox", { name: `Activity standard for activity ${index + 1}`, exact: true }).selectOption(codes[index]);
       await expect(editor.getByLabel(`Activity ${index + 1}`, { exact: true })).toHaveValue(names[index]);
       await expect(editor.getByRole("combobox", { name: `Intensity for activity ${index + 1}`, exact: true })).toHaveValue("");
@@ -174,10 +175,10 @@ test.describe("simplified training and food nutrition with real dedicated APIs",
     }
     const parent = participant(editor, lesson, seed.accounts.parent);
     await parent.selection.selectOption("partial");
-    await parent.container.getByLabel(`${names[0]} · player minutes`, { exact: true }).fill("10");
-    await parent.container.getByLabel(`${names[1]} · player minutes`, { exact: true }).fill("10");
+    await parent.container.getByLabel(`${names[0]} minutes for ${parent.label}`, { exact: true }).fill("10");
+    await parent.container.getByLabel(`${names[1]} minutes for ${parent.label}`, { exact: true }).fill("10");
     await participant(editor, lesson, seed.accounts.peer).selection.selectOption("absent");
-    await expect(section(page, "Publish class records").getByRole("button", { name: "Publish saved class records", exact: true })).toBeDisabled();
+    await expect(section(page, "3. Publish to students").getByRole("button", { name: "Save draft before publishing", exact: true })).toBeDisabled();
     const firstSave = await saveLesson(page, lesson);
     lesson = firstSave.lesson;
     expect(lesson.items.map(i => [i.activity_code, i.intensity])).toEqual([["warmup", "low"], ["basketball_game", "high"]]);
@@ -202,10 +203,10 @@ test.describe("simplified training and food nutrition with real dedicated APIs",
       await readReport(parentPage, original);
       await expect(parentPage.locator("article")).toContainText("10 minutes participated / 20 class minutes");
 
-      editor = section(page, "Record actual lesson");
+      editor = section(page, "Today’s training");
       const revisedParent = participant(editor, lesson, seed.accounts.parent);
-      await revisedParent.container.getByLabel(`${names[0]} · player minutes`, { exact: true }).fill("8");
-      await revisedParent.container.getByLabel(`${names[1]} · player minutes`, { exact: true }).fill("5");
+      await revisedParent.container.getByLabel(`${names[0]} minutes for ${revisedParent.label}`, { exact: true }).fill("8");
+      await revisedParent.container.getByLabel(`${names[1]} minutes for ${revisedParent.label}`, { exact: true }).fill("5");
       const secondSave = await saveLesson(page, lesson);
       lesson = secondSave.lesson;
 
@@ -214,9 +215,9 @@ test.describe("simplified training and food nutrition with real dedicated APIs",
       await parentPage.goto("/me/profile");
       await saveMeasurement(parentPage, "160", "46");
       const conflict = page.waitForResponse(r => apiResponse(r, /\/publish-reports$/, "POST"));
-      await section(page, "Publish class records").getByRole("button", { name: "Publish saved class records", exact: true }).click();
+      await section(page, "3. Publish to students").getByRole("button", { name: /^Publish to \d+ students$/ }).click();
       expect((await conflict).status()).toBe(409);
-      const publisher = section(page, "Publish class records");
+      const publisher = section(page, "3. Publish to students");
       await expect(publisher.getByRole("alert")).toBeVisible();
       const newPreviewResponse = page.waitForResponse(r => apiResponse(r, /\/report-preview$/));
       await publisher.getByRole("button", { name: "Retry", exact: true }).click();

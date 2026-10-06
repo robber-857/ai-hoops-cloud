@@ -1,4 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap");
 @import "tailwindcss";
 
 :root {
@@ -98,11 +97,13 @@
 
 @layer base {
   html {
+    position: relative;
     color-scheme: dark;
     background-color: #07080b;
   }
 
   body {
+    position: relative;
     min-height: 100vh;
     background:
       radial-gradient(circle at top, rgba(125, 211, 252, 0.08), transparent 28%),
@@ -290,5 +291,203 @@
     border-right: 0;
     white-space: normal;
     animation: none;
+  }
+}
+
+.landing-root {
+  font-family: var(--font-sans);
+  background: #070707;
+  color: #fff;
+}
+
+.landing-root a:focus-visible {
+  outline: 2px solid #ffb77f !important;
+  outline-offset: 4px !important;
+}
+
+.landing-font {
+  font-family: var(--font-display);
+}
+
+.landing-kicker {
+  font-family: var(--font-display);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.landing-hero-heading,
+.landing-section-heading {
+  font-family: var(--font-display);
+}
+
+.landing-noise {
+  background-image:
+    repeating-radial-gradient(circle at 18% 28%, rgba(255, 255, 255, 0.9) 0 0.5px, transparent 0.7px 3px),
+    repeating-radial-gradient(circle at 74% 62%, rgba(255, 255, 255, 0.6) 0 0.4px, transparent 0.6px 4px);
+  background-size: 5px 5px, 7px 7px;
+  mix-blend-mode: soft-light;
+}
+
+.landing-spatial-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-position: center;
+  background-size: 82px 82px;
+  mask-image: radial-gradient(ellipse at center, black 0%, rgba(0, 0, 0, 0.7) 44%, transparent 78%);
+}
+
+.landing-shine-text {
+  background: linear-gradient(
+    112deg,
+    #ff8d3b 8%,
+    #ff8d3b 34%,
+    #fff1df 47%,
+    #ffb073 57%,
+    #ff8d3b 78%
+  );
+  background-position: 120% center;
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: landing-text-shine 5.8s ease-in-out infinite;
+}
+
+.landing-core-aura {
+  background:
+    radial-gradient(circle, rgba(255, 154, 80, 0.2) 0%, rgba(255, 126, 34, 0.08) 38%, transparent 70%);
+  box-shadow:
+    0 0 120px rgba(255, 126, 34, 0.16),
+    inset 0 0 90px rgba(255, 175, 112, 0.08);
+  animation: landing-core-breathe 7s ease-in-out infinite;
+}
+
+.landing-core-orbit {
+  box-shadow:
+    inset 0 0 80px rgba(255, 141, 59, 0.025),
+    0 0 60px rgba(255, 141, 59, 0.035);
+}
+
+.landing-core-disc {
+  background:
+    radial-gradient(circle at 36% 28%, rgba(255, 240, 222, 0.14), transparent 24%),
+    radial-gradient(circle at 54% 56%, rgba(255, 139, 53, 0.18), rgba(12, 10, 9, 0.78) 50%, rgba(6, 6, 6, 0.94) 74%);
+  box-shadow:
+    inset 0 0 80px rgba(255, 238, 216, 0.055),
+    inset 0 -40px 70px rgba(0, 0, 0, 0.74),
+    0 0 60px rgba(255, 136, 49, 0.12),
+    0 34px 90px rgba(0, 0, 0, 0.52);
+  backdrop-filter: blur(14px);
+}
+
+.landing-core-disc-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 38px 38px;
+  mask-image: radial-gradient(circle, black, transparent 76%);
+}
+
+.landing-core-sweep {
+  background: conic-gradient(
+    from 195deg,
+    transparent 0deg,
+    transparent 248deg,
+    rgba(255, 141, 59, 0.02) 268deg,
+    rgba(255, 196, 148, 0.34) 285deg,
+    transparent 309deg,
+    transparent 360deg
+  );
+  mask-image: radial-gradient(circle, transparent 0 34%, black 42% 51%, transparent 60%);
+}
+
+.landing-report-stage {
+  box-shadow:
+    0 34px 90px rgba(0, 0, 0, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.landing-final-stage {
+  background:
+    radial-gradient(circle at 50% 48%, rgba(255, 141, 59, 0.08), transparent 42%),
+    linear-gradient(180deg, rgba(17, 17, 17, 0.94), rgba(7, 7, 7, 0.98));
+}
+
+.landing-final-orbit {
+  box-shadow:
+    inset 0 0 90px rgba(255, 141, 59, 0.05),
+    0 0 90px rgba(255, 141, 59, 0.04);
+  animation: landing-final-orbit 18s linear infinite;
+}
+
+.landing-final-orbit::before,
+.landing-final-orbit::after {
+  content: "";
+  position: absolute;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 50%;
+}
+
+.landing-final-orbit::before {
+  inset: 12%;
+}
+
+.landing-final-orbit::after {
+  inset: 27%;
+  border-color: rgba(255, 141, 59, 0.17);
+}
+
+@keyframes landing-text-shine {
+  0%,
+  25% {
+    background-position: 120% center;
+  }
+  60%,
+  100% {
+    background-position: -85% center;
+  }
+}
+
+@keyframes landing-core-breathe {
+  0%,
+  100% {
+    transform: scale(0.96);
+    opacity: 0.68;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+}
+
+@keyframes landing-final-orbit {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .landing-shine-text,
+  .landing-core-aura,
+  .landing-final-orbit {
+    animation: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .landing-spatial-grid {
+    background-size: 54px 54px;
+  }
+
+  .landing-kicker {
+    font-size: 0.55rem;
+    letter-spacing: 0.19em;
   }
 }

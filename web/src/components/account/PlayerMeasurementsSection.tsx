@@ -128,11 +128,6 @@ export function PlayerMeasurementsSection() {
       setSaveError(measurementDate.error || birthDate.error || "Enter valid birth and measurement dates.");
       return;
     }
-    const measurementAge = ageYears(birthDate.iso, measurementDate.iso);
-    if (measurementAge === null || measurementAge < 4 || measurementAge > 18) {
-      setSaveError("The player must be aged 4–18 on the measurement date.");
-      return;
-    }
     saveInFlight.current = true;
     setSaving(true);
     setSaveError(null);
@@ -192,7 +187,7 @@ export function PlayerMeasurementsSection() {
     <section className="min-w-0 border-t border-white/15 pt-6">
       <h2 className="text-xl font-semibold">Player measurements</h2>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-white/70">
-        For players aged 4–18. A parent can enter these details on the player’s
+        For players of all ages. A parent can enter these details on the player’s
         behalf. Each save adds a dated record; previous measurements and
         analysis reports stay unchanged.
       </p>
