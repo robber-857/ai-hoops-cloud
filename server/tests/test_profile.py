@@ -35,6 +35,7 @@ def user_fixture(**changes):
         email="profile-fixture@example.com",
         role=UserRole.student,
         training_started_on=date(2020, 1, 1),
+        preferred_language="en",
         updated_at=datetime(2026, 10, 1, tzinfo=timezone.utc),
     )
     values.update(changes)
@@ -157,10 +158,23 @@ class ProfileServiceTests(unittest.TestCase):
         with TestClient(app) as client:
             result = client.get("/api/v1/me/profile")
             self.assertEqual(result.status_code, 200)
-            self.assertEqual(set(result.json()), {"nickname", "training_started_on", "updated_at"})
+            self.assertEqual(set(result.json()), {"nickname", "training_started_on", "preferred_language", "updated_at"})
             self.assertEqual(client.patch("/api/v1/me/profile", json={"nickname": "Sam"}).status_code, 200)
             for extra in ({"role": "admin"}, {"email": "new@example.com"}, {"user_id": 20}):
                 self.assertEqual(client.patch("/api/v1/me/profile", json=extra).status_code, 422)
+
+    def test_language_updates_share_profile_optimistic_lock(self):
+        token = self.user.updated_at
+        saved = self.service.update(self.user, ProfileUpdate(preferred_language="zh-CN", expected_updated_at=token))
+        self.assertEqual(saved.preferred_language, "zh-CN")
+        self.assertEqual(saved.nickname, "Alex")
+        self.assertEqual(saved.training_started_on, date(2020, 1, 1))
+        self.assertEqual((self.user.role, self.user.email), (UserRole.student, "profile-fixture@example.com"))
+        with self.assertRaises(HTTPException) as caught:
+            self.service.update(self.user, ProfileUpdate(preferred_language="en", expected_updated_at=token))
+        self.assertEqual(caught.exception.status_code, 409)
+        self.assertEqual(self.user.preferred_language, "zh-CN")
+        self.db.commit.assert_called_once()
 
 
 TEST_DATABASE_URL = os.environ.get("PLAYER_PROFILE_TEST_DATABASE_URL")
@@ -255,6 +269,26 @@ class ProfilePostgresTests(unittest.TestCase):
         retry = PlayerProfileService(self.db).create(self.user, old)
         self.assertEqual(retry.public_id, old.request_id)
         self.assertEqual(self.db.scalar(select(func.count()).select_from(PlayerProfileRevision).where(PlayerProfileRevision.public_id == old.request_id)), 1)
+
+    def test_language_roundtrip_stale_token_and_account_isolation(self):
+        service = ProfileService(self.db)
+        before = service.read(self.user)
+        self.assertEqual(before.preferred_language, "en")
+        saved = service.update(self.user, ProfileUpdate(preferred_language="zh-CN", expected_updated_at=before.updated_at))
+        other = User(username=f"language-{uuid4().hex[:12]}", password_hash="unused", email=f"{uuid4().hex}@example.com")
+        self.db.add(other)
+        self.db.commit()
+        owner_id, other_id = self.user.id, other.id
+        with Session(self.engine) as fresh:
+            self.assertEqual(ProfileService(fresh).read(fresh.get(User, owner_id)).preferred_language, "zh-CN")
+            self.assertEqual(ProfileService(fresh).read(fresh.get(User, other_id)).preferred_language, "en")
+        with self.assertRaises(HTTPException) as caught:
+            service.update(self.user, ProfileUpdate(preferred_language="en", expected_updated_at=before.updated_at))
+        self.assertEqual(caught.exception.status_code, 409)
+        self.db.rollback()
+        current = service.read(self.user)
+        self.assertEqual(current.updated_at, saved.updated_at)
+        self.assertEqual(service.update(self.user, ProfileUpdate(preferred_language="en", expected_updated_at=current.updated_at)).preferred_language, "en")
 
 
 if __name__ == "__main__":

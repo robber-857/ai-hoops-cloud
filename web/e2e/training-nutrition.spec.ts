@@ -5,11 +5,12 @@ import { test, expect, apiResponse, login, logout, section, sydneyDates,
   assertNoHorizontalOverflow, type SeedAccount } from "./support";
 
 async function fillDate(input: Locator, date: string) {
-  // Playwright's native date fill emits the input/change events. Checking the
-  // eventual HTTP body below catches a visible value that React did not save.
-  await input.fill(date);
+  // Profile uses an explicit slash format; coach dates retain their native
+  // control. In both cases, HTTP assertions below require canonical ISO dates.
+  const displayed = await input.getAttribute("type") === "date" ? date : date.replaceAll("-", "/");
+  await input.fill(displayed);
   await input.press("Tab");
-  await expect(input).toHaveValue(date);
+  await expect(input).toHaveValue(displayed);
 }
 
 async function saveMeasurement(page: Page, height: string, weight: string) {
@@ -86,11 +87,13 @@ test.describe("simplified training and food nutrition with real dedicated APIs",
   // seed JSON/database namespace is required for each complete run.
   test.describe.configure({ mode: "serial" });
 
-  test("native profile dates persist after refresh and login; body history retains BMI", async ({ page, seed }) => {
+  test("yyyy/mm/dd profile dates persist as ISO after refresh and login; body history retains BMI", async ({ page, seed }) => {
     const dates = sydneyDates();
     await login(page, seed.accounts.parent, "/me/profile");
     const basics = section(page, "Player profile");
     const nickname = `UI Athlete ${seed.namespace}`;
+    await expect(basics.getByLabel("Started training on", { exact: true })).toHaveAttribute("placeholder", "yyyy/mm/dd");
+    await expect(basics.getByRole("combobox", { name: "Language", exact: true })).toHaveValue("en");
     await basics.getByLabel(/Player name \/ nickname/).fill(nickname);
     await fillDate(basics.getByLabel("Started training on", { exact: true }), dates.started);
     await expect(basics.locator("output")).toHaveText("2 years");
@@ -106,21 +109,24 @@ test.describe("simplified training and food nutrition with real dedicated APIs",
     await saveMeasurement(page, "150", "40");
     await saveMeasurement(page, "155", "43");
     const measurements = section(page, "Player measurements");
+    await expect(measurements.getByLabel("Date of birth", { exact: true })).toHaveAttribute("placeholder", "yyyy/mm/dd");
+    await expect(measurements.getByLabel("Measurement date", { exact: true })).toHaveAttribute("placeholder", "yyyy/mm/dd");
+    await expect(page.locator('input[type="date"]')).toHaveCount(0);
     await expect(measurements.locator("li")).toHaveCount(2);
     await expect(measurements.locator("li").nth(0)).toContainText("BMI 17.90");
     await expect(measurements.locator("li").nth(1)).toContainText("BMI 17.78");
     await expect(measurements.locator("output").nth(0)).toHaveText("12 years");
 
     await page.reload();
-    await expect(basics.getByLabel("Started training on", { exact: true })).toHaveValue(dates.started);
-    await expect(measurements.getByLabel("Date of birth", { exact: true })).toHaveValue(dates.birth);
+    await expect(basics.getByLabel("Started training on", { exact: true })).toHaveValue(dates.started.replaceAll("-", "/"));
+    await expect(measurements.getByLabel("Date of birth", { exact: true })).toHaveValue(dates.birth.replaceAll("-", "/"));
     await expect(measurements.locator("li")).toHaveCount(2);
     await logout(page);
     await login(page, seed.accounts.parent, "/me/profile");
     await expect(basics.getByLabel(/Player name \/ nickname/)).toHaveValue(nickname);
-    await expect(basics.getByLabel("Started training on", { exact: true })).toHaveValue(dates.started);
+    await expect(basics.getByLabel("Started training on", { exact: true })).toHaveValue(dates.started.replaceAll("-", "/"));
     await expect(basics.locator("output")).toHaveText("2 years");
-    await expect(measurements.getByLabel("Date of birth", { exact: true })).toHaveValue(dates.birth);
+    await expect(measurements.getByLabel("Date of birth", { exact: true })).toHaveValue(dates.birth.replaceAll("-", "/"));
     await expect(measurements.getByLabel("Height (cm)", { exact: true })).toHaveValue("155.00");
     await expect(measurements.locator("li")).toHaveCount(2);
 
@@ -236,8 +242,75 @@ test.describe("simplified training and food nutrition with real dedicated APIs",
     }
   });
 
-  test("foods use official per-100g data, category/search/pagination and retry work on desktop and mobile", async ({ page, seed }) => {
+  test("English default and saved Chinese preference survive refresh, login and account switches", async ({ page, seed }) => {
+    test.setTimeout(180_000);
     await login(page, seed.accounts.parent, "/foods");
+    await expect(page.getByRole("heading", { name: "Food nutrition", exact: true })).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: "28 matching foods" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "AFCD", exact: true })).toHaveAttribute("href", "https://www.foodstandards.gov.au/science-data/food-nutrient-databases/afcd/data-files");
+    await expect(page.getByText(/Food composition data represents/)).toHaveCount(0);
+    await page.goto("/me/profile");
+    const basics = section(page, "Player profile");
+    const language = basics.getByRole("combobox", { name: "Language", exact: true });
+    await expect(language).toHaveValue("en");
+    const start = basics.getByLabel("Started training on", { exact: true });
+    await expect(start).toBeEnabled();
+    await expect(start).toHaveValue(sydneyDates().started.replaceAll("-", "/"));
+    const existingDate = await start.inputValue();
+    await start.fill("2026/02/30");
+    await expect.poll(() => start.evaluate((element: HTMLInputElement) => element.validity.valid)).toBe(false);
+    await start.fill(existingDate);
+    await language.selectOption("zh-CN");
+    const pending = page.waitForResponse(r => apiResponse(r, "/me/profile", "PATCH"));
+    await basics.getByRole("button", { name: "Save profile", exact: true }).click();
+    const saved = await pending;
+    expect(saved.status()).toBe(200);
+    expect(saved.request().postDataJSON()).toMatchObject({ preferred_language: "zh-CN" });
+    expect(await saved.json()).toMatchObject({ preferred_language: "zh-CN", training_started_on: existingDate.replaceAll("/", "-") });
+    await expect(basics.getByText(/Profile saved\./)).toBeVisible();
+    await page.goto("/foods");
+    await expect(page.getByRole("heading", { name: "食材营养", exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "食材营养", exact: true })).toBeVisible();
+    await logout(page);
+    await login(page, seed.accounts.parent, "/foods");
+    await expect(page.getByRole("heading", { name: "食材营养", exact: true })).toBeVisible();
+    await logout(page);
+    await login(page, seed.accounts.peer, "/foods");
+    await expect(page.getByRole("heading", { name: "Food nutrition", exact: true })).toBeVisible();
+    await expect(page.locator("article").first()).toContainText("Chicken breast");
+    await logout(page);
+    await login(page, seed.accounts.parent, "/me/profile");
+    await expect(language).toHaveValue("zh-CN");
+    await language.selectOption("en");
+    await page.route("**/api/v1/me/profile", route => {
+      if (route.request().method() !== "PATCH") return route.continue();
+      return route.fulfill({
+        status: 503, contentType: "application/json",
+        headers: { "access-control-allow-origin": new URL(page.url()).origin, "access-control-allow-credentials": "true" },
+        body: JSON.stringify({ detail: "E2E temporary profile failure" }),
+      });
+    }, { times: 1 });
+    await basics.getByRole("button", { name: "Save profile", exact: true }).click();
+    await expect(basics.getByRole("alert")).toContainText("E2E temporary profile failure");
+    await expect(language).toHaveValue("en");
+    const retried = page.waitForResponse(r => apiResponse(r, "/me/profile", "PATCH"));
+    await basics.getByRole("button", { name: "Save profile", exact: true }).click();
+    expect((await retried).status()).toBe(200);
+    await expect(basics.getByText(/Profile saved\./)).toBeVisible();
+    await page.goto("/foods");
+    await expect(page.getByRole("heading", { name: "Food nutrition", exact: true })).toBeVisible();
+  });
+
+  test("foods use official per-100g data, category/search/pagination and retry work on desktop and mobile", async ({ page, seed }) => {
+    await login(page, seed.accounts.parent, "/me/profile");
+    const basics = section(page, "Player profile");
+    await basics.getByRole("combobox", { name: "Language", exact: true }).selectOption("zh-CN");
+    const preference = page.waitForResponse(r => apiResponse(r, "/me/profile", "PATCH"));
+    await basics.getByRole("button", { name: "Save profile", exact: true }).click();
+    expect((await preference).status()).toBe(200);
+    await expect(basics.getByText(/Profile saved\./)).toBeVisible();
+    await page.goto("/foods");
     await expect(page.getByRole("heading", { name: "食材营养", exact: true })).toBeVisible();
     await expect(page.getByRole("status").filter({ hasText: "共 28 条匹配食材" })).toBeVisible();
     await expect(page.locator("article")).toHaveCount(20);
@@ -256,8 +329,6 @@ test.describe("simplified training and food nutrition with real dedicated APIs",
     const milk = page.locator("article").filter({ has: page.getByRole("heading", { name: "全脂牛奶", exact: true }) });
     await expect(milk).toContainText("每 100 g 可食部分");
     for (const value of ["5.4 g", "3.3 g", "3.4 g"]) await expect(milk).toContainText(value);
-    await milk.locator("summary").click();
-    await expect(milk.getByText(/Milk, cow, fluid/)).toBeVisible();
     await search.fill("milk");
     const englishSearch = page.waitForResponse(r => apiResponse(r, "/training-foods") &&
       new URL(r.url()).searchParams.get("query") === "milk");
@@ -281,7 +352,7 @@ test.describe("simplified training and food nutrition with real dedicated APIs",
       body: JSON.stringify({ detail: "E2E temporary food source failure" }),
     }), { times: 1 });
     await page.getByRole("button", { name: "全部", exact: true }).click();
-    const foodError = page.getByRole("alert").filter({ hasText: "E2E temporary food source failure" });
+    const foodError = page.getByRole("alert").filter({ hasText: "食材数据暂不可用，请稍后重试。" });
     await expect(foodError).toBeVisible();
     await page.getByRole("button", { name: "重新加载", exact: true }).click();
     await expect(page.locator("article")).toHaveCount(20);

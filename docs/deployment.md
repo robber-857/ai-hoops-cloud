@@ -59,7 +59,7 @@ For upgrades from `20260503_0003`, verify all users have a nonempty phone or ema
 python -m alembic upgrade head
 ```
 
-This release's head is `20261003_0012`. Confirm the new profile/lesson/food/report tables and all six history protection triggers. `/health` is liveness only: there is no `/ready` endpoint, and a successful health response does not verify migrations or data readiness.
+The current head is `20261006_0013`. Existing `20261003_0012` databases only need the additive language migration: `users.preferred_language`, non-null default `en`, constrained to `en` or `zh-CN`. Apply this before deploying the new backend, then publish the frontend. Confirm profile/lesson/food/report tables and all six history protection triggers. `/health` is liveness only: there is no `/ready` endpoint, and a successful health response does not verify migrations or data readiness.
 
 AFCD import is a separate deployment step. In the importing Python environment install `requirements-data.txt`, fetch the pinned official files, and review a preview before committing:
 
@@ -90,7 +90,7 @@ Initialize missing training templates through the administrator sync preview and
 3. Migrate the production database, import official AFCD data, and initialize only missing templates.
 4. Deploy the exact release commit to Render. Verify the live commit, schema, authenticated endpoints, and CORS.
 5. Push the verified release to `main` and wait for Vercel's Production deployment to succeed for that exact commit.
-6. Use an authenticated browser to check Profile, food search, existing reports, actual file upload, analysis/save, and refresh/reopen. Verify coach publication and parent visibility using a real class when available.
+6. Use an authenticated browser to check Profile, fixed `yyyy/mm/dd` dates, saved English/Chinese language after reload and re-login, food search, existing reports, actual file upload, analysis/save, and refresh/reopen. Verify coach publication and parent visibility using a real class when available.
 
 The food endpoint `/api/v1/training-foods?limit=100` must return ready, 28 selected entries, zero missing foods, and the official fingerprint. `/api/v1/exercise-activities` must expose the expected nine activities and versioned estimation rules.
 

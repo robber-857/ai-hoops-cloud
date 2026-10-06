@@ -10,7 +10,7 @@ SERVER_ROOT = REPO_ROOT / "server"
 TMP_ROOT = REPO_ROOT / "tmp"
 UNIT_DATABASE = "ai_hoops_p2_test"
 E2E_DATABASE = "ai_hoops_e2e_test"
-EXPECTED_REVISION = "20261003_0012"
+EXPECTED_REVISION = "20261006_0013"
 
 
 def test_database_url(database_url: str | None, app_env: str | None, allowed_names):
@@ -82,3 +82,9 @@ def require_migrated_schema(connection) -> None:
     training_start = columns.get("training_started_on")
     if training_start is None or not training_start["nullable"]:
         raise ValueError("The nullable training start date migration is missing.")
+    language = columns.get("preferred_language")
+    if language is None or language["nullable"] or "'en'" not in (language.get("default") or ""):
+        raise ValueError("The non-null English-default account language migration is missing.")
+    constraints = {constraint["name"] for constraint in schema.get_check_constraints("users", schema="public")}
+    if "ck_users_preferred_language" not in constraints:
+        raise ValueError("The supported account language constraint is missing.")

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AccountCenterShell } from "@/components/account/AccountCenterShell";
 import { AccountDataProvider } from "@/components/account/AccountDataProvider";
+import { LanguagePreferenceProvider } from "@/components/account/LanguagePreferenceProvider";
 import { useAuthStore } from "@/store/authStore";
 import { routes } from "@/lib/routes";
 
@@ -34,9 +35,11 @@ export default function AccountLayout({
   }
   return (
     <AccountDataProvider key={user.public_id}>
-      <AccountCenterShell username={user.nickname || user.username}>
-        {children}
-      </AccountCenterShell>
+      <LanguagePreferenceProvider key={user.public_id}>
+        <AccountCenterShell username={user.nickname || user.username}>
+          {children}
+        </AccountCenterShell>
+      </LanguagePreferenceProvider>
     </AccountDataProvider>
   );
 }

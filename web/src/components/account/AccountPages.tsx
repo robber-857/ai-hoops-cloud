@@ -16,6 +16,7 @@ import { TrainingNutritionOverview } from "./TrainingNutritionOverview";
 import { routes } from "@/lib/routes";
 import { useAuthStore } from "@/store/authStore";
 import type { AccountAnalysisType } from "./types";
+import { sydneyDateKey } from "@/lib/profile";
 
 export function AccountPageStatus() {
   const data = useAccountCenter();
@@ -260,7 +261,7 @@ export function AccountMessagesPage() {
 export function AccountProfilePage() {
   const d = useAccountCenter();
   if (!d.user) return null;
-  const joinedLabel = `Joined ${new Intl.DateTimeFormat("en-AU", { month: "short", year: "numeric" }).format(new Date(d.user.created_at))}`;
+  const joinedLabel = `Joined ${sydneyDateKey(new Date(d.user.created_at)).replaceAll("-", "/")}`;
   return (
     <>
       <h1 className="text-2xl font-semibold sm:text-3xl">Personal profile</h1>

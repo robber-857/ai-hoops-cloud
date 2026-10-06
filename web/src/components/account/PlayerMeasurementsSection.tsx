@@ -9,6 +9,8 @@ import {
 } from "@/services/playerProfile";
 import type { MeasurementReadBMI } from "@/services/me";
 import { ageYears, deriveBmi, measurementBmi, sydneyDateKey } from "@/lib/profile";
+import { formatDateInput, formatProfileDateTime, parseDateInput, validateDateInput } from "@/lib/dateInput";
+import { ProfileDateInput } from "./ProfileDateInput";
 
 type Form = Omit<PlayerMeasurementInput, "request_id" | "sex"> & {
   sex: "" | "female" | "male";
@@ -114,6 +116,23 @@ export function PlayerMeasurementsSection() {
   };
   const save = async () => {
     if (saveInFlight.current) return;
+    const measurementDate = validateDateInput(form.measured_on, {
+      required: true,
+      maxDate: sydneyDateKey(),
+    });
+    const birthDate = validateDateInput(form.date_of_birth, {
+      required: true,
+      maxDate: measurementDate.iso,
+    });
+    if (measurementDate.error || birthDate.error || !measurementDate.iso || !birthDate.iso) {
+      setSaveError(measurementDate.error || birthDate.error || "Enter valid birth and measurement dates.");
+      return;
+    }
+    const measurementAge = ageYears(birthDate.iso, measurementDate.iso);
+    if (measurementAge === null || measurementAge < 4 || measurementAge > 18) {
+      setSaveError("The player must be aged 4–18 on the measurement date.");
+      return;
+    }
     saveInFlight.current = true;
     setSaving(true);
     setSaveError(null);
@@ -124,6 +143,8 @@ export function PlayerMeasurementsSection() {
     try {
       await playerProfileService.save({
         ...form,
+        date_of_birth: birthDate.iso,
+        measured_on: measurementDate.iso,
         sex: form.sex || null,
         request_id: requestId.current,
       });
@@ -163,8 +184,8 @@ export function PlayerMeasurementsSection() {
     }
   };
 
-  const age = ageYears(form.date_of_birth, form.measured_on);
-  const currentAge = ageYears(form.date_of_birth);
+  const age = ageYears(parseDateInput(form.date_of_birth), parseDateInput(form.measured_on) ?? "");
+  const currentAge = ageYears(parseDateInput(form.date_of_birth));
   const bmi = deriveBmi(form.height_cm, form.weight_kg);
 
   return (
@@ -205,24 +226,22 @@ export function PlayerMeasurementsSection() {
         >
           <label className="min-w-0 text-sm">
             Date of birth
-            <input
-              type="date"
+            <ProfileDateInput
               required
-              max={form.measured_on || undefined}
+              maxDate={parseDateInput(form.measured_on) ?? sydneyDateKey()}
               className={fieldClass}
               value={form.date_of_birth}
-              onChange={(e) => update("date_of_birth", e.target.value)}
+              onChange={(value) => update("date_of_birth", value)}
             />
           </label>
           <label className="min-w-0 text-sm">
             Measurement date
-            <input
-              type="date"
+            <ProfileDateInput
               required
-              max={sydneyDateKey()}
+              maxDate={sydneyDateKey()}
               className={fieldClass}
               value={form.measured_on}
-              onChange={(e) => update("measured_on", e.target.value)}
+              onChange={(value) => update("measured_on", value)}
             />
           </label>
           <label className="min-w-0 text-sm">
@@ -320,10 +339,10 @@ export function PlayerMeasurementsSection() {
         {items.map((item) => (
           <li key={item.public_id} className="py-4 text-sm">
             <p className="font-semibold">
-              {item.measured_on} · {item.height_cm} cm · {item.weight_kg} kg
+              {formatDateInput(item.measured_on)} · {item.height_cm} cm · {item.weight_kg} kg
             </p>
             <p className="mt-2 text-white/65">
-              Born {item.date_of_birth} · {item.sex ?? "Sex not specified"}
+              Born {formatDateInput(item.date_of_birth)} · {item.sex ?? "Sex not specified"}
               {ageYears(item.date_of_birth, item.measured_on) !== null &&
                 ` · Age ${ageYears(item.date_of_birth, item.measured_on)} at measurement`}
             </p>
@@ -331,7 +350,7 @@ export function PlayerMeasurementsSection() {
               BMI {measurementBmi(item) ?? "not available"}
             </p>
             <p className="mt-1 text-xs text-white/60">
-              Saved {new Date(item.created_at).toLocaleString("en-AU", { timeZone: "Australia/Sydney" })}
+              Saved {formatProfileDateTime(item.created_at)}
             </p>
           </li>
         ))}
