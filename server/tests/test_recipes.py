@@ -309,6 +309,10 @@ class RecipeDatabaseTests(unittest.TestCase):
             self.service.create(self.admin, bad)
         self.assertEqual(err.exception.status_code, 422)
 
+        self.assertNotIn("F999999", err.exception.detail)
+        self.assertIn("Ingredient 1", err.exception.detail)
+        self.assertIn("select a food again", err.exception.detail)
+
     def test_concurrent_edits_reject_stale_content(self):
         key = UUID(self.create()["public_id"])
         admin_id, release_id = self.admin.id, self.release.id

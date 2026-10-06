@@ -309,7 +309,7 @@ export function RecipeEditor({ id }: { id?: string }) {
                       {names[key(i)] ||
                         saved?.ingredients.find((s) => key(s) === key(i))
                           ?.name ||
-                        "Selected food"}
+                        "Food name unavailable — remove and select this ingredient again"}
                     </h3>
                     <button
                       type="button"

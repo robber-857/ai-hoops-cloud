@@ -16,7 +16,7 @@ class PlayerProfileRevision(PublicIdMixin, Base):
         Index("ix_player_profile_user_measured", "user_id", "measured_on", "created_at"),
         CheckConstraint("height_cm > 0 AND height_cm <= 300", name="ck_profile_height"),
         CheckConstraint("weight_kg > 0 AND weight_kg <= 500", name="ck_profile_weight"),
-        CheckConstraint("date_of_birth < measured_on", name="ck_profile_dates"),
+        CheckConstraint("date_of_birth <= measured_on", name="ck_profile_dates"),
         CheckConstraint("sex IS NULL OR sex IN ('female', 'male')", name="ck_profile_sex"),
     )
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)

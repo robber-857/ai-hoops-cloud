@@ -131,7 +131,7 @@ export function RecipeDetail({ id }: { id: string }) {
                 {recipe.ingredients.map((i, n) => (
                   <li key={n} className="py-4">
                     <div className="flex justify-between gap-4">
-                      <span className="break-words font-medium">{i.name}</span>
+                      <span className="min-w-0 break-words font-medium">{i.name?.trim() || "Food name unavailable — reload or contact the recipe administrator"}</span>
                       <span className="shrink-0 tabular-nums">
                         {i.edible_grams} g
                       </span>

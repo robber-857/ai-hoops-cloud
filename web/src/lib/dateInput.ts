@@ -9,6 +9,13 @@ type DateInputValidation = {
   error: string | null;
 };
 
+/** Insert separators while typing; partial dates remain editable and invalid. */
+export function maskDateInput(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  return [digits.slice(0, 4), digits.slice(4, 6), digits.slice(6, 8)]
+    .filter(Boolean).join("/");
+}
+
 /** Accept the visible yyyy/mm/dd format and existing ISO date values. */
 export function parseDateInput(value: string | null | undefined): string | null {
   const match = /^(\d{4})([-/])(\d{2})\2(\d{2})$/.exec(value?.trim() ?? "");

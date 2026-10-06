@@ -14,6 +14,7 @@ export function FoodPicker({ onAdd }: { onAdd: (food: Food) => void }) {
     [error, setError] = useState("");
   useEffect(() => {
     let active = true;
+    setError("");
     recipeService
       .releases()
       .then((data) => {
@@ -121,7 +122,7 @@ export function FoodPicker({ onAdd }: { onAdd: (food: Food) => void }) {
               className="flex items-start justify-between gap-4 py-4"
             >
               <div className="min-w-0">
-                <p className="break-words font-medium">{f.name}</p>
+                <p className="break-words font-medium">{f.name?.trim() || "Food name unavailable — retry the search"}</p>
                 <p className="mt-1 text-sm text-white/70">
                   {f.details["Food Description"]}
                 </p>
@@ -133,6 +134,7 @@ export function FoodPicker({ onAdd }: { onAdd: (food: Food) => void }) {
               <button
                 type="button"
                 className={button + " shrink-0"}
+                disabled={!f.name?.trim()}
                 aria-label={`Add ${f.name}`}
                 onClick={() => onAdd(f)}
               >

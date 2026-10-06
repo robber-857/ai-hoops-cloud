@@ -21,11 +21,8 @@ class PlayerProfileCreate(BaseModel):
         today = datetime.now(ZoneInfo("Australia/Sydney")).date()
         if self.measured_on > today:
             raise ValueError("Measurement date cannot be in the future.")
-        age = self.measured_on.year - self.date_of_birth.year - (
-            (self.measured_on.month, self.measured_on.day) < (self.date_of_birth.month, self.date_of_birth.day)
-        )
-        if not 4 <= age <= 18:
-            raise ValueError("Player age must be 4–18 on the measurement date.")
+        if self.date_of_birth > self.measured_on:
+            raise ValueError("Date of birth cannot be after the measurement date.")
         return self
 
 

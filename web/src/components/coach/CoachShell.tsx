@@ -45,7 +45,7 @@ const navItems = [
     icon: LayoutDashboard,
   },
   { href: routes.coach.plans, label: "Training plans", icon: ClipboardList },
-  { href: routes.coach.lessons, label: "Actual lessons", icon: ClipboardList },
+  { href: routes.coach.lessons, label: "Actual session", icon: ClipboardList },
   {
     href: routes.coach.classes,
     label: "Classes",
@@ -213,7 +213,7 @@ export function CoachShell({ children, user, title, breadcrumb }: CoachShellProp
       className="relative min-h-screen overflow-hidden bg-[#030712] text-white"
       onPointerMove={handlePointerMove}
     >
-      <CoachBackground pointerRef={pointerRef} />
+      {pathname !== routes.coach.lessons && <CoachBackground pointerRef={pointerRef} />}
 
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[17rem] border-r border-white/10 bg-[#07111d]/58 px-4 py-5 shadow-[18px_0_60px_rgba(0,0,0,0.24)] backdrop-blur-2xl lg:block">
         <Link href={routes.coach.home} className="flex items-center gap-3 px-2">

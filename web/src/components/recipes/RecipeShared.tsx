@@ -71,7 +71,7 @@ export function Nutrition({
           <p key={key} className="text-sm text-amber-100">
             {labels[key]} is incomplete: missing data for{" "}
             {value.missing_ingredient_indexes
-              .map((i) => recipe.ingredients[i]?.name)
+              .map((i) => recipe.ingredients[i]?.name?.trim() || `Ingredient ${i + 1} (name unavailable)`)
               .join(", ")}
             . Known recipe subtotal: {value.known_subtotal} {value.unit}.
           </p>
@@ -109,7 +109,7 @@ export function Nutrition({
             className="border-t border-white/10 py-4"
             key={`${ingredient.release_id}/${ingredient.food_key}`}
           >
-            <h3 className="break-words font-semibold">{ingredient.name}</h3>
+            <h3 className="break-words font-semibold">{ingredient.name?.trim() || "Food name unavailable — reload or contact the recipe administrator"}</h3>
             <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {Object.entries(
                 recipe.nutrition.ingredient_contributions[index] || {},
