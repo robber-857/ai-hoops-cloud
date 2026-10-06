@@ -10,7 +10,7 @@ SERVER_ROOT = REPO_ROOT / "server"
 TMP_ROOT = REPO_ROOT / "tmp"
 UNIT_DATABASE = "ai_hoops_p2_test"
 E2E_DATABASE = "ai_hoops_e2e_test"
-EXPECTED_REVISION = "20261006_0013"
+EXPECTED_REVISION = "20261006_0014"
 
 
 def test_database_url(database_url: str | None, app_env: str | None, allowed_names):

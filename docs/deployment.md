@@ -59,7 +59,7 @@ For upgrades from `20260503_0003`, verify all users have a nonempty phone or ema
 python -m alembic upgrade head
 ```
 
-The current head is `20261006_0013`. Existing `20261003_0012` databases only need the additive language migration: `users.preferred_language`, non-null default `en`, constrained to `en` or `zh-CN`. Apply this before deploying the new backend, then publish the frontend. Confirm profile/lesson/food/report tables and all six history protection triggers. `/health` is liveness only: there is no `/ready` endpoint, and a successful health response does not verify migrations or data readiness.
+The current head is `20261006_0014`. Migration `0014` permits measurements on the date of birth by relaxing `ck_profile_dates` to `date_of_birth <= measured_on`; it does not rewrite existing records. Existing `20261003_0012` databases also need the additive language migration: `users.preferred_language`, non-null default `en`, constrained to `en` or `zh-CN`. Apply this before deploying the new backend, then publish the frontend. Confirm profile/lesson/food/report tables and all six history protection triggers. `/health` is liveness only: there is no `/ready` endpoint, and a successful health response does not verify migrations or data readiness.
 
 AFCD import is a separate deployment step. In the importing Python environment install `requirements-data.txt`, fetch the pinned official files, and review a preview before committing:
 
