@@ -279,10 +279,12 @@ def get_student_profile(
 def list_student_reports(
     student_public_id: UUID,
     limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> CoachStudentReportsResponse:
     service = CoachService(db)
     return CoachStudentReportsResponse(
-        items=service.list_student_reports(current_user, student_public_id, limit=limit)
+        items=service.list_student_reports(current_user, student_public_id, limit=limit, offset=offset),
+        total=service.count_student_reports(current_user, student_public_id),
     )

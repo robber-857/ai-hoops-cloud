@@ -1,12 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { useAccountCenter } from "./AccountDataProvider";
 import { StatOverviewRow } from "./StatOverviewRow";
 import { WeeklyTasksSection } from "./WeeklyTasksSection";
 import { GrowthTrendsSection } from "./GrowthTrendsSection";
-import { RecentReportsSection } from "./RecentReportsSection";
 import { AnnouncementInboxSection } from "./AnnouncementInboxSection";
 import { ProfileSummaryCard } from "./ProfileSummaryCard";
 import { NotificationInboxSection } from "./NotificationInboxSection";
@@ -15,7 +13,7 @@ import { ProfileBasicsSection } from "./ProfileBasicsSection";
 import { TrainingNutritionOverview } from "./TrainingNutritionOverview";
 import { routes } from "@/lib/routes";
 import { useAuthStore } from "@/store/authStore";
-import type { AccountAnalysisType } from "./types";
+import { PaginatedAnalysisReports } from "./PaginatedAnalysisReports";
 import { sydneyDateKey } from "@/lib/profile";
 
 export function AccountPageStatus() {
@@ -151,64 +149,7 @@ export function AccountTasksPage() {
 }
 
 export function AccountReportsPage() {
-  const d = useAccountCenter();
-  const [type, setType] = useState<AccountAnalysisType | "all">("all");
-  const [visible, setVisible] = useState(20);
-  const reports = d.dashboard.recentReports.filter(
-    (report) => type === "all" || report.analysisType === type,
-  );
-  return (
-    <>
-      <h1 className="text-2xl font-semibold sm:text-3xl">Analysis reports</h1>
-      <p className="text-sm text-white/65">
-        Latest 60 saved reports across all analysis types. Filters apply to this
-        recent history.
-      </p>
-      <label className="flex flex-wrap items-center gap-3 text-sm">
-        Analysis type
-        <select
-          value={type}
-          onChange={(event) => {
-            setType(event.target.value as typeof type);
-            setVisible(20);
-          }}
-          className="min-h-11 rounded-lg border border-white/20 bg-[#10141b] px-3"
-        >
-          <option value="all">All types</option>
-          <option value="shooting">Shooting</option>
-          <option value="dribbling">Dribbling</option>
-          <option value="training">Training</option>
-        </select>
-      </label>
-      <AccountPageStatus />
-      {!d.isReportsLoading && !d.loadError && (
-        <>
-          {reports.length ? (
-            <RecentReportsSection
-              reports={reports.slice(0, visible)}
-              source={d.reportSource}
-            />
-          ) : (
-            <p className="py-8 text-white/70">
-              No saved reports match this filter.
-            </p>
-          )}
-          {visible < reports.length && (
-            <button
-              className="min-h-11 self-start rounded-lg border border-white/20 px-5"
-              onClick={() => setVisible((count) => count + 20)}
-            >
-              Show more reports
-            </button>
-          )}
-          <p className="text-sm text-white/60">
-            Showing {Math.min(visible, reports.length)} of {reports.length}{" "}
-            loaded reports.
-          </p>
-        </>
-      )}
-    </>
-  );
+  return <PaginatedAnalysisReports />;
 }
 
 export function AccountTrendsPage() {

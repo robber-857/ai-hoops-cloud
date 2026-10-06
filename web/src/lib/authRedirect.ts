@@ -43,6 +43,10 @@ export function canRoleOpenPath(role: string, path: string) {
   const normalizedRole = normalizeAuthRole(role);
   const pathname = getPathname(path);
 
+  if (isPathWithin(pathname, routes.user.me)) {
+    return normalizedRole === "student" || normalizedRole === "user";
+  }
+
   if (normalizedRole === "admin") {
     return true;
   }

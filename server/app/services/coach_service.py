@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from app.services.display_names import staff_display_name
+from app.models.player_profile_revision import PlayerProfileRevision
+from app.schemas.player_profile import PlayerProfileRead
 from app.services.report_service import _is_age_comparison, _original_reports_only
 
 from datetime import datetime, timedelta, timezone
@@ -557,6 +559,10 @@ class CoachService:
         class_ids = [membership.class_id for membership in memberships]
         report_stats = self._student_report_stats_for_classes(student.id, class_ids)
         task_summary = self._student_task_summary(student.id, class_ids)
+        measurement = self.db.scalar(
+            select(PlayerProfileRevision).where(PlayerProfileRevision.user_id == student.id)
+            .order_by(PlayerProfileRevision.measured_on.desc(), PlayerProfileRevision.created_at.desc(), PlayerProfileRevision.id.desc()).limit(1)
+        )
 
         return CoachStudentProfileRead(
             public_id=student.public_id,
@@ -566,6 +572,8 @@ class CoachService:
             phone_number=student.phone_number,
             status=student.status.value,
             role=student.role.value,
+            training_started_on=student.training_started_on,
+            latest_measurement=PlayerProfileRead.model_validate(measurement) if measurement else None,
             report_count=report_stats["report_count"],
             best_score=report_stats["best_score"],
             last_report_at=report_stats["last_report_at"],
@@ -589,6 +597,7 @@ class CoachService:
         current_user: User,
         student_public_id: UUID,
         limit: int = 50,
+        offset: int = 0,
     ) -> list[CoachClassReportRead]:
         student, memberships = self._get_accessible_student_memberships(current_user, student_public_id)
         class_ids = [membership.class_id for membership in memberships]
@@ -609,10 +618,23 @@ class CoachService:
                     TrainingSession.class_id.is_(None),
                 ),
             )
-            .order_by(AnalysisReport.created_at.desc())
-            .limit(limit)
+            .order_by(AnalysisReport.created_at.desc(), AnalysisReport.id.desc())
+            .limit(limit).offset(offset)
         ).all()
         return [self._class_report_read(report) for report in reports]
+
+    def count_student_reports(self, current_user: User, student_public_id: UUID) -> int:
+        student, memberships = self._get_accessible_student_memberships(current_user, student_public_id)
+        class_ids = [membership.class_id for membership in memberships]
+        if not class_ids:
+            return 0
+        return int(self.db.scalar(
+            select(func.count(AnalysisReport.id))
+            .join(TrainingSession, AnalysisReport.session_id == TrainingSession.id)
+            .where(AnalysisReport.user_id == student.id, or_(
+                TrainingSession.class_id.in_(class_ids), TrainingSession.class_id.is_(None),
+            ))
+        ) or 0)
 
     def get_dashboard(self, current_user: User) -> CoachDashboardResponse:
         classes = self._list_accessible_class_rows(current_user)

@@ -126,6 +126,7 @@ export type MeDashboardResponse = {
 
 export type MeReportsResponse = {
   items: ReportListItem[];
+  total: number;
 };
 
 export type MeSessionsResponse = {
@@ -191,8 +192,8 @@ export const meService = {
     });
   },
 
-  getReports(limit = 20) {
-    return apiRequest<MeReportsResponse>(`/me/reports?limit=${limit}`, {
+  getReports(limit = 20, offset = 0, analysisType?: string) {
+    return apiRequest<MeReportsResponse>(`/me/reports?limit=${limit}&offset=${offset}${analysisType ? `&analysis_type=${encodeURIComponent(analysisType)}` : ""}`, {
       method: "GET",
     });
   },

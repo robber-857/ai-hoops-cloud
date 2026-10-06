@@ -77,11 +77,13 @@ def get_dashboard(
 @router.get("/reports", response_model=MeReportsResponse, status_code=status.HTTP_200_OK)
 def get_reports(
     limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    analysis_type: AnalysisType | None = Query(default=None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> MeReportsResponse:
     service = MeService(db)
-    return service.get_reports(current_user, limit=limit)
+    return service.get_reports(current_user, limit=limit, offset=offset, analysis_type=analysis_type)
 
 
 @router.get("/training-sessions", response_model=MeSessionsResponse, status_code=status.HTTP_200_OK)

@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from app.models.enums import AnalysisType
+from app.schemas.player_profile import PlayerProfileRead
 
 
 class CoachClassRead(BaseModel):
@@ -223,6 +224,8 @@ class CoachStudentProfileRead(BaseModel):
     phone_number: str | None
     status: str
     role: str
+    training_started_on: date | None = None
+    latest_measurement: PlayerProfileRead | None = None
     report_count: int
     best_score: float | None = None
     last_report_at: datetime | None = None
@@ -232,3 +235,4 @@ class CoachStudentProfileRead(BaseModel):
 
 class CoachStudentReportsResponse(BaseModel):
     items: list[CoachClassReportRead]
+    total: int = 0
