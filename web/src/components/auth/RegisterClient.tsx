@@ -171,14 +171,14 @@ export function RegisterClient() {
               </div>
 
               <form
-                className="space-y-6"
+                className="@container space-y-6"
                 onSubmit={(event) => {
                   event.preventDefault();
                   handleRegister();
                 }}
               >
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
+                <div className="grid grid-cols-1 gap-4 @min-[20rem]:grid-cols-2">
+                  <div className="grid min-w-0 grid-rows-[1fr_auto] gap-2">
                     <FormLabel htmlFor="username">Username</FormLabel>
                     <input
                       id="username"
@@ -190,7 +190,7 @@ export function RegisterClient() {
                       }
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="grid min-w-0 grid-rows-[1fr_auto] gap-2">
                     <FormLabel htmlFor="phone_number">Phone Number (optional)</FormLabel>
                     <input
                       id="phone_number"
@@ -274,13 +274,13 @@ export function RegisterClient() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <FormLabel htmlFor="email_code">Email Verification Code</FormLabel>
                     <button
                       type="button"
                       onClick={handleSendEmailCode}
                       disabled={isSendingEmailCode}
-                      className="rounded-full border border-[#ff9f4a]/30 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#ff9f4a] transition hover:border-[#ff9f4a] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                      className="shrink-0 whitespace-nowrap rounded-full border border-[#ff9f4a]/30 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#ff9f4a] transition hover:border-[#ff9f4a] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {isSendingEmailCode ? "Sending" : "Send email"}
                     </button>
