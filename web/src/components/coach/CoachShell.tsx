@@ -1,5 +1,8 @@
 "use client";
 
+import { useInterfaceText } from "@/hooks/useInterfaceText";
+
+
 import { useCallback, useRef, type MutableRefObject } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -16,6 +19,7 @@ import {
   Megaphone,
   RadioTower,
   ShieldCheck,
+  Settings,
   UsersRound,
 } from "lucide-react";
 import type { Group, Points } from "three";
@@ -73,6 +77,7 @@ const navItems = [
     icon: Bell,
   },
   { href: routes.foods, label: "Food nutrition", icon: ClipboardList },
+  { href: routes.settings, label: "Settings", icon: Settings },
 ];
 
 const mobileNavItems = navItems.map((item, index) => ({
@@ -197,6 +202,7 @@ function CoachBackground({ pointerRef }: { pointerRef: MutableRefObject<PointerS
 }
 
 export function CoachShell({ children, user, title, breadcrumb }: CoachShellProps) {
+  const t = useInterfaceText();
   const pathname = usePathname();
   const pointerRef = useRef<PointerState>({ x: 0, y: 0 });
 
@@ -216,7 +222,7 @@ export function CoachShell({ children, user, title, breadcrumb }: CoachShellProp
     >
       {pathname !== routes.coach.lessons && <CoachBackground pointerRef={pointerRef} />}
 
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[17rem] border-r border-white/10 bg-[#07111d]/58 px-4 py-5 shadow-[18px_0_60px_rgba(0,0,0,0.24)] backdrop-blur-2xl lg:block">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[17rem] border-r border-white/10 bg-[#07111d]/58 px-4 py-5 shadow-[18px_0_60px_rgba(0,0,0,0.24)] backdrop-blur-2xl lg:flex lg:flex-col">
         <Link href={routes.coach.home} className="flex items-center gap-3 px-2">
           <span className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-[#65f7ff]/30 bg-[#65f7ff]/12 text-[#d8ff5d] shadow-[0_0_24px_rgba(101,247,255,0.18)]">
             <RadioTower className="h-5 w-5" />
@@ -227,12 +233,12 @@ export function CoachShell({ children, user, title, breadcrumb }: CoachShellProp
               AI Hoops
             </span>
             <span className="block text-[0.68rem] uppercase tracking-[0.24em] text-[#65f7ff]/70">
-              Coach Ops
+              {t("Coach Ops")}
             </span>
           </span>
         </Link>
 
-        <nav className="mt-10 space-y-2">
+        <nav className="mt-8 min-h-0 flex-1 space-y-2 overflow-y-auto py-1">
           {navItems.map((item, index) => {
             const Icon = item.icon;
             const isActive =
@@ -263,13 +269,13 @@ export function CoachShell({ children, user, title, breadcrumb }: CoachShellProp
                   />
                 ) : null}
                 <Icon className="relative h-4 w-4 text-[#65f7ff]" />
-                <span className="relative">{item.label}</span>
+                <span className="relative">{t(item.label)}</span>
               </Link>
             );
           })}
         </nav>
 
-        <div className="absolute inset-x-4 bottom-5 rounded-lg border border-white/10 bg-white/[0.045] p-4 backdrop-blur-xl">
+        <div className="mt-3 shrink-0 rounded-lg border border-white/10 bg-white/[0.045] p-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#d8ff5d]/28 bg-[#d8ff5d]/12 font-semibold text-[#d8ff5d]">
               {username.slice(0, 1).toUpperCase()}
@@ -277,7 +283,7 @@ export function CoachShell({ children, user, title, breadcrumb }: CoachShellProp
             <span className="min-w-0">
               <span className="block truncate text-sm font-semibold text-white">{username}</span>
               <span className="block text-[0.68rem] uppercase tracking-[0.2em] text-white/45">
-                {user.role}
+                {t(user.role)}
               </span>
             </span>
           </div>
@@ -289,11 +295,11 @@ export function CoachShell({ children, user, title, breadcrumb }: CoachShellProp
           <div className="flex min-h-16 items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1 text-[0.68rem] uppercase tracking-[0.18em] text-white/46">
-                <span>Coach</span>
+                <span>{t("Coach")}</span>
                 {breadcrumb.map((item) => (
                   <span key={item} className="flex items-center gap-1">
                     <ChevronRight className="h-3 w-3 text-[#65f7ff]/60" />
-                    <span>{item}</span>
+                    <span>{t(item)}</span>
                   </span>
                 ))}
               </div>
@@ -306,21 +312,21 @@ export function CoachShell({ children, user, title, breadcrumb }: CoachShellProp
               <div className="coach-breathing-bar hidden min-w-[15rem] items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.045] px-3 py-2 backdrop-blur-xl xl:flex">
                 <span className="flex items-center gap-2 text-xs font-medium text-white/72">
                   <Activity className="h-4 w-4 text-[#d8ff5d]" />
-                  Live control surface
+                  {t("Live control surface")}
                 </span>
                 <span className="flex items-center gap-2 text-[0.68rem] uppercase tracking-[0.2em] text-[#65f7ff]/76">
                   <ShieldCheck className="h-4 w-4" />
-                  {user.role}
+                  {t(user.role)}
                 </span>
               </div>
               <LogoutButton
-                label="Log out"
+                label={t("Log out")}
                 className="hidden min-h-10 rounded-lg border-white/10 bg-white/[0.045] px-3 text-xs text-white/72 hover:bg-white/[0.08] lg:inline-flex"
               />
               <ThemeToggle />
               <WorkspaceMobileMenu
                 items={mobileNavItems}
-                eyebrow="Coach workspace"
+                eyebrow={t("Coach workspace")}
                 accent="cyan"
               />
             </div>

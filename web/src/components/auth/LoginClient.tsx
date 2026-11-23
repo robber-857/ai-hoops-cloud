@@ -1,5 +1,8 @@
 "use client";
 
+import { useInterfaceText } from "@/hooks/useInterfaceText";
+
+
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -73,6 +76,7 @@ function InputShell({
 }
 
 export function LoginClient() {
+  const t = useInterfaceText();
   const router = useRouter();
   const searchParams = useSearchParams();
   const setSession = useAuthStore((state) => state.setSession);
@@ -123,10 +127,10 @@ export function LoginClient() {
         setSession(normalizedSession);
         const nextPath = searchParams.get("next");
         const redirectPath = resolveLoginRedirect(normalizedRole, nextPath);
-        setSuccess("Signed in. Redirecting to your workspace.");
+        setSuccess(t("Signed in. Redirecting to your workspace."));
         router.replace(redirectPath);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Unable to sign in.");
+        setError(err instanceof Error ? err.message : t("Unable to sign in."));
       }
     });
   };
@@ -143,11 +147,11 @@ export function LoginClient() {
         setEmailSendLabel(`${response.data.expire_seconds}s`);
         setSuccess(
           response.data.debug_code
-            ? `Email code sent. Development debug code: ${response.data.debug_code}`
-            : `Email code request accepted for ${response.data.target}.`,
+            ? t("Email code sent. Development debug code: {0}", response.data.debug_code)
+            : t("Email code request accepted for {0}.", response.data.target),
         );
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Unable to send email code.");
+        setError(err instanceof Error ? err.message : t("Unable to send email code."));
       }
     });
   };
@@ -169,16 +173,16 @@ export function LoginClient() {
             IFSPORT AI CLUB
           </h1>
           <p className="text-xs uppercase tracking-[0.3em] text-white/56">
-            Performance Lab Access
+            {t("Performance Lab Access")}
           </p>
         </div>
 
         <div className="mx-auto w-full max-w-[440px] rounded-[2rem] bg-gradient-to-br from-[#ff9f4a] via-[#ff7162] to-[#ff9f4a] p-px shadow-[0_0_50px_rgba(255,159,74,0.14)]">
           <section className="rounded-[calc(2rem-1px)] border border-[#ff9f4a]/12 bg-[rgba(14,14,14,0.9)] px-6 py-8 backdrop-blur-xl sm:px-8 sm:py-10">
             <header className="mb-8">
-              <h2 className="text-3xl font-bold tracking-tight text-white">Welcome Back</h2>
+              <h2 className="text-3xl font-bold tracking-tight text-white">{t("Welcome Back")}</h2>
               <p className="mt-2 text-sm font-medium text-white/60">
-                Enter your credentials to access your session analysis.
+                {t("Enter your credentials to access your session analysis.")}
               </p>
             </header>
 
@@ -196,7 +200,7 @@ export function LoginClient() {
                         : "text-white/54 hover:bg-white/6 hover:text-white"
                     }`}
                   >
-                    {option.label}
+                    {t(option.label)}
                   </button>
                 );
               })}
@@ -212,12 +216,12 @@ export function LoginClient() {
               {mode === "password" ? (
                 <>
                   <div>
-                    <FieldLabel htmlFor="username">Athlete Identifier</FieldLabel>
+                    <FieldLabel htmlFor="username">{t("Athlete Identifier")}</FieldLabel>
                     <InputShell icon={<UserRound className="h-5 w-5" />}>
                       <input
                         id="username"
                         className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/26"
-                        placeholder="username"
+                        placeholder={t("username")}
                         value={passwordForm.username}
                         onChange={(event) =>
                           setPasswordForm((current) => ({
@@ -234,18 +238,18 @@ export function LoginClient() {
                       htmlFor="password"
                       action={
                         <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#ff9f4a]">
-                          Password login
+                          {t("Password login")}
                         </span>
                       }
                     >
-                      Security Key
+                      {t("Security Key")}
                     </FieldLabel>
                     <InputShell icon={<Lock className="h-5 w-5" />}>
                       <input
                         id="password"
                         type={showPassword ? "text" : "password"}
                         className="w-full bg-transparent text-sm text-white outline-none shadow-none placeholder:text-white/26"
-                        placeholder="Enter your password"
+                        placeholder={t("Enter your password")}
                         value={passwordForm.password}
                         onChange={(event) =>
                           setPasswordForm((current) => ({
@@ -258,7 +262,7 @@ export function LoginClient() {
                         type="button"
                         onClick={() => setShowPassword((current) => !current)}
                         className="text-white/48 transition hover:text-white"
-                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        aria-label={showPassword ? t("Hide password") : t("Show password")}
                       >
                         {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                       </button>
@@ -270,7 +274,7 @@ export function LoginClient() {
               {mode === "phone" ? (
                 <>
                   <div>
-                    <FieldLabel htmlFor="phone_number">Athlete Phone</FieldLabel>
+                    <FieldLabel htmlFor="phone_number">{t("Athlete Phone")}</FieldLabel>
                     <InputShell icon={<Smartphone className="h-5 w-5" />}>
                       <input
                         id="phone_number"
@@ -292,18 +296,18 @@ export function LoginClient() {
                       htmlFor="phone_password"
                       action={
                         <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#ff9f4a]">
-                          Password login
+                          {t("Password login")}
                         </span>
                       }
                     >
-                      Phone Password
+                      {t("Phone Password")}
                     </FieldLabel>
                     <InputShell icon={<Lock className="h-5 w-5" />}>
                       <input
                         id="phone_password"
                         type={showPhonePassword ? "text" : "password"}
                         className="w-full bg-transparent text-sm text-white outline-none shadow-none placeholder:text-white/26"
-                        placeholder="Enter your password"
+                        placeholder={t("Enter your password")}
                         value={phoneForm.password}
                         onChange={(event) =>
                           setPhoneForm((current) => ({
@@ -316,7 +320,7 @@ export function LoginClient() {
                         type="button"
                         onClick={() => setShowPhonePassword((current) => !current)}
                         className="text-white/48 transition hover:text-white"
-                        aria-label={showPhonePassword ? "Hide password" : "Show password"}
+                        aria-label={showPhonePassword ? t("Hide password") : t("Show password")}
                       >
                         {showPhonePassword ? (
                           <EyeOff className="h-5 w-5" />
@@ -332,7 +336,7 @@ export function LoginClient() {
               {mode === "email" ? (
                 <>
                   <div>
-                    <FieldLabel htmlFor="email">Athlete Email</FieldLabel>
+                    <FieldLabel htmlFor="email">{t("Athlete Email")}</FieldLabel>
                     <InputShell icon={<Mail className="h-5 w-5" />}>
                       <input
                         id="email"
@@ -351,12 +355,12 @@ export function LoginClient() {
                   </div>
 
                   <div>
-                    <FieldLabel htmlFor="email_code">Email Verification</FieldLabel>
+                    <FieldLabel htmlFor="email_code">{t("Email Verification")}</FieldLabel>
                     <InputShell icon={<ShieldCheck className="h-5 w-5" />}>
                       <input
                         id="email_code"
                         className="w-full bg-transparent text-sm text-white outline-none shadow-none placeholder:text-white/26"
-                        placeholder="Enter the verification code"
+                        placeholder={t("Enter the verification code")}
                         value={emailForm.code}
                         onChange={(event) =>
                           setEmailForm((current) => ({
@@ -371,7 +375,7 @@ export function LoginClient() {
                         disabled={isSendingEmail}
                         className="rounded-full border border-[#ff9f4a]/30 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-[#ff9f4a] transition hover:border-[#ff9f4a] hover:text-white disabled:cursor-not-allowed disabled:opacity-45"
                       >
-                        {isSendingEmail ? "Sending" : emailSendLabel}
+                        {isSendingEmail ? t("Sending") : t(emailSendLabel)}
                       </button>
                     </InputShell>
                   </div>
@@ -385,17 +389,17 @@ export function LoginClient() {
                   onChange={(event) => setRemember(event.target.checked)}
                   className="h-4 w-4 rounded border-white/20 bg-black/50 text-[#ff9f4a] focus:ring-[#ff9f4a]"
                 />
-                Stay synced on this device
+                {t("Stay synced on this device")}
               </label>
 
               {error ? (
                 <p className="rounded-2xl border border-[#ff7351]/30 bg-[#b92902]/16 px-4 py-3 text-sm text-[#ffd2c8]">
-                  {error}
+                  {t(error)}
                 </p>
               ) : null}
               {success ? (
                 <p className="rounded-2xl border border-[#ff9f4a]/20 bg-[#ff9f4a]/10 px-4 py-3 text-sm text-[#ffe393]">
-                  {success}
+                  {t(success)}
                 </p>
               ) : null}
 
@@ -406,12 +410,12 @@ export function LoginClient() {
               >
                 <span>
                   {isPending
-                    ? "Securing..."
+                    ? t("Securing...")
                     : mode === "password"
-                      ? "Secure Login"
+                      ? t("Secure Login")
                       : mode === "phone"
-                        ? "Phone Login"
-                        : "Email Login"}
+                        ? t("Phone Login")
+                        : t("Email Login")}
                 </span>
                 <Sparkles className="h-4 w-4" />
               </button>
@@ -419,7 +423,7 @@ export function LoginClient() {
 
             <div className="mt-8 border-t border-white/8 pt-6">
               <p className="mb-5 text-center text-[10px] font-semibold uppercase tracking-[0.24em] text-white/42">
-                Alternate Access
+                {t("Alternate Access")}
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <button
@@ -428,7 +432,7 @@ export function LoginClient() {
                   className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#1f2020]/80 px-4 py-3 text-xs font-bold uppercase tracking-[0.14em] text-white/70 opacity-70"
                 >
                   <Mail className="h-4 w-4" />
-                  Google Soon
+                  {t("Google Soon")}
                 </button>
                 <button
                   type="button"
@@ -436,18 +440,18 @@ export function LoginClient() {
                   className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#1f2020]/80 px-4 py-3 text-xs font-bold uppercase tracking-[0.14em] text-white/70 opacity-70"
                 >
                   <ShieldCheck className="h-4 w-4" />
-                  Apple Soon
+                  {t("Apple Soon")}
                 </button>
               </div>
             </div>
 
             <footer className="mt-8 text-center text-sm text-white/56">
-              Apply for Membership:
+              {t("Apply for Membership:")}
               <Link
                 href={withClassInvite(routes.auth.register, searchParams.get("next"))}
                 className="ml-1 font-bold text-[#ff9f4a] underline-offset-4 transition hover:underline"
               >
-                Register
+                {t("Register")}
               </Link>
             </footer>
           </section>
@@ -459,7 +463,7 @@ export function LoginClient() {
               98.2<span className="text-xs text-[#ff7162]">%</span>
             </span>
             <span className="text-[10px] uppercase tracking-[0.24em] text-white/48">
-              Accuracy Rate
+              {t("Accuracy Rate")}
             </span>
           </div>
           <div className="hidden h-8 w-px bg-white/10 sm:block" />
@@ -468,7 +472,7 @@ export function LoginClient() {
               2.4<span className="text-xs text-[#ff9f4a]">M</span>
             </span>
             <span className="text-[10px] uppercase tracking-[0.24em] text-white/48">
-              Shots Analyzed
+              {t("Shots Analyzed")}
             </span>
           </div>
           <div className="hidden h-8 w-px bg-white/10 sm:block" />
@@ -477,7 +481,7 @@ export function LoginClient() {
               500<span className="text-xs text-[#ffe393]">+</span>
             </span>
             <span className="text-[10px] uppercase tracking-[0.24em] text-white/48">
-              Pro Athletes
+              {t("Pro Athletes")}
             </span>
           </div>
         </div>
@@ -487,7 +491,7 @@ export function LoginClient() {
             href={routes.pose2d.main}
             className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#1f2020]/80 px-4 py-3 text-xs font-bold uppercase tracking-[0.2em] text-[#ff9f4a] transition hover:border-[#ff9f4a]/40 hover:text-white"
           >
-            Studio Access
+            {t("Studio Access")}
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>

@@ -34,6 +34,16 @@
 .header img {
   height: auto;
 }
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 1.5vw, 24px);
+}
+@media (max-width: 450px) {
+  .header > a:first-child { min-width: 0; }
+  .header > a:first-child img { max-width: 100%; }
+  .headerActions { flex-shrink: 0; }
+}
 .header nav {
   display: flex;
   gap: 32px;

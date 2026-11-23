@@ -1,9 +1,13 @@
 "use client";
+
+import { useInterfaceText } from "@/hooks/useInterfaceText";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { recipeService, type RecipeSummary } from "@/services/recipes";
 import { button, primary, ErrorNotice } from "./RecipeShared";
 export function RecipeList({ admin = false }: { admin?: boolean }) {
+  const t = useInterfaceText();
   const [rows, setRows] = useState<RecipeSummary[]>([]),
     [offset, setOffset] = useState(0),
     [more, setMore] = useState(false),
@@ -36,33 +40,33 @@ export function RecipeList({ admin = false }: { admin?: boolean }) {
     <div className="max-w-5xl">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-semibold">
-          {admin ? "Manage recipes" : "Recipe library"}
+          {admin ? t("Manage recipes") : t("Recipe library")}
         </h1>
         {admin && (
           <Link href="/admin/recipes/new" className={primary}>
-            Create recipe
+            {t("Create recipe")}
           </Link>
         )}
       </div>
       <p className="mt-3 max-w-2xl text-white/70">
         {admin
-          ? "Maintain ingredients, review nutrition and publish recipes for players and coaches."
-          : "Explore published recipes and adjust serving sizes. Nutrition values are estimates, not personal meal targets."}
+          ? t("Maintain ingredients, review nutrition and publish recipes for players and coaches.")
+          : t("Explore published recipes and adjust serving sizes. Nutrition values are estimates, not personal meal targets.")}
       </p>
       {error && (
         <ErrorNotice error={error} retry={() => setRetry((v) => v + 1)} />
       )}{" "}
       {loading ? (
         <p className="py-8" role="status">
-          Loading recipes…
+          {t("Loading recipes…")}
         </p>
       ) : (
         !error &&
         (!rows.length ? (
           <p className="py-10">
             {admin
-              ? "No recipes yet. Create your first draft."
-              : "No recipes have been published yet. Please check back later."}
+              ? t("No recipes yet. Create your first draft.")
+              : t("No recipes have been published yet. Please check back later.")}
           </p>
         ) : (
           <ul className="mt-8 divide-y divide-white/20 border-y border-white/20">
@@ -76,7 +80,7 @@ export function RecipeList({ admin = false }: { admin?: boolean }) {
                     {r.title}
                   </span>
                   <span className="shrink-0 text-sm text-white/70">
-                    {admin ? "Draft" : "Published"} v{r.version} →
+                    {admin ? t("Draft") : t("Published")} v{r.version} →
                   </span>
                 </Link>
               </li>
@@ -90,14 +94,14 @@ export function RecipeList({ admin = false }: { admin?: boolean }) {
           disabled={loading || offset === 0}
           onClick={() => setOffset((v) => Math.max(0, v - 20))}
         >
-          Previous recipes
+          {t("Previous recipes")}
         </button>
         <button
           className={button}
           disabled={loading || !more || !!error}
           onClick={() => setOffset((v) => v + 20)}
         >
-          Next recipes
+          {t("Next recipes")}
         </button>
       </div>
     </div>

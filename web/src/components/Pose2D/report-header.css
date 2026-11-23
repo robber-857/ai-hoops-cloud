@@ -134,7 +134,7 @@
     display: block;
   }
 
-  .report-shell [aria-label="Score summary"] {
+  .report-shell [data-score-summary] {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     break-inside: avoid;
   }

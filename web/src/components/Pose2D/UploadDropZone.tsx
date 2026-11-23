@@ -1,5 +1,6 @@
 'use client';
 
+import { usePoseCopy } from "@/components/Pose2D/poseCopy";
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import {
@@ -177,6 +178,7 @@ export default function UploadDropzone({
   onUploadingChange,
   onFileSelect,
 }: UploadDropzoneProps) {
+  const { t } = usePoseCopy();
   const [uploading, setUploading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -291,38 +293,26 @@ export default function UploadDropzone({
   return (
     <div className="grid gap-5 xl:grid-cols-[0.78fr_1.22fr]">
       <section className="analysis-surface rounded-[28px] border border-white/10 p-5 sm:p-6">
-        <div className="font-[var(--font-display)] text-[0.68rem] uppercase tracking-[0.3em] text-white/42">
-          Upload access
-        </div>
-        <h3 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white">
-          Upload video area
-        </h3>
-        <p className="mt-3 text-sm leading-6 text-white/58">
-          Drag the video to the circular upload icon on the right.
-        </p>
+        <div className="font-[var(--font-display)] text-[0.68rem] uppercase tracking-[0.3em] text-white/42">{t("Upload access")}</div>
+        <h3 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white">{t("Upload video area")}</h3>
+        <p className="mt-3 text-sm leading-6 text-white/58">{t("Drag the video to the circular upload icon on the right.")}</p>
 
         <div className="mt-6 grid gap-3">
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
-            <div className="text-[0.68rem] uppercase tracking-[0.28em] text-white/40">
-              Session notes
-            </div>
+            <div className="text-[0.68rem] uppercase tracking-[0.28em] text-white/40">{t("Session notes")}</div>
             <p className="mt-3 text-sm leading-6 text-white/58">
-              {taskAssignmentPublicId
+              {t(taskAssignmentPublicId
                 ? 'This upload will count toward the selected coach task after you save the report.'
-                : 'After upload, the workspace will automatically scan the full video before the report unlocks.'}
+                : 'After upload, the workspace will automatically scan the full video before the report unlocks.')}
             </p>
           </div>
           <div className="flex items-start gap-3 rounded-2xl border border-emerald-300/18 bg-emerald-300/10 px-4 py-3">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-200" />
-            <p className="text-sm leading-6 text-white/58">
-              Please keep this page open while upload and automatic analysis complete.
-            </p>
+            <p className="text-sm leading-6 text-white/58">{t("Please keep this page open while upload and automatic analysis complete.")}</p>
           </div>
           <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
             <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-white/70" />
-            <p className="text-sm leading-6 text-white/58">
-              You can preview the clip after analysis starts; manual playback is only needed as a fallback.
-            </p>
+            <p className="text-sm leading-6 text-white/58">{t("You can preview the clip after analysis starts; manual playback is only needed as a fallback.")}</p>
           </div>
         </div>
       </section>
@@ -368,45 +358,39 @@ export default function UploadDropzone({
               </div>
 
               <h3 className="mt-6 font-[var(--font-display)] text-3xl font-semibold tracking-[-0.05em] text-white sm:text-4xl">
-                {uploading
+                {t(uploading
                   ? 'Uploading to cloud workspace'
                   : uploadDisabled
                     ? 'Choose a ready exercise first'
-                    : 'Drop your video here'}
+                    : 'Drop your video here')}
               </h3>
               <p className="mt-3 max-w-lg text-sm leading-7 text-white/60 sm:text-base">
-                {uploading
+                {t(uploading
                   ? 'Please keep this page open while the secure upload finishes.'
                   : uploadDisabled
                     ? disabledReason || 'Select an exercise whose rules are synced and ready.'
-                  : 'Drag in a clip or tap to browse. The existing upload behavior stays the same, but the layout now feels more intentional on mobile and desktop.'}
+                  : 'Drag a video here or choose a file.')}
               </p>
             </div>
 
             <div className="mt-6 grid gap-3 sm:mt-8 sm:grid-cols-3">
               <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 backdrop-blur-md">
-                <div className="text-[0.68rem] uppercase tracking-[0.26em] text-white/42">
-                  Formats
-                </div>
+                <div className="text-[0.68rem] uppercase tracking-[0.26em] text-white/42">{t("Formats")}</div>
                 <div className="mt-2 flex items-center gap-2 text-sm text-white/72">
                   <FileVideo className="h-4 w-4" />
                   MP4, MOV, WEBM
                 </div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 backdrop-blur-md">
-                <div className="text-[0.68rem] uppercase tracking-[0.26em] text-white/42">
-                  Behavior
-                </div>
+                <div className="text-[0.68rem] uppercase tracking-[0.26em] text-white/42">{t("Behavior")}</div>
                 <div className="mt-2 text-sm text-white/72">
-                  {taskAssignmentPublicId ? 'Task session' : 'Backend session'}
+                  {t(taskAssignmentPublicId ? 'Task session' : 'Backend session')}
                 </div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 backdrop-blur-md">
-                <div className="text-[0.68rem] uppercase tracking-[0.26em] text-white/42">
-                  State
-                </div>
+                <div className="text-[0.68rem] uppercase tracking-[0.26em] text-white/42">{t("State")}</div>
                 <div className="mt-2 text-sm text-white/72">
-                  {uploadDisabled ? 'Waiting for exercise' : 'Ready for upload'}
+                  {t(uploadDisabled ? 'Waiting for exercise' : 'Ready for upload')}
                 </div>
               </div>
             </div>
@@ -414,7 +398,7 @@ export default function UploadDropzone({
         </div>
 
         {errorMsg ? (
-          <p className="mt-4 text-sm text-rose-300">{errorMsg}</p>
+          <p className="mt-4 text-sm text-rose-300">{t(errorMsg)}</p>
         ) : null}
       </section>
     </div>

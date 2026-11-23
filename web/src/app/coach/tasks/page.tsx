@@ -1,5 +1,9 @@
 "use client";
 
+import { useInterfaceText } from "@/hooks/useInterfaceText";
+
+import { useAppLanguage } from "@/components/account/LanguagePreferenceProvider";
+
 import Link from "next/link";
 import { isAdminRole } from "@/lib/authRedirect";
 import { useEffect, useState } from "react";
@@ -25,12 +29,13 @@ type CoachTaskWithClass = CoachTaskRead & {
 };
 
 function CoachRouteLoading() {
+  const t = useInterfaceText();
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#030712] text-white">
       <div className="rounded-lg border border-white/10 bg-white/[0.055] px-8 py-7 text-center shadow-[0_20px_70px_rgba(0,0,0,0.28)] backdrop-blur-2xl">
         <Loader2 className="mx-auto h-9 w-9 animate-spin text-[#65f7ff]" />
         <div className="mt-4 text-[0.72rem] uppercase tracking-[0.28em] text-white/48">
-          Loading tasks
+          {t("Loading tasks")}
         </div>
       </div>
     </main>
@@ -48,6 +53,8 @@ function statusTone(status: string) {
 }
 
 export default function CoachTasksPage() {
+  const t = useInterfaceText();
+  const language = useAppLanguage();
   const user = useAuthStore((state) => state.user);
   const hasInitialized = useAuthStore((state) => state.hasInitialized);
   const isInitializing = useAuthStore((state) => state.isInitializing);
@@ -91,7 +98,7 @@ export default function CoachTasksPage() {
       })
       .catch((fetchError) => {
         if (isActive) {
-          setError(fetchError instanceof Error ? fetchError.message : "Unable to load tasks.");
+          setError(fetchError instanceof Error ? fetchError.message : t("Unable to load tasks."));
         }
       })
       .finally(() => {
@@ -111,11 +118,11 @@ export default function CoachTasksPage() {
 
   if (!canAccessCoach) {
     return (
-      <CoachShell user={user} title="Coach access required" breadcrumb={["Access"]}>
+      <CoachShell user={user} title={t("Coach access required")} breadcrumb={[t("Access")]}>
         <section className="rounded-lg border border-red-400/20 bg-red-500/10 p-8 text-center backdrop-blur-2xl">
           <ShieldAlert className="mx-auto h-10 w-10 text-red-200" />
           <h2 className="mt-5 font-[var(--font-display)] text-2xl font-bold text-white">
-            This workspace is available to coaches only.
+            {t("This workspace is available to coaches only.")}
           </h2>
         </section>
       </CoachShell>
@@ -133,15 +140,15 @@ export default function CoachTasksPage() {
   });
 
   return (
-    <CoachShell user={user} title="Training Tasks" breadcrumb={["Tasks"]}>
+    <CoachShell user={user} title={t("Training Tasks")} breadcrumb={[t("Tasks")]}>
       <section className="rounded-lg border border-white/10 bg-white/[0.055] p-5 backdrop-blur-2xl">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="text-[0.68rem] uppercase tracking-[0.22em] text-white/42">
-              Task stream
+              {t("Task stream")}
             </div>
             <h1 className="mt-2 font-[var(--font-display)] text-2xl font-bold text-white">
-              Published training work
+              {t("Published training work")}
             </h1>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -150,7 +157,7 @@ export default function CoachTasksPage() {
               value={selectedClassId}
               onChange={(event) => setSelectedClassId(event.target.value)}
             >
-              <option value="">All classes</option>
+              <option value="">{t("All classes")}</option>
               {classes.map((classItem) => (
                 <option key={classItem.public_id} value={classItem.public_id}>
                   {classItem.name}
@@ -162,16 +169,16 @@ export default function CoachTasksPage() {
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
             >
-              <option value="">All status</option>
-              <option value="draft">draft</option>
-              <option value="published">published</option>
-              <option value="closed">closed</option>
-              <option value="archived">archived</option>
+              <option value="">{t("All status")}</option>
+              <option value="draft">{t("draft")}</option>
+              <option value="published">{t("published")}</option>
+              <option value="closed">{t("closed")}</option>
+              <option value="archived">{t("archived")}</option>
             </select>
             {isLoading ? (
               <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/18 px-3 py-2 text-sm text-white/58">
                 <Loader2 className="h-4 w-4 animate-spin text-[#65f7ff]" />
-                Loading
+                {t("Loading")}
               </span>
             ) : null}
           </div>
@@ -188,13 +195,13 @@ export default function CoachTasksPage() {
             <table className="min-w-[960px] w-full border-collapse text-left text-sm">
               <thead className="border-b border-white/10 bg-white/[0.035] text-[0.68rem] uppercase tracking-[0.18em] text-white/42">
                 <tr>
-                  <th className="px-4 py-3 font-semibold">Task</th>
-                  <th className="px-4 py-3 font-semibold">Class</th>
-                  <th className="px-4 py-3 font-semibold">Motion</th>
-                  <th className="px-4 py-3 text-right font-semibold">Progress</th>
-                  <th className="px-4 py-3 font-semibold">Due</th>
-                  <th className="px-4 py-3 font-semibold">Status</th>
-                  <th className="px-4 py-3 text-right font-semibold">Open</th>
+                  <th className="px-4 py-3 font-semibold">{t("Task")}</th>
+                  <th className="px-4 py-3 font-semibold">{t("Class")}</th>
+                  <th className="px-4 py-3 font-semibold">{t("Motion")}</th>
+                  <th className="px-4 py-3 text-right font-semibold">{t("Progress")}</th>
+                  <th className="px-4 py-3 font-semibold">{t("Due")}</th>
+                  <th className="px-4 py-3 font-semibold">{t("Status")}</th>
+                  <th className="px-4 py-3 text-right font-semibold">{t("Open")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/8">
@@ -211,26 +218,26 @@ export default function CoachTasksPage() {
                           {task.title}
                         </div>
                         <div className="mt-1 max-w-[22rem] truncate text-xs text-white/42">
-                          {task.description || "No description"}
+                          {task.description || t("No description")}
                         </div>
                       </td>
                       <td className="px-4 py-4 text-white/62">{task.class_name}</td>
                       <td className="px-4 py-4 text-white/62">
-                        <div>{task.analysis_type ? analysisTypeLabels[task.analysis_type] : "Any"}</div>
+                        <div>{task.analysis_type ? t(analysisTypeLabels[task.analysis_type]) : t("Any")}</div>
                         <div className="mt-1 max-w-[14rem] truncate text-xs text-white/38">
-                          {getTemplateDisplayName(task.template_code)}
+                          {getTemplateDisplayName(task.template_code, language)}
                         </div>
                       </td>
                       <td className="px-4 py-4 text-right">
                         <div className="font-[var(--font-display)] text-xl font-bold text-[#d8ff5d]">
                           {task.completed_assignment_count}/{task.assignment_count}
                         </div>
-                        <div className="mt-1 text-xs text-white/42">{progress}% complete</div>
+                        <div className="mt-1 text-xs text-white/42">{progress}{t("% complete")}</div>
                       </td>
-                      <td className="px-4 py-4 text-white/62">{formatDateTime(task.due_at)}</td>
+                      <td className="px-4 py-4 text-white/62">{formatDateTime(task.due_at, language)}</td>
                       <td className="px-4 py-4">
                         <span className={cn("rounded-full border px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em]", statusTone(task.status))}>
-                          {task.status}
+                          {t(task.status)}
                         </span>
                       </td>
                       <td className="px-4 py-4 text-right">
@@ -239,7 +246,7 @@ export default function CoachTasksPage() {
                           className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[#65f7ff]/24 bg-[#65f7ff]/10 px-3 text-xs font-semibold text-[#dffbff] transition hover:bg-[#65f7ff]/16"
                         >
                           <Eye className="h-4 w-4" />
-                          Class
+                          {t("Class")}
                         </Link>
                       </td>
                     </tr>
@@ -248,7 +255,7 @@ export default function CoachTasksPage() {
                 {filteredTasks.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-4 py-8 text-center text-sm text-white/48">
-                      No tasks match the current filters.
+                      {t("No tasks match the current filters.")}
                     </td>
                   </tr>
                 ) : null}

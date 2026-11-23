@@ -1,5 +1,6 @@
 'use client';
 
+import { usePoseCopy } from "@/components/Pose2D/poseCopy";
 import * as React from 'react';
 
 type Props = {
@@ -23,6 +24,7 @@ export default function Scrubber({
   onScrub,
   onScrubEnd,
 }: Props) {
+  const { t } = usePoseCopy();
   const inputRef = React.useRef<HTMLInputElement>(null);
   const isDraggingRef = React.useRef(false);
   const commitTimerRef = React.useRef<number | null>(null);
@@ -102,7 +104,7 @@ export default function Scrubber({
           max={max}
           value={Math.min(value, max)}
           disabled={max <= 0}
-          aria-label="Video timeline"
+          aria-label={t("Video timeline")}
           onPointerDown={() => {
             isDraggingRef.current = true;
           }}

@@ -1,4 +1,5 @@
 "use client";
+import { usePlayerCopy } from "@/components/account/playerCopy";
 
 import { useId, useState } from "react";
 import { ChevronDown, Table2 } from "lucide-react";
@@ -17,26 +18,15 @@ export type ChartPoint = { time: number; value: number; detail?: string };
 type PlotPoint = { time: number; value: number | null; detail?: string };
 const DAY_MS = 86_400_000;
 const SCORE_TICKS = [0, 25, 50, 75, 100];
-
-const fullDate = new Intl.DateTimeFormat("en-AU", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  timeZone: "UTC",
-});
-const shortDate = new Intl.DateTimeFormat("en-AU", {
-  day: "numeric",
-  month: "short",
-  timeZone: "UTC",
-});
-const valueFormat = new Intl.NumberFormat("en-AU", { maximumFractionDigits: 2 });
+const dateOptions: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" };
+const fullDates = { en: new Intl.DateTimeFormat("en-AU", dateOptions), zh: new Intl.DateTimeFormat("zh-CN", dateOptions) };
 
 export function trendDayTime(key: string): number {
   return Date.parse(`${key}T00:00:00Z`);
 }
 
-export function formatTrendDate(time: number): string {
-  return fullDate.format(time);
+export function formatTrendDate(time: number, locale = "en-AU"): string {
+  return (locale === "zh-CN" ? fullDates.zh : fullDates.en).format(time);
 }
 
 function dateTicks([start, end]: [number, number], limit: number) {
@@ -81,6 +71,9 @@ export function AccountTrendChart({
   emptyMessage: string;
   series?: "scores" | "measurements";
 }) {
+  const { t, locale, isChinese } = usePlayerCopy();
+  const shortDate = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", timeZone: "UTC" });
+  const valueFormat = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 });
   const gradient = `chart-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const [plotWidth, setPlotWidth] = useState(0);
   const unitSuffix = unit ? ` ${unit}` : "";
@@ -100,14 +93,14 @@ export function AccountTrendChart({
       {gaps.length > 0 && (
         <p className="mb-2 flex items-center gap-2 text-xs text-[var(--ui-muted)]">
           <span aria-hidden="true" className="w-6 shrink-0 border-t-2 border-dashed" style={{ borderColor: color }} />
-          Dashed lines span days with no saved score.
+          {t("Dashed lines span days with no saved score.")}
         </p>
       )}
       <div className="h-[clamp(15rem,38vw,21rem)] min-w-0 rounded-xl bg-[color-mix(in_srgb,var(--ui-subtle)_42%,var(--ui-surface))] [&_.recharts-surface:focus-visible]:outline-2 [&_.recharts-surface:focus-visible]:outline-offset-2 [&_.recharts-surface:focus-visible]:outline-[var(--ui-accent)] [&_.recharts-surface_g:focus:not(:focus-visible)]:outline-none">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} onResize={setPlotWidth}>
           <AreaChart
             title={title}
-            desc="Use the arrow keys to inspect data points. The data table is below the chart."
+            desc={t("Use the arrow keys to inspect data points. The data table is below the chart.")}
             data={plotPoints}
             margin={{ top: 22, right: 20, bottom: 12, left: 4 }}
             accessibilityLayer
@@ -162,7 +155,7 @@ export function AccountTrendChart({
                 if (!active || !point || point.value === null) return null;
                 return (
                   <div role="status" className="min-w-32 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] px-3 py-2.5 text-xs text-[var(--ui-text)] shadow-lg">
-                    <p className="text-[var(--ui-muted)]">{formatTrendDate(point.time)}</p>
+                    <p className="text-[var(--ui-muted)]">{formatTrendDate(point.time, locale)}</p>
                     <div className="mt-1.5 flex items-center gap-2">
                       <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
                       <span>{title}</span>
@@ -194,14 +187,14 @@ export function AccountTrendChart({
       <details className="group mt-2 text-sm">
         <summary className="flex min-h-11 w-fit cursor-pointer list-none items-center gap-2 font-semibold text-[var(--ui-accent)] [&::-webkit-details-marker]:hidden">
           <Table2 size={15} aria-hidden="true" />
-          View chart data
+          {t("View chart data")}
           <ChevronDown size={14} aria-hidden="true" className="transition-transform group-open:rotate-180 motion-reduce:transition-none" />
         </summary>
         <table className="w-full text-left text-[var(--ui-muted)]">
-          <caption className="sr-only">{title} data</caption>
+          <caption className="sr-only">{isChinese ? `${title}数据` : `${title} data`}</caption>
           <thead>
             <tr className="border-b border-[var(--ui-border)]">
-              <th scope="col" className="py-2">Date</th>
+              <th scope="col" className="py-2">{t("Date")}</th>
               <th scope="col" className="py-2 text-right">{title}</th>
             </tr>
           </thead>
@@ -209,7 +202,7 @@ export function AccountTrendChart({
             {points.map(({ time, value, detail }) => (
               <tr key={time} className="border-b border-[var(--ui-border)]">
                 <th scope="row" className="py-2 font-medium">
-                  {formatTrendDate(time)}
+                  {formatTrendDate(time, locale)}
                   {detail && <span className="block text-xs">{detail}</span>}
                 </th>
                 <td className="py-2 text-right tabular-nums">{displayValue(value)}</td>

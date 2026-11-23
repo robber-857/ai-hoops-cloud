@@ -1,4 +1,5 @@
 'use client'
+import { usePoseCopy } from "./Pose2D/poseCopy"
 import React, { useMemo, useState, useRef } from 'react'
 import { Canvas, useFrame, invalidate } from '@react-three/fiber'
 import { OrbitControls, Line, Bounds, Grid, PerformanceMonitor, AdaptiveDpr } from '@react-three/drei'
@@ -55,6 +56,7 @@ const classify = (v: number | undefined, k: AngleKey): Status => { //角度转�
 const fmt = (v?: number) => (v == null || Number.isNaN(v) ? '—' : `${v.toFixed(1)}°`)//格式化输出角度xxx.x°
 
 function AngleRow({ label, value, keyName }: { label: string; value: number | undefined; keyName: AngleKey }) {
+  const { t } = usePoseCopy()
   const st = classify(value, keyName)
   const badgeClass =
     st === 'GOOD'
@@ -66,10 +68,10 @@ function AngleRow({ label, value, keyName }: { label: string; value: number | un
   return (
     <div className="flex items-center justify-between gap-3">
       <div className="text-slate-200">
-        <b className="text-sky-300">{label}:</b> {fmt(value)}
-        <span className="ml-2 text-xs text-slate-400">Target {lo}–{hi}°</span>
+        <b className="text-sky-300">{t(label)}:</b> {fmt(value)}
+        <span className="ml-2 text-xs text-slate-400">{t("Target")} {lo}–{hi}°</span>
       </div>
-      <Badge className={`ml-2 ${badgeClass}`}>{st}</Badge>
+      <Badge className={`ml-2 ${badgeClass}`}>{t(st)}</Badge>
     </div>
   )
 }
@@ -145,14 +147,15 @@ function Skeleton3D({ pts, focus }: { pts: Record<string, V3>; focus?: Partial<R
 }
 
 export default function PoseCanvas() {
+  const { t } = usePoseCopy()
   /* 合成序列 */
   const frames = useMemo(() => synthDemo(150, 30), [])
   // 浮点索引插值（更顺滑）
   const [idxF, setIdxF] = useState(0)
   const i0 = Math.floor(idxF)
   const i1 = Math.min(i0 + 1, frames.length - 1)
-  const t = Math.min(1, Math.max(0, idxF - i0))
-  const interpKps = mixKps(frames[i0].kps, frames[i1].kps, t)
+  const frameProgress = Math.min(1, Math.max(0, idxF - i0))
+  const interpKps = mixKps(frames[i0].kps, frames[i1].kps, frameProgress)
 
   const ang = computeAngles(interpKps)
   const focusStatuses: Partial<Record<JointName, Status>> = {
@@ -248,7 +251,7 @@ export default function PoseCanvas() {
       <Card className="border-slate-800/70 bg-slate-900/65 backdrop-blur-xl">
         <CardContent className="p-4">
           <div className="space-y-3">
-            <div className="text-xs uppercase tracking-wider text-slate-400">Frame</div>
+            <div className="text-xs uppercase tracking-wider text-slate-400">{t("Frame")}</div>
             <div className="text-2xl font-semibold text-slate-50">
               {Math.round(idxF)} <span className="text-slate-500">/ {frames.length - 1}</span>
             </div>
@@ -264,6 +267,7 @@ export default function PoseCanvas() {
             {/* 平滑插值滑条 */}
             <div className="mt-4">
               <Slider
+                aria-label={t("Frame")}
                 value={[idxF]}
                 min={0}
                 max={frames.length - 1}
@@ -271,7 +275,7 @@ export default function PoseCanvas() {
                 onValueChange={(v) => { setIdxF(v[0] ?? 0); invalidate() }}
                 className="w-full"
               />
-              <p className="mt-2 text-xs text-slate-400">（当前为合成 demo；接入 2D→3D 模型后即可显示真实角度）</p>
+              <p className="mt-2 text-xs text-slate-400">{t("This demo uses simulated movement and joint angles.")}</p>
             </div>
           </div>
         </CardContent>

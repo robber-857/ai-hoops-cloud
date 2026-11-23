@@ -1,4 +1,7 @@
 "use client";
+
+import { useInterfaceText } from "@/hooks/useInterfaceText";
+
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -30,6 +33,7 @@ const empty: RecipeContent = {
   allergens_reviewed: false,
 };
 export function RecipeEditor({ id }: { id?: string }) {
+  const t = useInterfaceText();
   const router = useRouter();
   const [form, setForm] = useState<RecipeContent>(empty),
     [saved, setSaved] = useState<Recipe | null>(null),
@@ -93,7 +97,7 @@ export function RecipeEditor({ id }: { id?: string }) {
   function add(food: Food) {
     if (form.ingredients.some((i) => key(i) === key(food))) {
       setMessage(
-        "This ingredient is already included. Update its weight below.",
+        t("This ingredient is already included. Update its weight below."),
       );
       return;
     }
@@ -140,7 +144,7 @@ export function RecipeEditor({ id }: { id?: string }) {
       setPending(false);
       request.current = null;
       setMessage(
-        `Draft version ${r.version} saved. Review the nutrition below before publishing.`,
+        t("Draft version {0} saved. Review the nutrition below before publishing.", r.version),
       );
       if (!id) router.replace(`/admin/recipes/${r.public_id}`);
     } catch (e) {
@@ -151,7 +155,7 @@ export function RecipeEditor({ id }: { id?: string }) {
       setError(
         e instanceof Error
           ? e.message
-          : "Could not save. Retry the same save request.",
+          : t("Could not save. Retry the same save request."),
       );
     } finally {
       setBusy(false);
@@ -167,13 +171,13 @@ export function RecipeEditor({ id }: { id?: string }) {
       const r = await recipeService.publish(saved.public_id, saved.version);
       setPublished(true);
       setMessage(
-        `Published version ${r.version}. It is now available in the recipe library.`,
+        t("Published version {0}. It is now available in the recipe library.", r.version),
       );
     } catch (e) {
       setError(
         e instanceof Error
           ? e.message
-          : "Could not publish. Retry publishing this saved version.",
+          : t("Could not publish. Retry publishing this saved version."),
       );
     } finally {
       setBusy(false);
@@ -182,7 +186,7 @@ export function RecipeEditor({ id }: { id?: string }) {
   }
   async function discard() {
     if (busy || pending) return;
-    if (window.confirm("Discard local changes and reload the saved recipe?")) {
+    if (window.confirm(t("Discard local changes and reload the saved recipe?"))) {
       inFlight.current = true;
       setBusy(true);
       try {
@@ -199,7 +203,7 @@ export function RecipeEditor({ id }: { id?: string }) {
         setError("");
       } catch (e) {
         setError(
-          e instanceof Error ? e.message : "Could not reload the saved recipe.",
+          e instanceof Error ? e.message : t("Could not reload the saved recipe."),
         );
       } finally {
         setBusy(false);
@@ -207,7 +211,7 @@ export function RecipeEditor({ id }: { id?: string }) {
       }
     }
   }
-  if (loading) return <p role="status">Loading recipe…</p>;
+  if (loading) return <p role="status">{t("Loading recipe…")}</p>;
   if (id && !saved)
     return (
       <ErrorNotice
@@ -219,14 +223,13 @@ export function RecipeEditor({ id }: { id?: string }) {
     <div className="max-w-5xl space-y-8">
       <div>
         <Link href="/admin/recipes" className="underline">
-          All recipes
+          {t("All recipes")}
         </Link>
         <h1 className="mt-4 text-3xl font-semibold">
-          {saved ? "Edit recipe" : "Create recipe"}
+          {saved ? t("Edit recipe") : t("Create recipe")}
         </h1>
         <p className="mt-2 text-white/70">
-          Save a draft to review nutrition. Publish when it is ready for players
-          and coaches.
+          {t("Save a draft to review nutrition. Publish when it is ready for players and coaches.")}
         </p>
       </div>
       {error && <ErrorNotice error={error} />}{" "}
@@ -244,7 +247,7 @@ export function RecipeEditor({ id }: { id?: string }) {
         <fieldset disabled={busy || pending} className="min-w-0 space-y-6">
           <div className="grid gap-5 sm:grid-cols-2">
             <label className="sm:col-span-2">
-              Recipe name
+              {t("Recipe name")}
               <input
                 required
                 maxLength={200}
@@ -254,7 +257,7 @@ export function RecipeEditor({ id }: { id?: string }) {
               />
             </label>
             <label>
-              Number of servings
+              {t("Number of servings")}
               <input
                 required
                 type="number"
@@ -267,7 +270,7 @@ export function RecipeEditor({ id }: { id?: string }) {
               />
             </label>
             <label>
-              Finished weight in grams (optional)
+              {t("Finished weight in grams (optional)")}
               <input
                 type="number"
                 min="0.01"
@@ -281,7 +284,7 @@ export function RecipeEditor({ id }: { id?: string }) {
               />
             </label>
             <label className="sm:col-span-2">
-              Image URL (optional)
+              {t("Image URL (optional)")}
               <input
                 type="url"
                 className={field}
@@ -291,14 +294,13 @@ export function RecipeEditor({ id }: { id?: string }) {
             </label>
           </div>
           <section>
-            <h2 className="text-2xl font-semibold">Ingredients</h2>
+            <h2 className="text-2xl font-semibold">{t("Ingredients")}</h2>
             <p className="mt-2 text-sm text-white/70">
-              Enter edible weights in the same raw or cooked state as the
-              selected food.
+              {t("Enter edible weights in the same raw or cooked state as the selected food.")}
             </p>
             {!form.ingredients.length && (
               <p className="my-4">
-                Add at least one ingredient using food search.
+                {t("Add at least one ingredient using food search.")}
               </p>
             )}
             <ol className="divide-y divide-white/20">
@@ -309,12 +311,12 @@ export function RecipeEditor({ id }: { id?: string }) {
                       {names[key(i)] ||
                         saved?.ingredients.find((s) => key(s) === key(i))
                           ?.name ||
-                        "Food name unavailable — remove and select this ingredient again"}
+                        t("Food name unavailable — remove and select this ingredient again")}
                     </h3>
                     <button
                       type="button"
                       className={button}
-                      aria-label={`Remove ingredient ${index + 1}`}
+                      aria-label={t("Remove ingredient {0}", index + 1)}
                       onClick={() =>
                         change({
                           ingredients: form.ingredients.filter(
@@ -323,14 +325,14 @@ export function RecipeEditor({ id }: { id?: string }) {
                         })
                       }
                     >
-                      Remove
+                      {t("Remove")}
                     </button>
                   </div>
                   <div className="mt-3 grid gap-4 sm:grid-cols-2">
                     <label>
-                      Edible grams
+                      {t("Edible grams")}
                       <input
-                        aria-label={`Edible grams for ingredient ${index + 1}`}
+                        aria-label={t("Edible grams for ingredient {0}", index + 1)}
                         required
                         type="number"
                         min="0.01"
@@ -350,7 +352,7 @@ export function RecipeEditor({ id }: { id?: string }) {
                       />
                     </label>
                     <label>
-                      Preparation note
+                      {t("Preparation note")}
                       <input
                         maxLength={500}
                         className={field}
@@ -373,7 +375,7 @@ export function RecipeEditor({ id }: { id?: string }) {
             <FoodPicker onAdd={add} />
           </section>
           <label className="block">
-            Method
+            {t("Method")}
             <textarea
               required
               maxLength={10000}
@@ -384,7 +386,7 @@ export function RecipeEditor({ id }: { id?: string }) {
             />
           </label>
           <label className="block">
-            Allergens (comma separated)
+            {t("Allergens (comma separated)")}
             <input
               className={field}
               value={form.allergens.join(",")}
@@ -397,10 +399,10 @@ export function RecipeEditor({ id }: { id?: string }) {
               checked={form.allergens_reviewed}
               onChange={(e) => change({ allergens_reviewed: e.target.checked })}
             />
-            Allergen information has been reviewed
+            {t("Allergen information has been reviewed")}
           </label>
           <label className="block">
-            Dietary notes
+            {t("Dietary notes")}
             <textarea
               maxLength={1000}
               className={field}
@@ -416,10 +418,10 @@ export function RecipeEditor({ id }: { id?: string }) {
             disabled={busy || !form.ingredients.length}
           >
             {busy
-              ? "Working…"
+              ? t("Working…")
               : pending
-                ? "Retry same save"
-                : "Save draft & preview"}
+                ? t("Retry same save")
+                : t("Save draft & preview")}
           </button>
           <button
             type="button"
@@ -427,7 +429,7 @@ export function RecipeEditor({ id }: { id?: string }) {
             disabled={!saved || dirty || busy || pending}
             onClick={publish}
           >
-            Publish saved version
+            {t("Publish saved version")}
           </button>
           {(dirty || pending) && (
             <button
@@ -436,13 +438,13 @@ export function RecipeEditor({ id }: { id?: string }) {
               className={button}
               onClick={discard}
             >
-              Discard local changes
+              {t("Discard local changes")}
             </button>
           )}
         </div>
         {dirty && saved && (
           <p className="mt-3 text-sm text-amber-100">
-            Unsaved changes. Nutrition below belongs to saved version{" "}
+            {t("Unsaved changes. Nutrition below belongs to saved version")}{" "}
             {saved.version}.
           </p>
         )}
@@ -453,7 +455,7 @@ export function RecipeEditor({ id }: { id?: string }) {
           <SourceNotice recipe={saved} />
           {published && (
             <Link className={button} href={`/recipes/${saved.public_id}`}>
-              Open published recipe
+              {t("Open published recipe")}
             </Link>
           )}
         </>

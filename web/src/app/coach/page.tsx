@@ -1,5 +1,9 @@
 "use client";
 
+import { useAppLanguage } from "@/components/account/LanguagePreferenceProvider";
+import { useInterfaceText } from "@/hooks/useInterfaceText";
+
+
 import { useEffect, useMemo, useState } from "react";
 import { isAdminRole } from "@/lib/authRedirect";
 import { motion } from "framer-motion";
@@ -52,12 +56,13 @@ function MetricTile({
 }
 
 function CoachLoadingSurface() {
+  const t = useInterfaceText();
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#030712] text-white">
       <div className="rounded-lg border border-white/10 bg-white/[0.055] px-8 py-7 text-center shadow-[0_20px_70px_rgba(0,0,0,0.28)] backdrop-blur-2xl">
         <Loader2 className="mx-auto h-9 w-9 animate-spin text-[#65f7ff]" />
         <div className="mt-4 text-[0.72rem] uppercase tracking-[0.28em] text-white/48">
-          Syncing coach data
+          {t("Syncing coach data")}
         </div>
       </div>
     </main>
@@ -65,6 +70,8 @@ function CoachLoadingSurface() {
 }
 
 export default function CoachHomePage() {
+  const language = useAppLanguage();
+  const t = useInterfaceText();
   const user = useAuthStore((state) => state.user);
   const hasInitialized = useAuthStore((state) => state.hasInitialized);
   const isInitializing = useAuthStore((state) => state.isInitializing);
@@ -97,7 +104,7 @@ export default function CoachHomePage() {
         if (!isActive) {
           return;
         }
-        setError(fetchError instanceof Error ? fetchError.message : "Unable to load classes.");
+        setError(fetchError instanceof Error ? fetchError.message : t("Unable to load classes."));
       })
       .finally(() => {
         if (isActive) {
@@ -144,14 +151,14 @@ export default function CoachHomePage() {
 
   if (!canAccessCoach) {
     return (
-      <CoachShell user={user} title="Coach access required" breadcrumb={["Access"]}>
+      <CoachShell user={user} title={t("Coach access required")} breadcrumb={[t("Access")]}>
         <section className="rounded-lg border border-red-400/20 bg-red-500/10 p-8 text-center backdrop-blur-2xl">
           <ShieldAlert className="mx-auto h-10 w-10 text-red-200" />
           <h2 className="mt-5 font-[var(--font-display)] text-2xl font-bold text-white">
-            This workspace is available to coaches only.
+            {t("This workspace is available to coaches only.")}
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-white/58">
-            Current role: {user.role}. Ask an administrator to assign coach or admin access.
+            {t("Current role:")} {t(user.role)}{t(". Ask an administrator to assign coach or admin access.")}
           </p>
         </section>
       </CoachShell>
@@ -159,7 +166,7 @@ export default function CoachHomePage() {
   }
 
   return (
-    <CoachShell user={user} title="Coach Command Center" breadcrumb={["Command Center"]}>
+    <CoachShell user={user} title={t("Coach Command Center")} breadcrumb={[t("Command Center")]}>
       <motion.section
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -168,31 +175,30 @@ export default function CoachHomePage() {
       >
         <div className="rounded-lg border border-white/10 bg-white/[0.055] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.24)] backdrop-blur-2xl">
           <div className="text-[0.68rem] uppercase tracking-[0.24em] text-[#65f7ff]/75">
-            Training camp operations
+            {t("Training camp operations")}
           </div>
           <h1 className="coach-typewriter mt-4 max-w-3xl font-[var(--font-display)] text-4xl font-bold tracking-[0.01em] text-white sm:text-5xl">
-            Welcome back, {displayName}
+            {t("Welcome back,")} {displayName}
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-white/58 sm:text-base">
-            Monitor assigned classes, inspect student progress, and publish the next training
-            signal from one control surface.
+            {t("Monitor assigned classes, inspect student progress, and publish the next training signal from one control surface.")}
           </p>
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
             <MetricTile
-              label="Active classes"
+              label={t("Active classes")}
               value={String(metrics.activeClasses)}
-              helper={`${classes.length} total visible classes`}
+              helper={t("{0} total visible classes", classes.length)}
             />
             <MetricTile
-              label="Students"
+              label={t("Students")}
               value={String(metrics.students)}
-              helper={metrics.capacity > 0 ? `${metrics.capacity} configured seats` : "Active class members"}
+              helper={metrics.capacity > 0 ? t("{0} configured seats", metrics.capacity) : t("Active class members")}
               accent="lime"
             />
             <MetricTile
-              label="Open tasks"
+              label={t("Open tasks")}
               value={String(metrics.openTasks)}
-              helper={`${metrics.recentReports} reports in 7 days`}
+              helper={t("{0} reports in 7 days", metrics.recentReports)}
               accent="violet"
             />
           </div>
@@ -205,10 +211,10 @@ export default function CoachHomePage() {
             </span>
             <div>
               <div className="text-[0.68rem] uppercase tracking-[0.18em] text-white/42">
-                Ops overview
+                {t("Ops overview")}
               </div>
               <div className="font-[var(--font-display)] text-lg font-bold text-white">
-                Live class grid
+                {t("Live class grid")}
               </div>
             </div>
           </div>
@@ -217,20 +223,19 @@ export default function CoachHomePage() {
             <div className="flex items-center justify-between rounded-lg border border-white/10 bg-black/18 px-4 py-3">
               <span className="flex items-center gap-2 text-sm text-white/64">
                 <UsersRound className="h-4 w-4 text-[#65f7ff]" />
-                Roster load
+                {t("Roster load")}
               </span>
               <span className="font-semibold text-white">{metrics.students}</span>
             </div>
             <div className="flex items-center justify-between rounded-lg border border-white/10 bg-black/18 px-4 py-3">
               <span className="flex items-center gap-2 text-sm text-white/64">
                 <BarChart3 className="h-4 w-4 text-[#d8ff5d]" />
-                Notices
+                {t("Notices")}
               </span>
               <span className="font-semibold text-white">{metrics.announcements}</span>
             </div>
             <div className="rounded-lg border border-[#65f7ff]/20 bg-[#65f7ff]/10 px-4 py-3 text-sm leading-6 text-[#dffbff]">
-              Next class end: {formatDate(metrics.nextEndingClass?.end_date)}. Class pages now include
-              task and notice maintenance.
+              {t("Next class end:")} {formatDate(metrics.nextEndingClass?.end_date, undefined, language)}{t(". Class pages now include task and notice maintenance.")}
             </div>
           </div>
         </aside>
@@ -240,16 +245,16 @@ export default function CoachHomePage() {
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="text-[0.68rem] uppercase tracking-[0.22em] text-white/42">
-              Class grid
+              {t("Class grid")}
             </div>
             <h2 className="mt-2 font-[var(--font-display)] text-2xl font-bold text-white">
-              Assigned classes
+              {t("Assigned classes")}
             </h2>
           </div>
           {isLoading ? (
             <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.045] px-3 py-2 text-sm text-white/58 backdrop-blur-xl">
               <Loader2 className="h-4 w-4 animate-spin text-[#65f7ff]" />
-              Loading classes
+              {t("Loading classes")}
             </span>
           ) : null}
         </div>

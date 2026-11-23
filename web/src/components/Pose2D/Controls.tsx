@@ -1,5 +1,6 @@
 "use client";
 
+import { usePoseCopy } from "@/components/Pose2D/poseCopy";
 import React from "react";
 
 import { Button } from "@/components/ui/button";
@@ -72,6 +73,7 @@ export default function Controls({
   playDisabled = false,
   clearDisabled = false,
 }: ControlsProps) {
+  const { t } = usePoseCopy();
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
       <Button
@@ -85,7 +87,7 @@ export default function Controls({
         ) : (
           <PlayIcon className="mr-1 h-4 w-4" />
         )}
-        {playDisabled ? "Analyzing..." : isPlaying ? "Pause" : "Play"}
+        {t(playDisabled ? "Analyzing..." : isPlaying ? "Pause" : "Play")}
       </Button>
 
       <Button
@@ -95,9 +97,7 @@ export default function Controls({
         size="lg"
         className="min-h-12 rounded-full border border-rose-300/15 bg-rose-400/90 px-5 text-white hover:bg-rose-400"
       >
-        <XIcon className="mr-1 h-4 w-4" />
-        Clear clip
-      </Button>
+        <XIcon className="mr-1 h-4 w-4" />{t("Clear clip")}</Button>
     </div>
   );
 }

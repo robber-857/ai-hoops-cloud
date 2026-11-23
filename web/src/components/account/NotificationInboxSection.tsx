@@ -1,4 +1,5 @@
 "use client";
+import { usePlayerCopy } from "@/components/account/playerCopy";
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -6,7 +7,29 @@ import { ArrowUpRight, Bell, MessageCircle } from "lucide-react";
 import { routes } from "@/lib/routes";
 import { meService, type NotificationSummaryRead } from "@/services/me";
 
+function displayNotification(item: NotificationSummaryRead, chinese: boolean, t: (key: string) => string) {
+  if (!chinese) return item;
+  const { title, content } = item;
+  switch (item.business_type) {
+    case "training_task":
+      return { title: title.replace(/^New training task: /, "新的训练任务："), content };
+    case "report_feedback":
+      return { title: t(title), content };
+    case "class_report":
+      return { title: t(title), content: content?.replace(/ · saved lesson v(\d+)\. View Class reports in your personal center\.$/, " · 已保存课程版本 $1。请在个人中心查看课堂报告。") };
+    case "student_achievement":
+      return { title: t(title), content: content?.replace(/^You unlocked (.+)\.$/, "你解锁了「$1」。") };
+    case "class_join_request":
+      return { title: t(title), content: content
+        ?.replace(/^Your request to join (.+) was approved\.$/, "你加入「$1」的申请已通过。")
+        .replace(/^Your request to join (.+) was rejected\.$/, "你加入「$1」的申请未通过。") };
+    default:
+      return item;
+  }
+}
+
 export function NotificationInboxSection() {
+  const { t, locale, isChinese } = usePlayerCopy();
   const [items, setItems] = useState<NotificationSummaryRead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,29 +79,30 @@ export function NotificationInboxSection() {
 
   return (
     <section className="ui-panel min-w-0 p-4 sm:p-6">
-      <h2 className="text-xl font-semibold">Inbox</h2>
+      <h2 className="text-xl font-semibold">{t("Inbox")}</h2>
       {loading && (
         <p role="status" className="mt-4">
-          Loading notifications…
+          {t("Loading notifications…")}
         </p>
       )}
       {error && (
         <div role="alert" className="mt-4 text-sm text-red-200">
-          {error}
+          {t(error)}
           <button
             onClick={() => setVersion((value) => value + 1)}
             className="ml-3 min-h-11 underline"
           >
-            Reload notifications
+            {t("Reload notifications")}
           </button>
         </div>
       )}
       {!loading && !error && !items.length && (
-        <p className="mt-4 text-white/65">No notifications yet.</p>
+        <p className="mt-4 text-white/65">{t("No notifications yet.")}</p>
       )}
       <div className="mt-4 divide-y divide-white/10">
-        {items.map((item) => (
-          <article key={item.public_id}>
+        {items.map((item) => {
+          const copy = displayNotification(item, isChinese, t);
+          return <article key={item.public_id}>
             <button
               aria-expanded={expanded === item.public_id}
               onClick={() => void toggle(item)}
@@ -89,27 +113,27 @@ export function NotificationInboxSection() {
               </span>
               <span className="min-w-0">
                 <span className="block break-words font-semibold">
-                  {item.title}
-                  {!item.is_read && <span className="ml-2 text-xs text-[var(--ui-accent)]">Unread</span>}
+                  {copy.title}
+                  {!item.is_read && <span className="ml-2 text-xs text-[var(--ui-accent)]">{t("Unread")}</span>}
                 </span>
                 <time dateTime={item.created_at} className="mt-1 block text-sm text-[var(--ui-muted)]">
-                  {new Intl.DateTimeFormat("en-AU", { dateStyle: "medium" }).format(new Date(item.created_at))}
+                  {new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(item.created_at))}
                 </time>
               </span>
             </button>
             {expanded === item.public_id && (
               <div className="space-y-2 pb-4 pl-[3.25rem] text-sm leading-6">
-                <p className="whitespace-pre-wrap break-words">{item.content || "No additional details."}</p>
+                <p className="whitespace-pre-wrap break-words">{copy.content || t("No additional details.")}</p>
                 {item.report_public_id && <Link
                   href={`${routes.pose2d.report}?id=${encodeURIComponent(item.report_public_id)}&returnTo=${encodeURIComponent(routes.user.messages)}#coach-feedback`}
                   className="ui-link inline-flex min-h-10 items-center gap-1.5"
                 >
-                  Open report feedback <ArrowUpRight size={15} />
+                  {t("Open report feedback")} <ArrowUpRight size={15} />
                 </Link>}
               </div>
             )}
-          </article>
-        ))}
+          </article>;
+        })}
       </div>
     </section>
   );

@@ -1,3 +1,7 @@
+"use client";
+
+import { useAppLanguage } from "@/components/account/LanguagePreferenceProvider";
+import { useInterfaceText } from "@/hooks/useInterfaceText";
 import { CircleUserRound, Search } from "lucide-react";
 import Link from "next/link";
 
@@ -14,14 +18,16 @@ type CoachStudentTableProps = {
 };
 
 export function CoachStudentTable({ students }: CoachStudentTableProps) {
+  const language = useAppLanguage();
+  const t = useInterfaceText();
   if (students.length === 0) {
     return (
       <div className="rounded-lg border border-white/10 bg-black/18 p-8 text-center">
         <Search className="mx-auto h-8 w-8 text-[#65f7ff]/70" />
         <div className="mt-4 font-[var(--font-display)] text-lg font-semibold text-white">
-          No active students.
+          {t("No active students.")}
         </div>
-        <p className="mt-2 text-sm text-white/52">Student memberships will appear here.</p>
+        <p className="mt-2 text-sm text-white/52">{t("Student memberships will appear here.")}</p>
       </div>
     );
   }
@@ -32,12 +38,12 @@ export function CoachStudentTable({ students }: CoachStudentTableProps) {
         <table className="min-w-[760px] w-full border-collapse text-left text-sm">
           <thead className="border-b border-white/10 bg-white/[0.035] text-[0.68rem] uppercase tracking-[0.18em] text-white/42">
             <tr>
-              <th className="px-4 py-3 font-semibold">Student</th>
-              <th className="px-4 py-3 font-semibold">Contact</th>
-              <th className="px-4 py-3 text-right font-semibold">Reports</th>
-              <th className="px-4 py-3 text-right font-semibold">Best</th>
-              <th className="px-4 py-3 font-semibold">Last training</th>
-              <th className="px-4 py-3 font-semibold">Status</th>
+              <th className="px-4 py-3 font-semibold">{t("Student")}</th>
+              <th className="px-4 py-3 font-semibold">{t("Contact")}</th>
+              <th className="px-4 py-3 text-right font-semibold">{t("Reports")}</th>
+              <th className="px-4 py-3 text-right font-semibold">{t("Best")}</th>
+              <th className="px-4 py-3 font-semibold">{t("Last training")}</th>
+              <th className="px-4 py-3 font-semibold">{t("Status")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/8">
@@ -71,11 +77,11 @@ export function CoachStudentTable({ students }: CoachStudentTableProps) {
                   {formatScore(student.best_score)}
                 </td>
                 <td className="px-4 py-4 text-white/62">
-                  {formatDateTime(student.last_report_at)}
+                  {formatDateTime(student.last_report_at, language)}
                 </td>
                 <td className="px-4 py-4">
                   <span className="inline-flex rounded-full border border-[#d8ff5d]/24 bg-[#d8ff5d]/10 px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[#e8ff9a]">
-                    {student.status}
+                    {t(student.status)}
                   </span>
                 </td>
               </tr>

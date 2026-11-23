@@ -1,4 +1,8 @@
 "use client";
+
+import { useAppLanguage } from "@/components/account/LanguagePreferenceProvider";
+import { useInterfaceText } from "@/hooks/useInterfaceText";
+
 import { useEffect, useRef, useState } from "react";
 import {
   campLessonService,
@@ -35,6 +39,8 @@ export function LessonEditor({
   onDirty: (dirty: boolean) => void;
   onBusy: (busy: boolean) => void;
 }) {
+  const t = useInterfaceText();
+  const language = useAppLanguage();
   const [form, setForm] = useState(() => lessonContent(lesson)),
     [dirty, setDirty] = useState(false),
     [busy, setBusy] = useState(false),
@@ -87,7 +93,7 @@ export function LessonEditor({
     const click = (e: MouseEvent) => {
       if (
         (e.target as Element).closest?.("a[href]") &&
-        !window.confirm("Leave without saving this lesson?")
+        !window.confirm(t("Leave without saving this lesson?"))
       ) {
         e.preventDefault();
         e.stopPropagation();
@@ -122,7 +128,7 @@ export function LessonEditor({
       })),
     });
     setNotice(
-      "Activities changed. Review and confirm each player’s participation again; absences were retained.",
+      t("Activities changed. Review and confirm each player’s participation again; absences were retained."),
     );
   }
   function player(index: number, changes: Partial<LessonParticipant>) {
@@ -168,7 +174,7 @@ export function LessonEditor({
       setError(
         e instanceof Error
           ? e.message
-          : "Could not save. Retry with your changes intact.",
+          : t("Could not save. Retry with your changes intact."),
       );
     } finally {
       inFlight.current = false;
@@ -187,7 +193,7 @@ export function LessonEditor({
       setMore(data.has_more);
       setHistoryOpen(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load history.");
+      setError(e instanceof Error ? e.message : t("Could not load history."));
     } finally {
       setBusy(false);
     }
@@ -195,7 +201,7 @@ export function LessonEditor({
   async function restore(version: number) {
     if (
       dirty &&
-      !window.confirm("Replace unsaved edits with this historical version?")
+      !window.confirm(t("Replace unsaved edits with this historical version?"))
     )
       return;
     setBusy(true);
@@ -204,10 +210,10 @@ export function LessonEditor({
       const old = await campLessonService.revision(lesson, version);
       change(lessonContent(old));
       setNotice(
-        `Version ${version} loaded into the editor. Save to add a new version; existing history stays unchanged.`,
+        t("Version {0} loaded into the editor. Save to add a new version; existing history stays unchanged.", version),
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load version.");
+      setError(e instanceof Error ? e.message : t("Could not load version."));
     } finally {
       setBusy(false);
     }
@@ -219,32 +225,31 @@ export function LessonEditor({
       className="mt-8 min-w-0 border-t border-white/20 pt-6"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-2xl font-semibold">Today’s training</h2>
+        <h2 className="text-2xl font-semibold">{t("Today’s training")}</h2>
         <span className="text-sm text-white/75">
-          Draft saved · v{lesson.version}
-          {dirty ? " · Unsaved changes" : ""}
+          {t("Draft saved · v")}{lesson.version}
+          {dirty ? t("· Unsaved changes") : ""}
         </span>
       </div>
       <p className="mt-3 text-sm text-white/75">
-        {lesson.class_name} · Dates use {lesson.timezone}. Record activities,
-        confirm attendance, then publish to students.
+        {lesson.class_name} {t("· Dates use")} {lesson.timezone}{t(". Record activities, confirm attendance, then publish to students.")}
       </p>
       <details className="mt-4 text-sm">
         <summary className="min-h-11 cursor-pointer py-3 text-white/85">
-          Source plan: {lesson.source_plan.title}
+          {t("Source plan:")} {lesson.source_plan.title}
         </summary>
         <ul className="space-y-2 py-3 text-white/75">
           {lesson.source_plan.items.map((i, index) => (
             <li key={index}>
               {i.name} ·{" "}
               {i.duration_minutes === null
-                ? "No planned duration"
-                : `${i.duration_minutes} planned min`}
+                ? t("No planned duration")
+                : t("{0} planned min", i.duration_minutes)}
             </li>
           ))}
         </ul>
         <p className="text-white/75">
-          This source snapshot is unchanged by actual lesson edits.
+          {t("This source snapshot is unchanged by actual lesson edits.")}
         </p>
       </details>
       {error && (
@@ -267,7 +272,7 @@ export function LessonEditor({
         <fieldset disabled={busy || disabled} className="min-w-0 space-y-6">
           <div className="grid min-w-0 gap-5 sm:grid-cols-2">
             <label className="text-sm">
-              Lesson title
+              {t("Lesson title")}
               <input
                 className={lessonField}
                 required
@@ -277,7 +282,7 @@ export function LessonEditor({
               />
             </label>
             <label className="text-sm">
-              Lesson date
+              {t("Lesson date")}
               <input
                 type="date"
                 className={lessonField}
@@ -288,7 +293,7 @@ export function LessonEditor({
             </label>
           </div>
           <label className="block text-sm">
-            Message to students (optional)
+            {t("Message to students (optional)")}
             <textarea
               className={lessonField}
               maxLength={2000}
@@ -299,25 +304,24 @@ export function LessonEditor({
             />
           </label>
           <section id="session-activities" className="scroll-mt-28">
-            <h3 className="text-xl font-semibold">1. What did you train?</h3>
+            <h3 className="text-xl font-semibold">{t("1. What did you train?")}</h3>
             <p className="mt-2 text-sm text-white/75">
-              Enter active minutes for each activity, excluding breaks. Use 0
-              for activities you skipped.
+              {t("Enter active minutes for each activity, excluding breaks. Use 0 for activities you skipped.")}
             </p>
             {activitiesLoading && (
               <p role="status" className="mt-3 text-sm">
-                Loading activity standards…
+                {t("Loading activity standards…")}
               </p>
             )}
             {activitiesError && (
               <div role="alert" className="mt-3 text-sm text-amber-200">
-                <p>{activitiesError} You can still save the training record.</p>
+                <p>{activitiesError} {t("You can still save the training record.")}</p>
                 <button
                   type="button"
                   className={`${lessonButton} mt-2`}
                   onClick={() => setActivitiesRetry((value) => value + 1)}
                 >
-                  Reload activity standards
+                  {t("Reload activity standards")}
                 </button>
               </div>
             )}
@@ -326,7 +330,7 @@ export function LessonEditor({
                 <li key={item.item_id} className="min-w-0 py-5">
                   <div className="grid min-w-0 gap-4 sm:grid-cols-[1fr_10rem]">
                     <label className="text-sm">
-                      Activity {index + 1}
+                      {t("Activity")} {index + 1}
                       <input
                         className={lessonField}
                         required
@@ -345,7 +349,7 @@ export function LessonEditor({
                       />
                     </label>
                     <label className="text-sm">
-                      Actual minutes
+                      {t("Actual minutes")}
                       <input
                         type="number"
                         inputMode="decimal"
@@ -371,14 +375,14 @@ export function LessonEditor({
                   </div>
                   <details className="mt-3 text-sm">
                     <summary className="cursor-pointer py-2 text-white/65">
-                      Activity notes & energy estimate (optional)
+                      {t("Activity notes & energy estimate (optional)")}
                     </summary>
                     <div className="mt-2 grid min-w-0 gap-4 sm:grid-cols-2">
                       <label className="min-w-0 text-sm">
-                        Activity standard
+                        {t("Activity standard")}
                         <select
                           className={lessonField}
-                          aria-label={`Activity standard for activity ${index + 1}`}
+                          aria-label={t("Activity standard for activity {0}", index + 1)}
                           value={item.activity_code ?? ""}
                           disabled={
                             activitiesLoading || Boolean(activitiesError)
@@ -399,14 +403,14 @@ export function LessonEditor({
                           }
                         >
                           <option value="">
-                            Custom activity / no standard selected
+                            {t("Custom activity / no standard selected")}
                           </option>
                           {item.activity_code &&
                             !activities.some(
                               (a) => a.code === item.activity_code,
                             ) && (
                               <option value={item.activity_code}>
-                                Saved standard unavailable — reselect
+                                {t("Saved standard unavailable — reselect")}
                               </option>
                             )}
                           {activities.map((activity) => (
@@ -417,10 +421,10 @@ export function LessonEditor({
                         </select>
                       </label>
                       <label className="min-w-0 text-sm">
-                        Intensity
+                        {t("Intensity")}
                         <select
                           className={lessonField}
-                          aria-label={`Intensity for activity ${index + 1}`}
+                          aria-label={t("Intensity for activity {0}", index + 1)}
                           value={item.intensity ?? ""}
                           disabled={
                             !item.activity_code ||
@@ -442,28 +446,27 @@ export function LessonEditor({
                             })
                           }
                         >
-                          <option value="">Select intensity</option>
+                          <option value="">{t("Select intensity")}</option>
                           {item.intensity &&
                             !activities
                               .find((a) => a.code === item.activity_code)
                               ?.intensities.includes(item.intensity) && (
                               <option value={item.intensity}>
-                                Saved intensity unavailable — reselect
+                                {t("Saved intensity unavailable — reselect")}
                               </option>
                             )}
                           {activities
                             .find((a) => a.code === item.activity_code)
                             ?.intensities.map((intensity) => (
                               <option key={intensity} value={intensity}>
-                                {intensity[0].toUpperCase() +
-                                  intensity.slice(1)}
+                                {t(intensity[0].toUpperCase() + intensity.slice(1))}
                               </option>
                             ))}
                         </select>
                       </label>
                     </div>
                     <label className="mt-4 block text-sm">
-                      Activity notes
+                      {t("Activity notes")}
                       <textarea
                         className={lessonField}
                         maxLength={1000}
@@ -491,7 +494,7 @@ export function LessonEditor({
                       )
                     }
                   >
-                    Remove activity {index + 1}
+                    {t("Remove activity")} {index + 1}
                   </button>
                 </li>
               ))}
@@ -514,22 +517,21 @@ export function LessonEditor({
                 ])
               }
             >
-              Add actual activity
+              {t("Add actual activity")}
             </button>
           </section>
           <section
             id="session-attendance"
             className="scroll-mt-28 border-t border-white/20 pt-6"
           >
-            <h3 className="text-xl font-semibold">2. Who attended?</h3>
+            <h3 className="text-xl font-semibold">{t("2. Who attended?")}</h3>
             <p className="mt-2 text-sm text-white/75">
-              Confirm the class together, then adjust individual students. Early
-              departures and partial attendance need individual minutes.
+              {t("Confirm the class together, then adjust individual students. Early departures and partial attendance need individual minutes.")}
             </p>
             <div className="my-4 flex flex-wrap items-center gap-3">
               <input
-                aria-label="Find student"
-                placeholder="Find student…"
+                aria-label={t("Find student")}
+                placeholder={t("Find student…")}
                 className={`${lessonField} !mt-0 sm:!w-64`}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -559,40 +561,37 @@ export function LessonEditor({
                   })
                 }
               >
-                Mark all unconfirmed present
+                {t("Mark all unconfirmed present")}
               </button>
               <span className="text-sm text-white/65" role="status">
                 {
                   form.participants.filter((p) => p.status !== "unconfirmed")
                     .length
                 }
-                /{form.participants.length} confirmed · applies to the whole
-                class
+                /{form.participants.length} {t("confirmed · applies to the whole class")}
               </span>
             </div>
             {unknownMinutes && (
               <p className="mb-3 text-sm text-amber-200">
-                First enter the missing activity minutes in step 1 to enable
-                attendance. You can still mark absences and save a draft.
+                {t("First enter the missing activity minutes in step 1 to enable attendance. You can still mark absences and save a draft.")}
               </p>
             )}
             {!form.participants.length && (
               <p className="text-amber-200">
-                This session has no students. Check the class roster before
-                starting a new session.
+                {t("This session has no students. Check the class roster before starting a new session.")}
               </p>
             )}
             <div className="max-h-[560px] overflow-auto rounded-lg border border-white/15">
               <table className="w-full min-w-[680px] text-left text-sm">
                 <caption className="sr-only">
-                  Student attendance and individual feedback
+                  {t("Student attendance and individual feedback")}
                 </caption>
                 <thead className="sticky top-0 z-10 bg-[#151b25] text-white/65">
                   <tr>
-                    <th className="p-3">Student</th>
-                    <th className="p-3">Attendance</th>
-                    <th className="p-3">Minutes</th>
-                    <th className="p-3">Student note (optional)</th>
+                    <th className="p-3">{t("Student")}</th>
+                    <th className="p-3">{t("Attendance")}</th>
+                    <th className="p-3">{t("Minutes")}</th>
+                    <th className="p-3">{t("Student note (optional)")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10">
@@ -625,7 +624,7 @@ export function LessonEditor({
                         </th>
                         <td className="w-48 p-3">
                           <select
-                            aria-label={`Participation for ${label}`}
+                            aria-label={t("Participation for {0}", label)}
                             className={`${lessonField} !mt-0`}
                             value={p.status}
                             onChange={(e) =>
@@ -644,7 +643,7 @@ export function LessonEditor({
                                   !["unconfirmed", "absent"].includes(k)
                                 }
                               >
-                                {text}
+                                {t(text)}
                               </option>
                             ))}
                           </select>
@@ -659,7 +658,7 @@ export function LessonEditor({
                                 >
                                   {item.name}
                                   <input
-                                    aria-label={`${item.name} minutes for ${label}`}
+                                    aria-label={t("{0} minutes for {1}", item.name, label)}
                                     type="number"
                                     inputMode="decimal"
                                     required
@@ -704,9 +703,9 @@ export function LessonEditor({
                         </td>
                         <td className="min-w-52 p-3">
                           <input
-                            aria-label={`Notes for ${label}`}
+                            aria-label={t("Notes for {0}", label)}
                             className={`${lessonField} !mt-0`}
-                            placeholder="Add feedback…"
+                            placeholder={t("Add feedback…")}
                             maxLength={1000}
                             value={p.notes || ""}
                             onChange={(e) =>
@@ -727,7 +726,7 @@ export function LessonEditor({
                   .includes(search.toLowerCase()),
               ) && (
                 <p className="mt-3 text-sm text-white/65">
-                  No matching students. Clear the search to see everyone.
+                  {t("No matching students. Clear the search to see everyone.")}
                 </p>
               )}
           </section>
@@ -737,14 +736,14 @@ export function LessonEditor({
               disabled={!dirty}
               className="min-h-11 rounded-lg bg-[#d8ff5d] px-5 font-semibold text-black disabled:opacity-50"
             >
-              {busy ? "Saving…" : "Save draft"}
+              {busy ? t("Saving…") : t("Save draft")}
             </button>
             <button
               type="button"
               className={lessonButton}
               onClick={() => loadHistory()}
             >
-              Saved versions
+              {t("Saved versions")}
             </button>
           </div>
         </fieldset>
@@ -752,18 +751,17 @@ export function LessonEditor({
       {historyOpen && (
         <section className="mt-8 border-t border-white/20 pt-5">
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold">Saved history</h3>
+            <h3 className="text-xl font-semibold">{t("Saved history")}</h3>
             <button
               type="button"
               className={lessonButton}
               onClick={() => setHistoryOpen(false)}
             >
-              Close history
+              {t("Close history")}
             </button>
           </div>
           <p className="mt-2 text-sm text-white/75">
-            Loading a previous version only changes this editor. Save it as a
-            new version to restore it.
+            {t("Loading a previous version only changes this editor. Save it as a new version to restore it.")}
           </p>
           <ul className="mt-4 divide-y divide-white/15">
             {history.map((h) => (
@@ -772,8 +770,8 @@ export function LessonEditor({
                 key={h.version}
               >
                 <span className="text-sm">
-                  Version {h.version} ·{" "}
-                  {new Date(h.saved_at).toLocaleString("en-AU", {
+                  {t("Version")} {h.version} ·{" "}
+                  {new Date(h.saved_at).toLocaleString(language === "en" ? "en-AU" : language, {
                     timeZone: "Australia/Sydney",
                   })}
                 </span>
@@ -783,7 +781,7 @@ export function LessonEditor({
                   className={lessonButton}
                   onClick={() => restore(h.version)}
                 >
-                  Load version {h.version}
+                  {t("Load version")} {h.version}
                 </button>
               </li>
             ))}
@@ -794,7 +792,7 @@ export function LessonEditor({
               disabled={busy || disabled}
               onClick={() => loadHistory(true)}
             >
-              More history
+              {t("More history")}
             </button>
           )}
         </section>

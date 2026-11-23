@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, type InputHTMLAttributes } from "react";
+import { useAppLanguage } from "./LanguagePreferenceProvider";
 import { formatDateInput, maskDateInput, parseDateInput, validateDateInput } from "@/lib/dateInput";
 
 type ProfileDateInputProps = Omit<
@@ -21,9 +22,10 @@ export function ProfileDateInput({
   maxDate,
   ...props
 }: ProfileDateInputProps) {
+  const language = useAppLanguage();
   const input = useRef<HTMLInputElement>(null);
   const caret = useRef<number | null>(null);
-  const { error } = validateDateInput(value, { required, minDate, maxDate });
+  const { error } = validateDateInput(value, { required, minDate, maxDate, language });
 
   useEffect(() => {
     input.current?.setCustomValidity(error ?? "");
@@ -68,7 +70,7 @@ export function ProfileDateInput({
         field.value = raw;
         field.setSelectionRange(position, position);
         event.currentTarget.setCustomValidity(
-          validateDateInput(raw, { required, minDate, maxDate }).error ?? "",
+          validateDateInput(raw, { required, minDate, maxDate, language }).error ?? "",
         );
         // Always pass the edit through. Invalid/partial input must replace an old date.
         onChange(parseDateInput(raw) ?? raw);

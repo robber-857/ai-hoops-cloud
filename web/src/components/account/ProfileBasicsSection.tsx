@@ -1,11 +1,11 @@
 "use client";
+import { usePlayerCopy } from "@/components/account/playerCopy";
 
 import { useEffect, useRef, useState } from "react";
 import { meService, type MeProfileRead } from "@/services/me";
 import { useLanguagePreference } from "./LanguagePreferenceProvider";
 import { ProfileDateInput } from "./ProfileDateInput";
 import { parseDateInput } from "@/lib/dateInput";
-import { normalizeLanguage, type AppLanguage } from "@/lib/language";
 import {
   isValidPastDate,
   sydneyDateKey,
@@ -20,11 +20,11 @@ export function ProfileBasicsSection({
 }: {
   onSaved?: (profile: MeProfileRead) => void;
 }) {
+  const { t, language } = usePlayerCopy();
   const preference = useLanguagePreference();
   const [profile, setProfile] = useState<MeProfileRead | null>(null);
   const [nickname, setNickname] = useState("");
   const [startedOn, setStartedOn] = useState("");
-  const [language, setLanguage] = useState<AppLanguage>("en");
   const [today, setToday] = useState("");
   const loading = preference.loading;
   const [saving, setSaving] = useState(false);
@@ -36,8 +36,7 @@ export function ProfileBasicsSection({
   const dirty =
     profile !== null &&
     (nickname !== (profile.nickname ?? "") ||
-      startedOn !== (profile.training_started_on ?? "") ||
-      language !== normalizeLanguage(profile.preferred_language));
+      startedOn !== (profile.training_started_on ?? ""));
 
   useEffect(() => {
     setToday(sydneyDateKey());
@@ -50,7 +49,6 @@ export function ProfileBasicsSection({
       setProfile(value);
       setNickname(value.nickname ?? "");
       setStartedOn(value.training_started_on ?? "");
-      setLanguage(normalizeLanguage(value.preferred_language));
       setSaveError("");
       setSaved(false);
     }
@@ -65,7 +63,7 @@ export function ProfileBasicsSection({
     const navigate = (event: MouseEvent) => {
       if (
         (event.target as Element).closest?.("a[href]") &&
-        !window.confirm("Your profile has not been saved. Leave this page?")
+        !window.confirm(t("Your profile has not been saved. Leave this page?"))
       ) {
         event.preventDefault();
         event.stopPropagation();
@@ -77,7 +75,7 @@ export function ProfileBasicsSection({
       window.removeEventListener("beforeunload", unload);
       document.removeEventListener("click", navigate, true);
     };
-  }, [dirty]);
+  }, [dirty, t]);
 
   async function save() {
     if (!profile || inFlight.current) return;
@@ -96,13 +94,11 @@ export function ProfileBasicsSection({
       const value = await meService.updateProfile({
         nickname: nickname.trim() || null,
         training_started_on: trainingDate,
-        preferred_language: language,
         expected_updated_at: profile.updated_at,
       });
       setProfile(value);
       setNickname(value.nickname ?? "");
       setStartedOn(value.training_started_on ?? "");
-      setLanguage(normalizeLanguage(value.preferred_language));
       savedVersion.current = value.updated_at;
       preference.refresh(value);
       setSaved(true);
@@ -111,7 +107,7 @@ export function ProfileBasicsSection({
       setSaveError(
         error instanceof Error
           ? error.message
-          : "Could not save. Your changes are still here.",
+          : t("Could not save. Your changes are still here."),
       );
     } finally {
       inFlight.current = false;
@@ -120,7 +116,7 @@ export function ProfileBasicsSection({
   }
 
   function reload() {
-    if (dirty && !window.confirm("Reload saved profile and replace your unsaved changes?")) {
+    if (dirty && !window.confirm(t("Reload saved profile and replace your unsaved changes?"))) {
       return;
     }
     preference.reload();
@@ -128,18 +124,16 @@ export function ProfileBasicsSection({
 
   return (
     <section className="min-w-0 border-t border-white/15 pt-6">
-      <h2 className="text-xl font-semibold">Player profile</h2>
+      <h2 className="text-xl font-semibold">{t("Player profile")}</h2>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-white/70">
-        A parent can update these details on the player’s behalf. Training
-        experience is calculated from the start date; class minutes are recorded
-        separately by your coach.
+        {t("A parent can update these details on the player’s behalf. Training experience is calculated from the start date; class minutes are recorded separately by your coach.")}
       </p>
-      {loading && <p role="status" className="mt-4">Loading profile…</p>}
+      {loading && <p role="status" className="mt-4">{t("Loading profile…")}</p>}
       {loadError && (
         <div role="alert" className="mt-4 text-sm text-red-200">
           <p>{loadError}</p>
           <button type="button" className="min-h-11 underline" onClick={reload}>
-            Reload profile
+            {t("Reload profile")}
           </button>
         </div>
       )}
@@ -155,7 +149,7 @@ export function ProfileBasicsSection({
           className="grid min-w-0 gap-5 sm:grid-cols-2"
         >
           <label className="min-w-0 text-sm">
-            Player name / nickname
+            {t("Player name / nickname")}
             <input
               className={fieldClass}
               maxLength={100}
@@ -168,11 +162,11 @@ export function ProfileBasicsSection({
               }}
             />
             <span className="mt-2 block text-xs text-white/65">
-              Optional. Your username is shown when this is empty.
+              {t("Optional. Your username is shown when this is empty.")}
             </span>
           </label>
           <label className="min-w-0 text-sm">
-            Started training on
+            {t("Started training on")}
             <ProfileDateInput
               className={fieldClass}
               maxDate={today || undefined}
@@ -184,29 +178,10 @@ export function ProfileBasicsSection({
               }}
             />
           </label>
-          <label className="min-w-0 text-sm sm:col-span-2">
-            Language
-            <select
-              aria-label="Language"
-              className={fieldClass}
-              value={language}
-              onChange={(event) => {
-                setLanguage(normalizeLanguage(event.target.value));
-                setSaved(false);
-                setSaveError("");
-              }}
-            >
-              <option value="en">English</option>
-              <option value="zh-CN">中文（简体）</option>
-            </select>
-            <span className="mt-2 block text-xs text-white/65">
-              Used for Food nutrition. Saved to your account.
-            </span>
-          </label>
           <div className="rounded-lg border border-white/15 p-4 text-sm sm:col-span-2">
-            <p className="text-white/65">Training experience</p>
+            <p className="text-white/65">{t("Training experience")}</p>
             <output className="mt-2 block text-lg font-semibold" aria-live="polite">
-              {today ? trainingDurationLabel(parseDateInput(startedOn), today) : "Not recorded"}
+              {today ? trainingDurationLabel(parseDateInput(startedOn), today, language) : t("Not recorded")}
             </output>
           </div>
           <button
@@ -214,21 +189,21 @@ export function ProfileBasicsSection({
             disabled={!dirty || saving}
             className="min-h-11 rounded-lg bg-[#d8ff5d] px-5 font-semibold text-[#10140a] disabled:opacity-50 sm:col-span-2"
           >
-            {saving ? "Saving…" : "Save profile"}
+            {saving ? t("Saving…") : t("Save profile")}
           </button>
         </fieldset>
       </form>
       {saveError && (
         <div role="alert" className="mt-4 text-sm text-red-200">
-          <p>{saveError}</p>
+          <p>{t(saveError)}</p>
           <button type="button" className="min-h-11 underline" disabled={saving} onClick={reload}>
-            Reload saved profile
+            {t("Reload saved profile")}
           </button>
         </div>
       )}
       {saved && (
         <p role="status" className="mt-4 text-sm text-[#d8ff5d]">
-          Profile saved. Measurement history is unchanged.
+          {t("Profile saved. Measurement history is unchanged.")}
         </p>
       )}
     </section>

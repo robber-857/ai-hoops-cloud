@@ -5,6 +5,7 @@
  //} as const;
 
 export const routes = {
+  settings: "/settings",
   foods: "/foods",
   recipes: "/recipes",
   home: "/",

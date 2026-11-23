@@ -1,5 +1,6 @@
 import { staffName } from "@/lib/staffNames";
-import { getTemplateById } from "@/config/templates";
+import { templateDisplayName } from "@/lib/templateLanguage";
+import type { AppLanguage } from "@/lib/language";
 import type { ReportAnalysisType } from "@/services/reports";
 
 export const analysisTypeLabels: Record<ReportAnalysisType, string> = {
@@ -9,7 +10,7 @@ export const analysisTypeLabels: Record<ReportAnalysisType, string> = {
   comprehensive: "Comprehensive",
 };
 
-export function formatDate(input: string | null | undefined, options?: Intl.DateTimeFormatOptions) {
+export function formatDate(input: string | null | undefined, options?: Intl.DateTimeFormatOptions, language: AppLanguage = "en") {
   if (!input) {
     return "--";
   }
@@ -19,18 +20,18 @@ export function formatDate(input: string | null | undefined, options?: Intl.Date
     return "--";
   }
 
-  return new Intl.DateTimeFormat("en-AU", {
+  return new Intl.DateTimeFormat(language === "en" ? "en-AU" : language, {
     month: "short",
     day: "numeric",
     ...(options ?? {}),
   }).format(new Date(time));
 }
 
-export function formatDateTime(input: string | null | undefined) {
+export function formatDateTime(input: string | null | undefined, language: AppLanguage = "en") {
   return formatDate(input, {
     hour: "2-digit",
     minute: "2-digit",
-  });
+  }, language);
 }
 
 export function formatScore(score: number | null | undefined) {
@@ -54,12 +55,8 @@ export function getClassStatusTone(status: string) {
   return "text-sky-200 bg-sky-400/10 border-sky-300/30";
 }
 
-export function getTemplateDisplayName(templateCode: string | null | undefined) {
-  if (!templateCode) {
-    return "No template";
-  }
-
-  return getTemplateById(templateCode)?.displayName ?? templateCode;
+export function getTemplateDisplayName(templateCode: string | null | undefined, language: AppLanguage = "en") {
+  return templateDisplayName(templateCode, null, language) || (language === "zh-CN" ? "无模板" : "No template");
 }
 
 export function getStudentDisplayName(username: string, nickname: string | null) {

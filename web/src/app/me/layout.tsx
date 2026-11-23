@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AccountCenterShell } from "@/components/account/AccountCenterShell";
 import { AccountDataProvider } from "@/components/account/AccountDataProvider";
-import { LanguagePreferenceProvider } from "@/components/account/LanguagePreferenceProvider";
+import { useAppLanguage } from "@/components/account/LanguagePreferenceProvider";
 import { useAuthStore } from "@/store/authStore";
 import { routes } from "@/lib/routes";
 import { canRoleOpenPath, getDefaultPathForRole } from "@/lib/authRedirect";
@@ -16,6 +16,7 @@ export default function AccountLayout({
 }) {
   const { user, hasInitialized, isAuthenticated } = useAuthStore();
   const pathname = usePathname();
+  const language = useAppLanguage();
   const router = useRouter();
   const canAccess = Boolean(user && canRoleOpenPath(user.role, pathname));
   useEffect(() => {
@@ -33,17 +34,15 @@ export default function AccountLayout({
         className="flex min-h-screen items-center justify-center bg-[var(--ui-bg)] text-[var(--ui-text)]"
         role="status"
       >
-        Loading personal center…
+        {language === "en" ? "Loading personal center…" : "正在加载个人中心…"}
       </main>
     );
   }
   return (
     <AccountDataProvider key={user.public_id}>
-      <LanguagePreferenceProvider key={user.public_id}>
-        <AccountCenterShell username={user.nickname || user.username}>
-          {children}
-        </AccountCenterShell>
-      </LanguagePreferenceProvider>
+      <AccountCenterShell username={user.nickname || user.username}>
+        {children}
+      </AccountCenterShell>
     </AccountDataProvider>
   );
 }

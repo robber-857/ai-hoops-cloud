@@ -1,4 +1,5 @@
 "use client";
+import { usePlayerCopy } from "@/components/account/playerCopy";
 
 import { useState } from "react";
 import { CalendarDays } from "lucide-react";
@@ -11,8 +12,7 @@ const SERIES = [
   { type: "training", label: "Training", color: "var(--ui-chart-violet)" },
 ] as const;
 const DAY_MS = 86_400_000;
-const weekdayFormat = new Intl.DateTimeFormat("en-AU", { weekday: "short", timeZone: "UTC" });
-const dateFormat = new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short", timeZone: "UTC" });
+
 
 function activityDays(pointsByType: TrendPointsByType, today: string) {
   const end = Date.parse(`${today}T00:00:00Z`);
@@ -40,6 +40,9 @@ function activityDays(pointsByType: TrendPointsByType, today: string) {
 }
 
 export function OverviewActivity({ pointsByType, today }: { pointsByType: TrendPointsByType; today: string }) {
+  const { t, locale, isChinese } = usePlayerCopy();
+  const weekdayFormat = new Intl.DateTimeFormat(locale, { weekday: "short", timeZone: "UTC" });
+  const dateFormat = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", timeZone: "UTC" });
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const days = activityDays(pointsByType, today);
   const first = days[0];
@@ -52,7 +55,7 @@ export function OverviewActivity({ pointsByType, today }: { pointsByType: TrendP
   return (
     <section className="mt-5" aria-labelledby="overview-activity-title">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h3 id="overview-activity-title" className="text-sm font-semibold">Scored reports</h3>
+        <h3 id="overview-activity-title" className="text-sm font-semibold">{t("Scored reports")}</h3>
         <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--ui-border)] px-2 py-1 text-xs font-medium text-[var(--ui-muted)]">
           <CalendarDays size={13} aria-hidden="true" /> {range}
         </span>
@@ -65,7 +68,7 @@ export function OverviewActivity({ pointsByType, today }: { pointsByType: TrendP
               <span>{maximum / 2}</span>
               <span>0</span>
             </div>
-            <div className="relative grid grid-cols-7 gap-0.5 sm:gap-2" role="group" aria-label="Scored reports by day">
+            <div className="relative grid grid-cols-7 gap-0.5 sm:gap-2" role="group" aria-label={t("Scored reports by day")}>
               <div className="pointer-events-none absolute inset-x-0 top-0 flex h-36 flex-col justify-between" aria-hidden="true">
                 <span className="border-t border-dashed border-[var(--ui-border)]" />
                 <span className="border-t border-dashed border-[var(--ui-border)]" />
@@ -76,7 +79,7 @@ export function OverviewActivity({ pointsByType, today }: { pointsByType: TrendP
                   type="button"
                   key={day.key}
                   onClick={() => setSelectedKey(day.key)}
-                  aria-label={`${dateFormat.format(day.date)}, ${day.total} scored ${day.total === 1 ? "report" : "reports"}`}
+                  aria-label={isChinese ? `${dateFormat.format(day.date)}，${day.total} 份评分报告` : `${dateFormat.format(day.date)}, ${day.total} scored ${day.total === 1 ? "report" : "reports"}`}
                   aria-pressed={day.key === selected.key}
                   className="group relative flex min-w-0 flex-col items-center rounded-md"
                 >
@@ -110,13 +113,13 @@ export function OverviewActivity({ pointsByType, today }: { pointsByType: TrendP
           </div>
           <div aria-live="polite" className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-[var(--ui-border)] pt-3 text-xs">
             <span className="font-semibold" title={selected.key}>
-              {dateFormat.format(selected.date)} · {selected.total} {selected.total === 1 ? "report" : "reports"}
+              {dateFormat.format(selected.date)} · {selected.total} {isChinese ? "份报告" : selected.total === 1 ? "report" : "reports"}
             </span>
             <ul className="flex flex-wrap gap-x-3 gap-y-1 text-[var(--ui-muted)]">
               {selected.series.map(({ type, label, color, count }) => (
                 <li key={type} className="inline-flex items-center gap-1.5">
                   <span aria-hidden="true" className="size-2 shrink-0 rounded-sm" style={{ backgroundColor: color }} />
-                  {label} <span className="font-semibold tabular-nums text-[var(--ui-text)]">{count}</span>
+                  {t(label)} <span className="font-semibold tabular-nums text-[var(--ui-text)]">{count}</span>
                 </li>
               ))}
             </ul>
@@ -124,7 +127,7 @@ export function OverviewActivity({ pointsByType, today }: { pointsByType: TrendP
         </>
       ) : (
         <div className="flex min-h-44 items-center justify-center rounded-xl border border-dashed border-[var(--ui-border)] bg-[var(--ui-subtle)] px-4 text-center text-sm text-[var(--ui-muted)]">
-          No scored reports in the last seven days.
+          {t("No scored reports in the last seven days.")}
         </div>
       )}
     </section>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { AuthBootstrap } from "@/components/auth/AuthBootstrap";
+import { LanguagePreferenceProvider } from "@/components/account/LanguagePreferenceProvider";
 import { initializeTheme } from "@/lib/workspaceTheme";
 
 import "./globals.css";
@@ -23,7 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="antialiased">
         <AuthBootstrap />
-        {children}
+        <LanguagePreferenceProvider>{children}</LanguagePreferenceProvider>
       </body>
     </html>
   );

@@ -96,15 +96,17 @@ describe("read-only food nutrient presentation", () => {
     state.preferenceLoading = false;
   });
 
-  it("keeps foods usable and offers preference retry when the language request fails", () => {
+  it.each(["en", "zh-CN"] as const)("keeps foods usable in cached %s when the language request fails", (language) => {
+    state.language = language;
     state.preferenceError = "服务端错误信息";
     const html = renderToStaticMarkup(createElement(FoodNutritionList));
-    expect(html).toContain("Could not load your language preference. Showing English.");
-    expect(html).toContain("Retry language preference");
-    expect(html).toContain("Food nutrition");
+    expect(html).toContain(language === "en" ? "Could not load your saved language preference." : "无法加载已保存的语言偏好。");
+    expect(html).toContain(language === "en" ? "Retry language preference" : "重新加载语言偏好");
+    expect(html).toContain(language === "en" ? "Food nutrition" : "食材营养");
     expect(html).toContain("<form");
     expect(html).not.toContain(state.preferenceError);
     state.preferenceError = "";
+    state.language = "en";
   });
 
   it.each([["admin", "Admin"], ["coach", "Coach"], ["student", "Player"], ["user", "Player"]])("%s keeps its %s workspace", (role, workspace) => {

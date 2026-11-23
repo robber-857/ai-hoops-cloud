@@ -1,5 +1,9 @@
 "use client";
 
+import { useInterfaceText } from "@/hooks/useInterfaceText";
+
+import { useAppLanguage } from "@/components/account/LanguagePreferenceProvider";
+
 import { Fragment, useState } from "react";
 import Link from "next/link";
 import { ClipboardList, Eye, Loader2, Lock, Pencil, RotateCcw, Save, X } from "lucide-react";
@@ -87,6 +91,8 @@ export function CoachTaskTable({
   onStatusChange,
   onPatch,
 }: CoachTaskTableProps) {
+  const t = useInterfaceText();
+  const language = useAppLanguage();
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [taskDetail, setTaskDetail] = useState<CoachTaskDetailRead | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
@@ -183,9 +189,9 @@ export function CoachTaskTable({
       <div className="rounded-lg border border-white/10 bg-black/18 p-8 text-center">
         <ClipboardList className="mx-auto h-8 w-8 text-[#65f7ff]/70" />
         <div className="mt-4 font-[var(--font-display)] text-lg font-semibold text-white">
-          No training tasks yet.
+          {t("No training tasks yet.")}
         </div>
-        <p className="mt-2 text-sm text-white/52">Published tasks will appear here.</p>
+        <p className="mt-2 text-sm text-white/52">{t("Published tasks will appear here.")}</p>
       </div>
     );
   }
@@ -196,13 +202,13 @@ export function CoachTaskTable({
         <table className="min-w-[980px] w-full border-collapse text-left text-sm">
           <thead className="border-b border-white/10 bg-white/[0.035] text-[0.68rem] uppercase tracking-[0.18em] text-white/42">
             <tr>
-              <th className="px-4 py-3 font-semibold">Pick</th>
-              <th className="px-4 py-3 font-semibold">Task</th>
-              <th className="px-4 py-3 font-semibold">Motion</th>
-              <th className="px-4 py-3 text-right font-semibold">Progress</th>
-              <th className="px-4 py-3 font-semibold">Due</th>
-              <th className="px-4 py-3 font-semibold">Status</th>
-              <th className="px-4 py-3 text-right font-semibold">Actions</th>
+              <th className="px-4 py-3 font-semibold">{t("Pick")}</th>
+              <th className="px-4 py-3 font-semibold">{t("Task")}</th>
+              <th className="px-4 py-3 font-semibold">{t("Motion")}</th>
+              <th className="px-4 py-3 text-right font-semibold">{t("Progress")}</th>
+              <th className="px-4 py-3 font-semibold">{t("Due")}</th>
+              <th className="px-4 py-3 font-semibold">{t("Status")}</th>
+              <th className="px-4 py-3 text-right font-semibold">{t("Actions")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/8">
@@ -223,28 +229,28 @@ export function CoachTaskTable({
                         checked={selectedTaskIds.includes(task.public_id)}
                         onChange={(event) => toggleSelected(task.public_id, event.target.checked)}
                         className="h-4 w-4 accent-[#d8ff5d]"
-                        aria-label={`Select ${task.title}`}
+                        aria-label={t("Select {0}", task.title)}
                       />
                     </td>
                     <td className="px-4 py-4">
                       <div className="font-semibold text-white">{task.title}</div>
                       <div className="mt-1 max-w-[22rem] truncate text-xs text-white/42">
-                        {task.description || "No description"}
+                        {task.description || t("No description")}
                       </div>
                     </td>
                     <td className="px-4 py-4 text-white/62">
-                      <div>{task.analysis_type ? analysisTypeLabels[task.analysis_type] : "Any"}</div>
+                      <div>{task.analysis_type ? t(analysisTypeLabels[task.analysis_type]) : t("Any")}</div>
                       <div className="mt-1 max-w-[16rem] truncate text-xs text-white/38">
-                        {task.template_code ? getTemplateDisplayName(task.template_code) : "No template"}
+                        {getTemplateDisplayName(task.template_code, language)}
                       </div>
                     </td>
                     <td className="px-4 py-4 text-right">
                       <div className="font-[var(--font-display)] text-xl font-bold text-[#d8ff5d]">
                         {task.completed_assignment_count}/{task.assignment_count}
                       </div>
-                      <div className="mt-1 text-xs text-white/42">{progress}% complete</div>
+                      <div className="mt-1 text-xs text-white/42">{progress}{t("% complete")}</div>
                     </td>
-                    <td className="px-4 py-4 text-white/62">{formatDateTime(task.due_at)}</td>
+                    <td className="px-4 py-4 text-white/62">{formatDateTime(task.due_at, language)}</td>
                     <td className="px-4 py-4">
                       <span
                         className={cn(
@@ -252,7 +258,7 @@ export function CoachTaskTable({
                           statusTone(task.status),
                         )}
                       >
-                        {task.status}
+                        {t(task.status)}
                       </span>
                     </td>
                     <td className="px-4 py-4">
@@ -263,7 +269,7 @@ export function CoachTaskTable({
                           className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.045] px-3 text-xs font-semibold text-white/78 transition hover:border-[#65f7ff]/32 hover:bg-[#65f7ff]/10"
                         >
                           <Eye className="h-4 w-4" />
-                          Detail
+                          {t("Detail")}
                         </button>
                         <button
                           type="button"
@@ -271,7 +277,7 @@ export function CoachTaskTable({
                           className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[#65f7ff]/24 bg-[#65f7ff]/10 px-3 text-xs font-semibold text-[#dffbff] transition hover:bg-[#65f7ff]/16"
                         >
                           <Pencil className="h-4 w-4" />
-                          Edit
+                          {t("Edit")}
                         </button>
                         <button
                           type="button"
@@ -286,7 +292,7 @@ export function CoachTaskTable({
                           ) : (
                             <Lock className="h-4 w-4" />
                           )}
-                          {isClosed ? "Reopen" : "Close"}
+                          {isClosed ? t("Reopen") : t("Close")}
                         </button>
                       </div>
                     </td>
@@ -297,7 +303,7 @@ export function CoachTaskTable({
                         {isLoadingDetail ? (
                           <div className="flex items-center gap-2 text-sm text-white/58">
                             <Loader2 className="h-4 w-4 animate-spin text-[#65f7ff]" />
-                            Loading assignment detail
+                            {t("Loading assignment detail")}
                           </div>
                         ) : detailError ? (
                           <div className="rounded-lg border border-red-400/20 bg-red-500/10 px-3 py-2 text-sm text-red-100">
@@ -316,22 +322,22 @@ export function CoachTaskTable({
                                       {assignment.student_name}
                                     </div>
                                     <div className="mt-1 text-xs text-white/42">
-                                      {assignment.completed_sessions} sessions / best{" "}
+                                      {assignment.completed_sessions} {t("sessions / best")}{" "}
                                       {formatScore(assignment.best_score)}
                                     </div>
                                   </div>
                                   <span className="rounded-full border border-white/10 bg-white/[0.045] px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-white/62">
-                                    {assignment.status}
+                                    {t(assignment.status)}
                                   </span>
                                 </div>
                                 <div className="mt-3 flex items-center justify-between text-xs text-white/44">
-                                  <span>{formatDateTime(assignment.last_submission_at)}</span>
+                                  <span>{formatDateTime(assignment.last_submission_at, language)}</span>
                                   {assignment.latest_report_public_id ? (
                                     <Link
                                       href={`${routes.pose2d.report}?id=${assignment.latest_report_public_id}`}
                                       className="text-[#65f7ff] hover:text-[#d8ff5d]"
                                     >
-                                      Open report
+                                      {t("Open report")}
                                     </Link>
                                   ) : null}
                                 </div>
@@ -347,54 +353,54 @@ export function CoachTaskTable({
                       <td colSpan={7} className="px-4 py-4">
                         <form className="grid gap-4 lg:grid-cols-2" onSubmit={(event) => submitEdit(event, task)}>
                           <label className="block space-y-2">
-                            <span className={labelClass}>Title</span>
+                            <span className={labelClass}>{t("Title")}</span>
                             <input className={fieldClass} value={editTitle} onChange={(event) => setEditTitle(event.target.value)} required />
                           </label>
                           <label className="block space-y-2">
-                            <span className={labelClass}>Status</span>
+                            <span className={labelClass}>{t("Status")}</span>
                             <select className={fieldClass} value={editStatus} onChange={(event) => setEditStatus(event.target.value)}>
-                              <option value="draft">draft</option>
-                              <option value="published">published</option>
-                              <option value="closed">closed</option>
-                              <option value="archived">archived</option>
+                              <option value="draft">{t("draft")}</option>
+                              <option value="published">{t("published")}</option>
+                              <option value="closed">{t("closed")}</option>
+                              <option value="archived">{t("archived")}</option>
                             </select>
                           </label>
                           <label className="block space-y-2 lg:col-span-2">
-                            <span className={labelClass}>Description</span>
+                            <span className={labelClass}>{t("Description")}</span>
                             <textarea className={`${fieldClass} min-h-20 resize-none py-3`} value={editDescription} onChange={(event) => setEditDescription(event.target.value)} />
                           </label>
                           <label className="block space-y-2">
-                            <span className={labelClass}>Motion</span>
+                            <span className={labelClass}>{t("Motion")}</span>
                             <select className={fieldClass} value={editAnalysisType} onChange={(event) => setEditAnalysisType(event.target.value as ReportAnalysisType)}>
                               {analysisTypes.map((type) => (
                                 <option key={type} value={type}>
-                                  {analysisTypeLabels[type]}
+                                  {t(analysisTypeLabels[type])}
                                 </option>
                               ))}
                             </select>
                           </label>
                           <label className="block space-y-2">
-                            <span className={labelClass}>Template code</span>
+                            <span className={labelClass}>{t("Template code")}</span>
                             <input className={fieldClass} value={editTemplateCode} onChange={(event) => setEditTemplateCode(event.target.value)} />
                           </label>
                           <label className="block space-y-2">
-                            <span className={labelClass}>Sessions</span>
+                            <span className={labelClass}>{t("Sessions")}</span>
                             <input className={fieldClass} value={editTargetSessions} onChange={(event) => setEditTargetSessions(event.target.value)} inputMode="numeric" />
                           </label>
                           <label className="block space-y-2">
-                            <span className={labelClass}>Score</span>
+                            <span className={labelClass}>{t("Score")}</span>
                             <input className={fieldClass} value={editTargetScore} onChange={(event) => setEditTargetScore(event.target.value)} inputMode="numeric" />
                           </label>
                           <label className="block space-y-2">
-                            <span className={labelClass}>Publish</span>
+                            <span className={labelClass}>{t("Publish")}</span>
                             <input className={fieldClass} type="datetime-local" value={editPublishAt} onChange={(event) => setEditPublishAt(event.target.value)} />
                           </label>
                           <label className="block space-y-2">
-                            <span className={labelClass}>Start</span>
+                            <span className={labelClass}>{t("Start")}</span>
                             <input className={fieldClass} type="datetime-local" value={editStartAt} onChange={(event) => setEditStartAt(event.target.value)} />
                           </label>
                           <label className="block space-y-2">
-                            <span className={labelClass}>Due</span>
+                            <span className={labelClass}>{t("Due")}</span>
                             <input className={fieldClass} type="datetime-local" value={editDueAt} onChange={(event) => setEditDueAt(event.target.value)} />
                           </label>
                           <div className="flex items-end justify-end gap-2">
@@ -404,7 +410,7 @@ export function CoachTaskTable({
                               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.045] px-4 text-sm font-semibold text-white/70 transition hover:bg-white/[0.08]"
                             >
                               <X className="h-4 w-4" />
-                              Cancel
+                              {t("Cancel")}
                             </button>
                             <button
                               type="submit"
@@ -412,7 +418,7 @@ export function CoachTaskTable({
                               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[#d8ff5d]/24 bg-[#d8ff5d]/10 px-4 text-sm font-semibold text-[#f1ffc1] transition hover:bg-[#d8ff5d]/16 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               {isSavingEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                              Save task
+                              {t("Save task")}
                             </button>
                           </div>
                         </form>

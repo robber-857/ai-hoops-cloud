@@ -1,5 +1,8 @@
 "use client";
 
+import { useInterfaceText } from "@/hooks/useInterfaceText";
+
+
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -14,6 +17,7 @@ export function WorkspaceMobileDrawer({
   items: WorkspaceMobileNavItem[];
   title: string;
 }) {
+  const t = useInterfaceText();
   const [open, setOpen] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -45,7 +49,7 @@ export function WorkspaceMobileDrawer({
       <button
         ref={trigger}
         type="button"
-        aria-label="Open workspace menu"
+        aria-label={t("Open workspace menu")}
         aria-expanded={open}
         aria-controls={id}
         onClick={() => {
@@ -89,11 +93,11 @@ export function WorkspaceMobileDrawer({
         <div className="ml-auto flex h-full w-[min(88vw,380px)] flex-col overflow-y-auto border-l border-[var(--ui-border)] bg-[var(--ui-sidebar)] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] motion-safe:animate-[drawer-enter_180ms_ease-out]">
           <div className="mb-5 flex items-center justify-between gap-3">
             <h2 id={`${id}-title`} className="text-lg font-semibold">
-              {title}
+              {t(title)}
             </h2>
             <button
               type="button"
-              aria-label="Close workspace menu"
+              aria-label={t("Close workspace menu")}
               onClick={close}
               className="ui-icon-button"
             >
@@ -101,7 +105,7 @@ export function WorkspaceMobileDrawer({
             </button>
           </div>
           <nav
-            aria-label="Personal center mobile"
+            aria-label={t("Personal center mobile")}
             className="flex flex-1 flex-col gap-1"
           >
             {items.map(({ href, label, exact, icon: Icon }) => (
@@ -113,7 +117,7 @@ export function WorkspaceMobileDrawer({
                 className="account-nav-item"
               >
                 {Icon && <Icon size={17} aria-hidden="true" />}
-                {label}
+                {t(label)}
               </Link>
             ))}
           </nav>
@@ -123,7 +127,7 @@ export function WorkspaceMobileDrawer({
               onClick={close}
               className="account-nav-item"
             >
-              AI Hoops home
+              {t("AI Hoops home")}
             </Link>
             <LogoutButton className="mt-3 min-h-11 w-full" />
           </div>

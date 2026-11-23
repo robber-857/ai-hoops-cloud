@@ -9,6 +9,7 @@ import {
   NotebookPen,
   ScanLine,
   Sparkles,
+  Settings,
   UserRound,
   Utensils,
   Video,
@@ -50,9 +51,12 @@ export const profileNavigation = {
   exact: true,
 };
 
+export const settingsNavigation = { href: routes.settings, label: "Settings", icon: Settings, exact: true };
+
 export const accountNavigation = [
   ...accountNavigationSections.flatMap(({ items }) => items),
   profileNavigation,
+  settingsNavigation,
 ];
 
 export const trainingNavigation = [

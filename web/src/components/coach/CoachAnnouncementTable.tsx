@@ -1,5 +1,9 @@
 "use client";
 
+import { useAppLanguage } from "@/components/account/LanguagePreferenceProvider";
+import { useInterfaceText } from "@/hooks/useInterfaceText";
+
+
 import { Fragment, useState } from "react";
 import { Archive, Loader2, Megaphone, Pencil, Pin, PinOff, Save, X } from "lucide-react";
 
@@ -60,6 +64,8 @@ export function CoachAnnouncementTable({
   onSelectedAnnouncementIdsChange,
   onPatch,
 }: CoachAnnouncementTableProps) {
+  const language = useAppLanguage();
+  const t = useInterfaceText();
   const [editingAnnouncementId, setEditingAnnouncementId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
@@ -111,9 +117,9 @@ export function CoachAnnouncementTable({
       <div className="rounded-lg border border-white/10 bg-black/18 p-8 text-center">
         <Megaphone className="mx-auto h-8 w-8 text-[#65f7ff]/70" />
         <div className="mt-4 font-[var(--font-display)] text-lg font-semibold text-white">
-          No announcements yet.
+          {t("No announcements yet.")}
         </div>
-        <p className="mt-2 text-sm text-white/52">Published notices will appear here.</p>
+        <p className="mt-2 text-sm text-white/52">{t("Published notices will appear here.")}</p>
       </div>
     );
   }
@@ -124,11 +130,11 @@ export function CoachAnnouncementTable({
         <table className="min-w-[920px] w-full border-collapse text-left text-sm">
           <thead className="border-b border-white/10 bg-white/[0.035] text-[0.68rem] uppercase tracking-[0.18em] text-white/42">
             <tr>
-              <th className="px-4 py-3 font-semibold">Pick</th>
-              <th className="px-4 py-3 font-semibold">Announcement</th>
-              <th className="px-4 py-3 font-semibold">Window</th>
-              <th className="px-4 py-3 font-semibold">Status</th>
-              <th className="px-4 py-3 text-right font-semibold">Actions</th>
+              <th className="px-4 py-3 font-semibold">{t("Pick")}</th>
+              <th className="px-4 py-3 font-semibold">{t("Announcement")}</th>
+              <th className="px-4 py-3 font-semibold">{t("Window")}</th>
+              <th className="px-4 py-3 font-semibold">{t("Status")}</th>
+              <th className="px-4 py-3 text-right font-semibold">{t("Actions")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/8">
@@ -146,7 +152,7 @@ export function CoachAnnouncementTable({
                       checked={selectedAnnouncementIds.includes(announcement.public_id)}
                       onChange={(event) => toggleSelected(announcement.public_id, event.target.checked)}
                       className="h-4 w-4 accent-[#d8ff5d]"
-                      aria-label={`Select ${announcement.title}`}
+                      aria-label={t("Select {0}", announcement.title)}
                     />
                   </td>
                   <td className="px-4 py-4">
@@ -161,9 +167,9 @@ export function CoachAnnouncementTable({
                     </div>
                   </td>
                   <td className="px-4 py-4 text-white/62">
-                    <div>{formatDateTime(announcement.publish_at)}</div>
+                    <div>{formatDateTime(announcement.publish_at, language)}</div>
                     <div className="mt-1 text-xs text-white/38">
-                      Expires {formatDateTime(announcement.expire_at)}
+                      {t("Expires")} {formatDateTime(announcement.expire_at, language)}
                     </div>
                   </td>
                   <td className="px-4 py-4">
@@ -173,7 +179,7 @@ export function CoachAnnouncementTable({
                         statusTone(announcement.status),
                       )}
                     >
-                      {announcement.status}
+                      {t(announcement.status)}
                     </span>
                   </td>
                   <td className="px-4 py-4">
@@ -184,7 +190,7 @@ export function CoachAnnouncementTable({
                         className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[#65f7ff]/24 bg-[#65f7ff]/10 px-3 text-xs font-semibold text-[#dffbff] transition hover:bg-[#65f7ff]/16"
                       >
                         <Pencil className="h-4 w-4" />
-                        Edit
+                        {t("Edit")}
                       </button>
                       <button
                         type="button"
@@ -201,7 +207,7 @@ export function CoachAnnouncementTable({
                         ) : (
                           <Pin className="h-4 w-4" />
                         )}
-                        {announcement.is_pinned ? "Unpin" : "Pin"}
+                        {announcement.is_pinned ? t("Unpin") : t("Pin")}
                       </button>
                       <button
                         type="button"
@@ -210,7 +216,7 @@ export function CoachAnnouncementTable({
                         className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.045] px-3 text-xs font-semibold text-white/72 transition hover:border-[#d8ff5d]/24 hover:bg-[#d8ff5d]/10 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <Archive className="h-4 w-4" />
-                        Archive
+                        {t("Archive")}
                       </button>
                     </div>
                   </td>
@@ -220,24 +226,24 @@ export function CoachAnnouncementTable({
                     <td colSpan={5} className="px-4 py-4">
                       <form className="grid gap-4 lg:grid-cols-2" onSubmit={(event) => submitEdit(event, announcement)}>
                         <label className="block space-y-2">
-                          <span className={labelClass}>Title</span>
+                          <span className={labelClass}>{t("Title")}</span>
                           <input className={fieldClass} value={editTitle} onChange={(event) => setEditTitle(event.target.value)} required />
                         </label>
                         <label className="block space-y-2">
-                          <span className={labelClass}>Status</span>
+                          <span className={labelClass}>{t("Status")}</span>
                           <select className={fieldClass} value={editStatus} onChange={(event) => setEditStatus(event.target.value)}>
-                            <option value="draft">draft</option>
-                            <option value="published">published</option>
-                            <option value="expired">expired</option>
-                            <option value="archived">archived</option>
+                            <option value="draft">{t("draft")}</option>
+                            <option value="published">{t("published")}</option>
+                            <option value="expired">{t("expired")}</option>
+                            <option value="archived">{t("archived")}</option>
                           </select>
                         </label>
                         <label className="block space-y-2 lg:col-span-2">
-                          <span className={labelClass}>Content</span>
+                          <span className={labelClass}>{t("Content")}</span>
                           <textarea className={`${fieldClass} min-h-24 resize-none py-3`} value={editContent} onChange={(event) => setEditContent(event.target.value)} required />
                         </label>
                         <label className="flex min-h-10 items-center justify-between gap-4 rounded-lg border border-white/10 bg-black/20 px-3">
-                          <span className="text-sm font-semibold text-white/72">Pin to top</span>
+                          <span className="text-sm font-semibold text-white/72">{t("Pin to top")}</span>
                           <input
                             type="checkbox"
                             checked={editPinned}
@@ -246,11 +252,11 @@ export function CoachAnnouncementTable({
                           />
                         </label>
                         <label className="block space-y-2">
-                          <span className={labelClass}>Publish</span>
+                          <span className={labelClass}>{t("Publish")}</span>
                           <input className={fieldClass} type="datetime-local" value={editPublishAt} onChange={(event) => setEditPublishAt(event.target.value)} />
                         </label>
                         <label className="block space-y-2">
-                          <span className={labelClass}>Expire</span>
+                          <span className={labelClass}>{t("Expire")}</span>
                           <input className={fieldClass} type="datetime-local" value={editExpireAt} onChange={(event) => setEditExpireAt(event.target.value)} />
                         </label>
                         <div className="flex items-end justify-end gap-2">
@@ -260,14 +266,14 @@ export function CoachAnnouncementTable({
                             className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.045] px-4 text-sm font-semibold text-white/70 transition hover:bg-white/[0.08]"
                           >
                             <X className="h-4 w-4" />
-                            Cancel
+                            {t("Cancel")}
                           </button>
                           <button
                             type="submit"
                             className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[#d8ff5d]/24 bg-[#d8ff5d]/10 px-4 text-sm font-semibold text-[#f1ffc1] transition hover:bg-[#d8ff5d]/16"
                           >
                             <Save className="h-4 w-4" />
-                            Save notice
+                            {t("Save notice")}
                           </button>
                         </div>
                       </form>

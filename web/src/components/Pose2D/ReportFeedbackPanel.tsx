@@ -1,10 +1,12 @@
 "use client";
 
+import { usePoseCopy } from "@/components/Pose2D/poseCopy";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { LockKeyhole, MessageCircle, Send } from "lucide-react";
 import { reportService, type ReportFeedback } from "@/services/reports";
 
 export function ReportFeedbackPanel({ reportId }: { reportId: string }) {
+  const { language, t } = usePoseCopy();
   const [items, setItems] = useState<ReportFeedback[]>([]);
   const [canWrite, setCanWrite] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -63,22 +65,22 @@ export function ReportFeedbackPanel({ reportId }: { reportId: string }) {
           <MessageCircle size={19} />
         </span>
         <div>
-          <h2 id="feedback-heading" className="text-lg font-semibold">Coach feedback</h2>
-          <p className="mt-1 flex items-center gap-1.5 text-sm text-[var(--ui-muted)]"><LockKeyhole size={13} /> Private to the player and authorized staff</p>
+          <h2 id="feedback-heading" className="text-lg font-semibold">{t("Coach feedback")}</h2>
+          <p className="mt-1 flex items-center gap-1.5 text-sm text-[var(--ui-muted)]"><LockKeyhole size={13} /> {t("Private to the player and authorized staff")}</p>
         </div>
       </div>
-      {loading && <p role="status" className="mt-4 text-sm text-[var(--ui-muted)]">Loading feedback…</p>}
+      {loading && <p role="status" className="mt-4 text-sm text-[var(--ui-muted)]">{t("Loading feedback…")}</p>}
       {loadError && <div className="mt-4 text-sm" role="alert">
-        <p>{loadError}</p>
-        <button type="button" className="ui-link mt-2" onClick={() => { setLoading(true); setLoadError(""); setAttempt((value) => value + 1); }}>Retry</button>
+        <p>{t(loadError)}</p>
+        <button type="button" className="ui-link mt-2" onClick={() => { setLoading(true); setLoadError(""); setAttempt((value) => value + 1); }}>{t("Retry")}</button>
       </div>}
-      {!loading && !loadError && items.length === 0 && <p className="mt-4 text-sm text-[var(--ui-muted)]">No coach feedback yet.</p>}
+      {!loading && !loadError && items.length === 0 && <p className="mt-4 text-sm text-[var(--ui-muted)]">{t("No coach feedback yet.")}</p>}
       {items.length > 0 && <ol aria-live="polite" className="mt-4 max-h-96 space-y-2 overflow-auto">
         {items.map((item) => (
           <li key={item.public_id} className="rounded-xl bg-[var(--ui-subtle)] p-3">
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm">
               <span className="font-semibold">{item.author_name}</span>
-              <time className="text-xs text-[var(--ui-muted)]" dateTime={item.created_at}>{new Date(item.created_at).toLocaleString("en-AU", { dateStyle: "medium", timeStyle: "short" })}</time>
+              <time className="text-xs text-[var(--ui-muted)]" dateTime={item.created_at}>{new Date(item.created_at).toLocaleString(language === "zh-CN" ? "zh-CN" : "en-AU", { dateStyle: "medium", timeStyle: "short" })}</time>
             </div>
             <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6">{item.body}</p>
           </li>
@@ -86,14 +88,14 @@ export function ReportFeedbackPanel({ reportId }: { reportId: string }) {
       </ol>}
       {canWrite && (
         <form className="mt-5 grid gap-2" onSubmit={send}>
-          <label htmlFor="report-feedback-draft" className="text-sm font-semibold">Write feedback for the player</label>
+          <label htmlFor="report-feedback-draft" className="text-sm font-semibold">{t("Write feedback for the player")}</label>
           <textarea id="report-feedback-draft" rows={3} maxLength={2000} value={draft} disabled={sending}
-            placeholder="What went well? What should they try next?"
+            placeholder={t("What went well? What should they try next?")}
             onChange={(event) => setDraft(event.target.value)}
             className="w-full rounded-xl border border-[var(--ui-border)] bg-[var(--ui-bg)] p-3 text-sm" />
-          {sendError && <p role="alert" className="text-sm text-[var(--ui-danger)]">{sendError}</p>}
+          {sendError && <p role="alert" className="text-sm text-[var(--ui-danger)]">{t(sendError)}</p>}
           <button type="submit" disabled={!draft.trim() || sending} className="ui-button ui-primary justify-self-end disabled:opacity-50">
-            <Send size={15} /> {sending ? "Sending…" : "Send feedback"}
+            <Send size={15} /> {t(sending ? "Sending…" : "Send feedback")}
           </button>
         </form>
       )}

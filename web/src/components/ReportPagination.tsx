@@ -1,4 +1,5 @@
 "use client";
+import { usePlayerCopy } from "@/components/account/playerCopy";
 
 import { useId, useState, type FormEvent } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -16,6 +17,7 @@ export function ReportPagination({
   onChange,
   disabled = false,
 }: ReportPaginationProps) {
+  const { t, isChinese } = usePlayerCopy();
   const pages = Math.max(1, Math.ceil(total / 10));
   const inputId = useId();
   const [input, setInput] = useState("");
@@ -31,16 +33,16 @@ export function ReportPagination({
 
   return (
     <nav
-      aria-label="Report pagination"
+      aria-label={t("Report pagination")}
       className="mt-4 flex min-w-0 flex-wrap items-center justify-between gap-x-5 gap-y-3 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] px-3 py-3 text-sm text-[var(--ui-text)] sm:px-4"
     >
       <div aria-live="polite" aria-atomic="true" className="min-w-0 flex-1 basis-full sm:basis-auto">
-        <p className="font-semibold tabular-nums">Page {page} of {pages}</p>
+        <p className="font-semibold tabular-nums">{isChinese ? `第 ${page} 页，共 ${pages} 页` : `Page ${page} of ${pages}`}</p>
         <p className="mt-0.5 text-xs tabular-nums text-[var(--ui-muted)]">
-          {total ? `Showing ${(page - 1) * 10 + 1}–${Math.min(page * 10, total)} of ${total} reports` : "0 reports"}
+          {total ? (isChinese ? `当前显示第 ${(page - 1) * 10 + 1}–${Math.min(page * 10, total)} 份，共 ${total} 份报告` : `Showing ${(page - 1) * 10 + 1}–${Math.min(page * 10, total)} of ${total} reports`) : t("0 reports")}
         </p>
       </div>
-      <div role="group" aria-label="Previous and next page" className="flex flex-wrap items-center gap-2">
+      <div role="group" aria-label={t("Previous and next page")} className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           className="ui-button disabled:cursor-not-allowed"
@@ -48,7 +50,7 @@ export function ReportPagination({
           onClick={() => onChange(page - 1)}
         >
           <ChevronLeft size={16} aria-hidden="true" />
-          Previous
+          {t("Previous")}
         </button>
         <button
           type="button"
@@ -56,17 +58,17 @@ export function ReportPagination({
           disabled={disabled || page >= pages}
           onClick={() => onChange(page + 1)}
         >
-          Next
+          {t("Next")}
           <ChevronRight size={16} aria-hidden="true" />
         </button>
       </div>
       <form
-        aria-label="Jump to a page"
+        aria-label={t("Jump to a page")}
         className="flex min-w-0 flex-wrap items-center gap-2 max-sm:w-full max-sm:border-t max-sm:border-[var(--ui-border)] max-sm:pt-3"
         onSubmit={jumpToPage}
       >
         <label htmlFor={inputId} className="font-medium text-[var(--ui-muted)]">
-          Page number
+          {t("Page number")}
         </label>
         <input
           id={inputId}
@@ -85,7 +87,7 @@ export function ReportPagination({
           disabled={disabled || !valid}
           type="submit"
         >
-          Go
+          {t("Go")}
         </button>
       </form>
     </nav>

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePoseCopy } from "@/components/Pose2D/poseCopy";
 import React, { useRef, useEffect, useState } from "react";
 import { useMediaPipePose } from "@/hooks/useMediaPipePose";
 import type { Results } from "@mediapipe/pose";
@@ -22,6 +23,7 @@ interface Pose2DCanvasProps {
 }
 export default function Pose2DCanvas({ videoUrl, isPlaying, onVideoEnd, onTime, seekTo, analysisType,
   onAnglesUpdate, onProcessing,onFrameCaptured}: Pose2DCanvasProps) {
+  const { t } = usePoseCopy();
   const wrapRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -160,7 +162,7 @@ export default function Pose2DCanvas({ videoUrl, isPlaying, onVideoEnd, onTime, 
         //1.使用 MediaPipe 的工具在画布上绘制骨架连线（关节之间的边），
         // connections 指定哪些关节相连，传入样式选项控制颜色和线宽
         //2.在骨架线上绘制每个关键点（小圆点），用指定颜色、线宽与半径突出显示关节点。
-        calculateAndDrawAngles(ctx, results.poseLandmarks);
+        calculateAndDrawAngles(ctx, results.poseLandmarks, t);
         //3.调用自定义函数计算并绘制关节角度/注释
         // 如果它期望“像素坐标”，用下面这一行替换成像素后再传入：
         // const px = results.poseLandmarks.map(p => ({ ...p, x: p.x * W, y: p.y * H }));
@@ -185,7 +187,7 @@ export default function Pose2DCanvas({ videoUrl, isPlaying, onVideoEnd, onTime, 
     //归一化 vs 像素：MediaPipe 的 poseLandmarks 通常是 0~1 的归一化值；你的角度计算函数若吃归一化坐标就直接传，否则先映射到像素再传。
     
     pose.onResults(handleResults);
-  }, [pose, drawingUtils, connections,analysisType, onAnglesUpdate,onFrameCaptured]);
+  }, [pose, drawingUtils, connections,analysisType, onAnglesUpdate,onFrameCaptured, t]);
 
   useEffect(() => {
     const v = videoRef.current;
@@ -243,14 +245,14 @@ export default function Pose2DCanvas({ videoUrl, isPlaying, onVideoEnd, onTime, 
       {error && (
         <div className="absolute inset-0 z-20 grid place-items-center bg-red-900/80 backdrop-blur">
           <div className="text-center">
-            <h3 className="text-lg font-semibold">Loading failed</h3>
-            <p className="text-sm opacity-80 mt-1">{error}</p>
+            <h3 className="text-lg font-semibold">{t("Loading failed")}</h3>
+            <p className="text-sm opacity-80 mt-1">{t(error)}</p>
           </div>
         </div>
       )}
       {!isReady && !error && (
         <div className="absolute inset-0 z-10 grid place-items-center bg-black/40 backdrop-blur">
-          <p>Loading analysis engine</p>
+          <p>{t("Loading analysis engine")}</p>
         </div>
       )}
 

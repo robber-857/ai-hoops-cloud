@@ -1,3 +1,6 @@
+"use client";
+
+import { usePoseCopy } from "@/components/Pose2D/poseCopy";
 import { Crosshair, Gauge, PersonStanding, Repeat2, type LucideIcon } from "lucide-react";
 import { getGrade, type Grade, type ScoreResult } from "@/lib/scoring";
 import styles from "./ReportScoreSummary.module.css";
@@ -17,6 +20,7 @@ interface ScoreCardProps {
 }
 
 function ScoreCard({ title, icon: Icon, score, grade, available, overall, weightShare }: ScoreCardProps) {
+  const { t } = usePoseCopy();
   const meterValue = Math.max(0, Math.min(100, score));
   return (
     <article
@@ -25,10 +29,10 @@ function ScoreCard({ title, icon: Icon, score, grade, available, overall, weight
       data-overall={overall || undefined}
     >
       <div className={styles.header}>
-        <h3 className={styles.title}><Icon aria-hidden="true" />{title}</h3>
+        <h3 className={styles.title}><Icon aria-hidden="true" />{t(title)}</h3>
         {available && (
           <span className={styles.grade}>
-            <span className={styles.gradeLabel}>Grade </span><b>{grade}</b>
+            <span className={styles.gradeLabel}>{t("Grade")} </span><b>{grade}</b>
             {overall && (
               <svg aria-hidden="true" viewBox="0 0 64 64" className={styles.dial}>
                 <circle cx="32" cy="32" r="27" />
@@ -56,14 +60,14 @@ function ScoreCard({ title, icon: Icon, score, grade, available, overall, weight
           </div>
           {(overall || weightShare !== undefined) && (
             <p className={styles.caption}>
-              {overall ? "Weighted score" : `${weightShare}% weight`}
+              {t(overall ? "Weighted score" : `${weightShare}% weight`)}
             </p>
           )}
         </>
       ) : (
         <div className={styles.missing}>
-          <p className="text-2xl leading-none font-semibold">N/A</p>
-          <p className={styles.caption}>More movement samples needed.</p>
+          <p className="text-2xl leading-none font-semibold">{t("N/A")}</p>
+          <p className={styles.caption}>{t("More movement samples needed.")}</p>
         </div>
       )}
     </article>
@@ -71,13 +75,14 @@ function ScoreCard({ title, icon: Icon, score, grade, available, overall, weight
 }
 
 export function ReportScoreSummary({ result }: { result: ScoreResult }) {
+  const { t } = usePoseCopy();
   // Older reports store relative weights (e.g. 1/1/1), current reports may store shares.
   const weightTotal = categories.reduce((sum, key) => sum + (result.weights?.[key] ?? 0), 0);
 
   return (
-    <section aria-label="Score summary" className={styles.summary}>
+    <section data-score-summary aria-label={t("Score summary")} className={styles.summary}>
       <ScoreCard
-        title="Overall"
+        title={t("Overall")}
         icon={Gauge}
         score={result.overall}
         grade={result.grade}

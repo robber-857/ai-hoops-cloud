@@ -1,4 +1,7 @@
 "use client";
+
+import { useInterfaceText } from "@/hooks/useInterfaceText";
+
 import { useEffect, useRef, useState } from "react";
 import { isAdminRole } from "@/lib/authRedirect";
 import { LessonReportPublisher } from "@/components/class-reports/LessonReportPublisher";
@@ -17,6 +20,7 @@ import {
   type LessonSummary,
 } from "@/services/campLessons";
 export default function CoachLessonsPage() {
+  const t = useInterfaceText();
   const user = useAuthStore((s) => s.user),
     allowed = user?.role === "coach" || isAdminRole(user?.role);
   const [classes, setClasses] = useState<CoachClassRead[]>([]),
@@ -121,7 +125,7 @@ export default function CoachLessonsPage() {
     };
   }, [classId, reload]);
   function canLeave() {
-    return !dirty || window.confirm("Discard unsaved lesson changes?");
+    return !dirty || window.confirm(t("Discard unsaved lesson changes?"));
   }
   async function create() {
     if (inFlight.current || !canLeave()) return;
@@ -139,12 +143,12 @@ export default function CoachLessonsPage() {
       setDirty(false);
       requestId.current = null;
       setNotice(
-        "Session started. Add the actual training minutes, then confirm attendance below.",
+        t("Session started. Add the actual training minutes, then confirm attendance below."),
       );
       setReload((v) => v + 1);
     } catch (e) {
       setError(
-        e instanceof Error ? e.message : "Could not create lesson. Retry.",
+        e instanceof Error ? e.message : t("Could not create lesson. Retry."),
       );
     } finally {
       inFlight.current = false;
@@ -160,7 +164,7 @@ export default function CoachLessonsPage() {
       setDirty(false);
       setNotice("");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load lesson.");
+      setError(e instanceof Error ? e.message : t("Could not load lesson."));
     } finally {
       setBusy(false);
     }
@@ -187,28 +191,27 @@ export default function CoachLessonsPage() {
         setMore(l.has_more);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load more records.");
+      setError(e instanceof Error ? e.message : t("Could not load more records."));
     } finally {
       setBusy(false);
     }
   }
-  if (!user) return <p role="status">Loading account…</p>;
+  if (!user) return <p role="status">{t("Loading account…")}</p>;
   if (!allowed)
     return (
       <p role="alert" className="p-8">
-        Coach access is required.
+        {t("Coach access is required.")}
       </p>
     );
   return (
     <CoachShell
       user={user}
-      title="Actual session"
-      breadcrumb={["Actual session"]}
+      title={t("Actual session")}
+      breadcrumb={[t("Actual session")]}
     >
       <div className="min-w-0 max-w-5xl text-white">
         <p className="max-w-prose text-white/75">
-          Tell students what you trained today. Record activities, check
-          attendance, and publish their session summary.
+          {t("Tell students what you trained today. Record activities, check attendance, and publish their session summary.")}
         </p>
         {error && (
           <div role="alert" className="mt-5 text-red-200">
@@ -217,7 +220,7 @@ export default function CoachLessonsPage() {
               className="ml-3 min-h-11 underline"
               onClick={() => setReload((v) => v + 1)}
             >
-              Reload lists
+              {t("Reload lists")}
             </button>
           </div>
         )}
@@ -228,13 +231,13 @@ export default function CoachLessonsPage() {
         )}
         {loading && (
           <p role="status" className="mt-4">
-            Loading lessons…
+            {t("Loading lessons…")}
           </p>
         )}
         <label className="mt-6 block max-w-lg text-sm">
-          Class
+          {t("Class")}
           <select
-            aria-label="Class"
+            aria-label={t("Class")}
             className={lessonField}
             value={classId}
             disabled={loading || busy}
@@ -259,13 +262,13 @@ export default function CoachLessonsPage() {
           </select>
         </label>
         {!loading && !error && !classes.length && (
-          <p className="mt-5">No active classes are assigned to you.</p>
+          <p className="mt-5">{t("No active classes are assigned to you.")}</p>
         )}
         {classId && (
           <>
             <details open={!selected} className="mt-6">
               <summary className="cursor-pointer py-2 font-medium">
-                Start a new session
+                {t("Start a new session")}
               </summary>
               <form
                 className="mt-8 border-t border-white/20 pt-6"
@@ -275,7 +278,7 @@ export default function CoachLessonsPage() {
                 }}
               >
                 <h2 className="text-xl font-semibold">
-                  Choose a plan and date
+                  {t("Choose a plan and date")}
                 </h2>
                 <fieldset
                   disabled={busy || loading}
@@ -283,10 +286,10 @@ export default function CoachLessonsPage() {
                 >
                   <div className="grid min-w-0 gap-5 sm:grid-cols-2">
                     <label className="min-w-0 text-sm">
-                      Published plan
+                      {t("Published plan")}
                       <select
                         required
-                        aria-label="Published plan"
+                        aria-label={t("Published plan")}
                         className={lessonField}
                         value={planId}
                         onChange={(e) => {
@@ -294,17 +297,17 @@ export default function CoachLessonsPage() {
                           requestId.current = null;
                         }}
                       >
-                        <option value="">Select a plan</option>
+                        <option value="">{t("Select a plan")}</option>
                         {plans.map((p) => (
                           <option key={p.public_id} value={p.public_id}>
                             {p.title} · {p.planned_on} ·{" "}
-                            {p.student_name || "Class plan"}
+                            {p.student_name || t("Class plan")}
                           </option>
                         ))}
                       </select>
                     </label>
                     <label className="min-w-0 text-sm">
-                      Lesson date
+                      {t("Lesson date")}
                       <input
                         className={lessonField}
                         type="date"
@@ -319,8 +322,7 @@ export default function CoachLessonsPage() {
                   </div>
                   {!loading && !plans.length && (
                     <p className="text-sm text-white/75">
-                      No published plans in this page. Publish a plan first, or
-                      load older plans.
+                      {t("No published plans in this page. Publish a plan first, or load older plans.")}
                     </p>
                   )}
                   <div className="flex flex-wrap gap-3">
@@ -329,7 +331,7 @@ export default function CoachLessonsPage() {
                       type="submit"
                       disabled={!planId}
                     >
-                      Start session
+                      {t("Start session")}
                     </button>
                     {morePlans && (
                       <button
@@ -337,7 +339,7 @@ export default function CoachLessonsPage() {
                         type="button"
                         onClick={() => loadMore("plans")}
                       >
-                        Load older plans
+                        {t("Load older plans")}
                       </button>
                     )}
                   </div>
@@ -346,14 +348,14 @@ export default function CoachLessonsPage() {
             </details>
             <details className="mt-4">
               <summary className="cursor-pointer py-2 font-medium">
-                Previous sessions ({lessons.length}
+                {t("Previous sessions (")}{lessons.length}
                 {more ? "+" : ""})
               </summary>
               <section className="mt-8 border-t border-white/20 pt-6">
-                <h2 className="text-xl font-semibold">Saved lessons</h2>
+                <h2 className="text-xl font-semibold">{t("Saved lessons")}</h2>
                 {!loading && !error && !lessons.length && (
                   <p className="mt-4 text-white/75">
-                    No actual lessons recorded for this class yet.
+                    {t("No actual lessons recorded for this class yet.")}
                   </p>
                 )}
                 <ul className="mt-4 divide-y divide-white/15">
@@ -365,9 +367,9 @@ export default function CoachLessonsPage() {
                       <div className="min-w-0 break-words">
                         <h3 className="font-semibold">{l.title}</h3>
                         <p className="mt-1 text-sm text-white/75">
-                          {l.held_on} · Version {l.version} ·{" "}
-                          {l.unconfirmed_count} unconfirmed ·{" "}
-                          {l.missing_minutes_count} activities without minutes
+                          {l.held_on} {t("· Version")} {l.version} ·{" "}
+                          {l.unconfirmed_count} {t("unconfirmed ·")}{" "}
+                          {l.missing_minutes_count} {t("activities without minutes")}
                         </p>
                       </div>
                       <button
@@ -375,7 +377,7 @@ export default function CoachLessonsPage() {
                         disabled={busy || loading}
                         onClick={() => open(l.public_id)}
                       >
-                        Open lesson
+                        {t("Open lesson")}
                       </button>
                     </li>
                   ))}
@@ -386,7 +388,7 @@ export default function CoachLessonsPage() {
                     disabled={busy || loading}
                     onClick={() => loadMore("lessons")}
                   >
-                    Load more lessons
+                    {t("Load more lessons")}
                   </button>
                 )}
               </section>
@@ -402,7 +404,7 @@ export default function CoachLessonsPage() {
                   setSelected(lesson);
                   setDirty(false);
                   setNotice(
-                    "Draft saved. Review step 3 below to publish to students.",
+                    t("Draft saved. Review step 3 below to publish to students."),
                   );
                   requestAnimationFrame(() =>
                     document

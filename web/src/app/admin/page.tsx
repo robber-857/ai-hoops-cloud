@@ -1,4 +1,7 @@
 "use client";
+import { useAppLanguage } from "@/components/account/LanguagePreferenceProvider";
+import { useAdminText } from "@/components/admin/adminCopy";
+
 
 import { useEffect, useMemo, useState } from "react";
 import { isAdminRole } from "@/lib/authRedirect";
@@ -50,6 +53,8 @@ function AdminMetric({
 }
 
 export default function AdminHomePage() {
+  const language = useAppLanguage();
+  const t = useAdminText();
   const user = useAuthStore((state) => state.user);
   const hasInitialized = useAuthStore((state) => state.hasInitialized);
   const isInitializing = useAuthStore((state) => state.isInitializing);
@@ -120,11 +125,11 @@ export default function AdminHomePage() {
   }
 
   return (
-    <AdminShell user={user} title="Admin Overview" breadcrumb={["Overview"]}>
+    <AdminShell user={user} title={t("Admin Overview")} breadcrumb={[t("Overview")]}>
       {error ? (
         <div className="flex items-start gap-3 rounded-lg border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-100">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{error}</span>
+          <span>{t(error)}</span>
         </div>
       ) : null}
 
@@ -132,32 +137,32 @@ export default function AdminHomePage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="text-[0.68rem] uppercase tracking-[0.24em] text-[#65f7ff]/75">
-              Training camp control
+              {t("Training camp control")}
             </div>
             <h1 className="mt-4 font-[var(--font-display)] text-4xl font-bold text-white sm:text-5xl">
-              Admin operations
+              {t("Admin operations")}
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-white/58">
-              Maintain camps, classes, member relationships, and training templates.
+              {t("Maintain camps, classes, member relationships, and training templates.")}
             </p>
           </div>
           {isLoading ? (
             <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/18 px-3 py-2 text-sm text-white/58">
               <Loader2 className="h-4 w-4 animate-spin text-[#65f7ff]" />
-              Loading
+              {t("Loading")}
             </span>
           ) : null}
         </div>
       </section>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <AdminMetric label="Camps" value={String(camps.length)} helper={`${totals.activeCamps} active`} />
-        <AdminMetric label="Classes" value={String(classes.length)} helper={`${totals.coaches} coaches`} />
-        <AdminMetric label="Students" value={String(totals.students)} helper="Active memberships" />
+        <AdminMetric label={t("Camps")} value={String(camps.length)} helper={t("{0} active", totals.activeCamps)} />
+        <AdminMetric label={t("Classes")} value={String(classes.length)} helper={t("{0} coaches", totals.coaches)} />
+        <AdminMetric label={t("Students")} value={String(totals.students)} helper={t("Active memberships")} />
         <AdminMetric
-          label="Templates"
+          label={t("Templates")}
           value={String(templates.length)}
-          helper={`${totals.activeTemplates} active`}
+          helper={t("{0} active", totals.activeTemplates)}
         />
       </section>
 
@@ -166,38 +171,38 @@ export default function AdminHomePage() {
           {
             href: routes.admin.camps,
             icon: Boxes,
-            title: "Training camps",
-            detail: `${camps.length} camps / latest ${formatDateTime(camps[0]?.created_at)}`,
+            title: t("Training camps"),
+            detail: t("{0} camps / latest {1}", camps.length, formatDateTime(camps[0]?.created_at, language)),
           },
           {
             href: routes.admin.classes,
             icon: UsersRound,
-            title: "Classes and members",
-            detail: `${classes.length} classes / ${totals.students} students`,
+            title: t("Classes and members"),
+            detail: t("{0} classes / {1} students", classes.length, totals.students),
           },
           {
             href: routes.admin.templates,
             icon: BookOpenCheck,
-            title: "Training templates",
-            detail: `${templates.length} templates / ${totals.activeTemplates} active`,
+            title: t("Training templates"),
+            detail: t("{0} templates / {1} active", templates.length, totals.activeTemplates),
           },
           {
             href: routes.admin.announcements,
             icon: Megaphone,
-            title: "Announcements",
-            detail: "Global, camp, class, and role broadcasts",
+            title: t("Announcements"),
+            detail: t("Global, camp, class, and role broadcasts"),
           },
           {
             href: routes.admin.tasks,
             icon: ClipboardList,
-            title: "Task supervision",
-            detail: "Coach task progress and status oversight",
+            title: t("Task supervision"),
+            detail: t("Coach task progress and status oversight"),
           },
           {
             href: routes.admin.notifications,
             icon: Bell,
-            title: "Notifications",
-            detail: "System event and recipient monitoring",
+            title: t("Notifications"),
+            detail: t("System event and recipient monitoring"),
           },
         ].map((item) => {
           const Icon = item.icon;

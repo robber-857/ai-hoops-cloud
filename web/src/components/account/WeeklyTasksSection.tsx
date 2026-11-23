@@ -1,3 +1,5 @@
+"use client";
+import { usePlayerCopy } from "@/components/account/playerCopy";
 import Link from "next/link";
 import {
   useEffect,
@@ -77,6 +79,7 @@ export function WeeklyTasksSection({
   onRefresh,
   onSubmitReport,
 }: WeeklyTasksSectionProps) {
+  const { t } = usePlayerCopy();
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [localSelectedReports, setLocalSelectedReports] = useState<
     Record<string, string>
@@ -106,7 +109,7 @@ export function WeeklyTasksSection({
       if (
         link &&
         !window.confirm(
-          "Your selected report has not been submitted. Leave this page?",
+          t("Your selected report has not been submitted. Leave this page?"),
         )
       ) {
         event.preventDefault();
@@ -119,7 +122,7 @@ export function WeeklyTasksSection({
       window.removeEventListener("beforeunload", beforeUnload);
       document.removeEventListener("click", beforeNavigate, true);
     };
-  }, [hasUnsubmittedSelection]);
+  }, [hasUnsubmittedSelection, t]);
 
   const selectedTask = useMemo(
     () => tasks.find((task) => task.id === selectedTaskId) ?? null,
@@ -198,14 +201,14 @@ export function WeeklyTasksSection({
       <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="text-[0.72rem] uppercase tracking-[0.28em] text-white/42">
-            Weekly tasks
+            {t("Weekly tasks")}
           </div>
           <h2 className="mt-2 text-xl font-semibold text-white sm:text-2xl">
-            Keep your training rhythm visible
+            {t("Keep your training rhythm visible")}
           </h2>
           {refreshLabel ? (
             <div className="mt-2 truncate text-xs uppercase tracking-[0.16em] text-white/36 sm:tracking-[0.2em]">
-              {refreshLabel}
+              {t(refreshLabel)}
             </div>
           ) : null}
         </div>
@@ -220,17 +223,17 @@ export function WeeklyTasksSection({
             <RefreshCw
               className={cn("h-4 w-4", isRefreshing ? "animate-spin" : null)}
             />
-            {isRefreshing ? "Refreshing" : "Refresh"}
+            {isRefreshing ? t("Refreshing") : t("Refresh")}
           </Button>
           <Badge className="min-h-10 justify-center border border-[#d8ff5d]/20 bg-[#d8ff5d]/12 px-3 text-[#e8ff9a]">
-            Live tasks
+            {t("Live tasks")}
           </Badge>
         </div>
       </div>
       {refreshError ? (
         <div className="mt-4 flex shrink-0 items-start gap-2 rounded-2xl border border-rose-300/20 bg-rose-500/10 px-3 py-2 text-xs leading-5 text-rose-100/80">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{refreshError}</span>
+          <span>{t(refreshError)}</span>
         </div>
       ) : null}
 
@@ -260,7 +263,7 @@ export function WeeklyTasksSection({
                     </p>
                     <div className="mt-3 flex flex-wrap gap-x-2 gap-y-1 text-[0.62rem] uppercase tracking-[0.12em] text-white/38 sm:text-[0.68rem] sm:tracking-[0.18em]">
                       <span>{task.className}</span>
-                      <span>{task.analysisType}</span>
+                      <span>{t(task.analysisType)}</span>
                       <span>{task.targetLabel}</span>
                       {task.scoreGateLabel ? (
                         <span>{task.scoreGateLabel}</span>
@@ -269,7 +272,7 @@ export function WeeklyTasksSection({
                   </div>
                   <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
                     <Badge className={cn("border", tone.className)}>
-                      {tone.label}
+                      {t(tone.label)}
                     </Badge>
                     <span className="text-sm font-semibold text-white/76">
                       {task.valueLabel}
@@ -288,8 +291,8 @@ export function WeeklyTasksSection({
                 </div>
 
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs uppercase tracking-[0.22em] text-white/36">
-                  <span>{progress}% complete</span>
-                  <span>{task.dueLabel}</span>
+                  <span>{progress}{t("% complete")}</span>
+                  <span>{t(task.dueLabel)}</span>
                 </div>
 
                 <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
@@ -299,7 +302,7 @@ export function WeeklyTasksSection({
                   >
                     <Link href={task.actionHref}>
                       <UploadCloud className="h-4 w-4" />
-                      {task.status === "done" ? "Train again" : "Start task"}
+                      {task.status === "done" ? t("Train again") : t("Start task")}
                     </Link>
                   </Button>
                   <Button
@@ -310,7 +313,7 @@ export function WeeklyTasksSection({
                     className="min-h-10 w-full justify-center rounded-full border-white/10 bg-white/[0.03] px-4 text-white hover:bg-white/[0.08] sm:w-auto"
                   >
                     <Eye className="h-4 w-4" />
-                    Details
+                    {t("Details")}
                   </Button>
                   <Button
                     type="button"
@@ -321,24 +324,24 @@ export function WeeklyTasksSection({
                     onClick={() => handleSubmit(task)}
                     className="min-h-10 w-full justify-center rounded-full border-white/10 bg-white/[0.03] px-4 text-white hover:bg-white/[0.08] sm:w-auto"
                     title={
-                      task.candidateReportLabel ?? "No matching report found"
+                      task.candidateReportLabel ?? t("No matching report found")
                     }
                   >
                     <CheckCircle2 className="h-4 w-4" />
                     {submittingTaskId === task.id
-                      ? "Submitting"
-                      : "Use selected report"}
+                      ? t("Submitting")
+                      : t("Use selected report")}
                   </Button>
                   {task.latestReportId ? (
                     <span className="text-xs uppercase tracking-[0.2em] text-emerald-200/70">
-                      Report linked
+                      {t("Report linked")}
                     </span>
                   ) : null}
                 </div>
                 {taskSubmitError ? (
                   <div className="mt-3 flex items-start gap-2 rounded-2xl border border-rose-300/20 bg-rose-500/10 px-3 py-2 text-xs leading-5 text-rose-100/80">
                     <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                    <span>{taskSubmitError}</span>
+                    <span>{t(taskSubmitError)}</span>
                   </div>
                 ) : null}
               </article>
@@ -347,11 +350,10 @@ export function WeeklyTasksSection({
           {tasks.length === 0 ? (
             <div className="rounded-[24px] border border-white/10 bg-black/18 px-4 py-8 text-center">
               <div className="text-sm font-semibold text-white">
-                No coach tasks assigned.
+                {t("No coach tasks assigned.")}
               </div>
               <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-white/50">
-                New weekly work will appear here as soon as your coach publishes
-                it.
+                {t("New weekly work will appear here as soon as your coach publishes it.")}
               </p>
             </div>
           ) : null}
@@ -389,12 +391,12 @@ export function WeeklyTasksSection({
         >
           <div className="flex max-h-full min-w-0 w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] shadow-2xl sm:rounded-3xl">
             <div className="flex shrink-0 items-center justify-between gap-4 border-b border-[var(--ui-border)] px-4 py-2 sm:px-6">
-              <span className="text-sm font-semibold">Task detail</span>
+              <span className="text-sm font-semibold">{t("Task detail")}</span>
               <button
                 type="button"
                 className="ui-icon-button"
                 onClick={() => setSelectedTaskId(null)}
-                aria-label="Close task detail"
+                aria-label={t("Close task detail")}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -402,7 +404,7 @@ export function WeeklyTasksSection({
 
             <div
               role="region"
-              aria-label="Task information"
+              aria-label={t("Task information")}
               tabIndex={0}
               className="min-h-0 overflow-y-auto overscroll-contain p-4 [overflow-wrap:anywhere] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ui-accent)] sm:p-6"
             >
@@ -411,7 +413,7 @@ export function WeeklyTasksSection({
               <div className="grid gap-3 min-[22rem]:grid-cols-2">
                 <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-3">
                   <div className="text-[0.68rem] uppercase tracking-[0.24em] text-[var(--ui-muted)]">
-                    Class
+                    {t("Class")}
                   </div>
                   <div className="mt-2 text-sm font-medium text-white">
                     {selectedTask.className}
@@ -419,7 +421,7 @@ export function WeeklyTasksSection({
                 </div>
                 <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-3">
                   <div className="text-[0.68rem] uppercase tracking-[0.24em] text-[var(--ui-muted)]">
-                    Template
+                    {t("Template")}
                   </div>
                   <div className="mt-2 text-sm font-medium text-white">
                     {selectedTask.templateName}
@@ -427,7 +429,7 @@ export function WeeklyTasksSection({
                 </div>
                 <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-3">
                   <div className="text-[0.68rem] uppercase tracking-[0.24em] text-[var(--ui-muted)]">
-                    Target
+                    {t("Target")}
                   </div>
                   <div className="mt-2 text-sm font-medium text-white">
                     {selectedTask.targetLabel}
@@ -435,7 +437,7 @@ export function WeeklyTasksSection({
                 </div>
                 <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-3">
                   <div className="text-[0.68rem] uppercase tracking-[0.24em] text-[var(--ui-muted)]">
-                    Progress
+                    {t("Progress")}
                   </div>
                   <div className="mt-2 text-sm font-medium text-white">
                     {Math.round(selectedTask.progress * 100)}% /{" "}
@@ -454,7 +456,7 @@ export function WeeklyTasksSection({
                   htmlFor="task-report-select"
                   className="text-[0.7rem] uppercase tracking-[0.24em] text-[var(--ui-muted)]"
                 >
-                  Matching report
+                  {t("Matching report")}
                 </label>
                 <select
                   id="task-report-select"
@@ -479,17 +481,17 @@ export function WeeklyTasksSection({
                         value={report.id}
                         className="bg-[#090b10] text-white"
                       >
-                        {report.scoreLabel} · {report.dateLabel} · {report.label}
+                        {t(report.scoreLabel)} · {report.dateLabel} · {report.label}
                       </option>
                     ))
                   ) : (
                     <option value="" className="bg-[#090b10] text-white">
-                      No matching completed report
+                      {t("No matching completed report")}
                     </option>
                   )}
                 </select>
                 <p className="mt-3 text-xs leading-5 text-[var(--ui-muted)]">
-                  Reports are filtered by this task analysis type and template.
+                  {t("Reports are filtered by this task analysis type and template.")}
                 </p>
               </div>
 
@@ -499,10 +501,10 @@ export function WeeklyTasksSection({
                     <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-100/80" />
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-semibold text-rose-100">
-                        Submit failed
+                        {t("Submit failed")}
                       </div>
                       <p className="mt-1 text-sm leading-6 text-rose-100/72">
-                        {selectedSubmitError}
+                        {t(selectedSubmitError)}
                       </p>
                     </div>
                   </div>
@@ -518,8 +520,8 @@ export function WeeklyTasksSection({
                   >
                     <CheckCircle2 className="h-4 w-4" />
                     {submittingTaskId === selectedTask.id
-                      ? "Retrying"
-                      : "Try again"}
+                      ? t("Retrying")
+                      : t("Try again")}
                   </Button>
                 </div>
               ) : null}
@@ -528,10 +530,10 @@ export function WeeklyTasksSection({
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 text-[0.7rem] uppercase tracking-[0.24em] text-[var(--ui-muted)]">
                     <History className="h-4 w-4" />
-                    Submission history
+                    {t("Submission history")}
                   </div>
                   {isSelectedDetailLoading ? (
-                    <span className="text-xs text-[var(--ui-muted)]">Loading</span>
+                    <span className="text-xs text-[var(--ui-muted)]">{t("Loading")}</span>
                   ) : null}
                 </div>
 
@@ -539,7 +541,7 @@ export function WeeklyTasksSection({
                   <div className="mt-4 rounded-2xl border border-rose-300/20 bg-rose-500/10 px-3 py-3">
                     <div className="flex items-start gap-2 text-sm leading-6 text-rose-100/78">
                       <AlertCircle className="mt-1 h-4 w-4 shrink-0" />
-                      <span>{selectedDetailError}</span>
+                      <span>{t(selectedDetailError)}</span>
                     </div>
                     <Button
                       type="button"
@@ -547,7 +549,7 @@ export function WeeklyTasksSection({
                       onClick={() => onRequestTaskDetail?.(selectedTask)}
                       className="mt-3 min-h-9 rounded-full border-rose-100/20 bg-rose-100/10 px-3 text-xs text-rose-50 hover:bg-rose-100/15"
                     >
-                      Try loading again
+                      {t("Try loading again")}
                     </Button>
                   </div>
                 ) : isSelectedDetailLoading ? (
@@ -568,15 +570,15 @@ export function WeeklyTasksSection({
                           </div>
                         </div>
                         <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-[var(--ui-muted)]">
-                          <span>{submission.scoreLabel}</span>
-                          <span>{submission.gradeLabel}</span>
+                          <span>{t(submission.scoreLabel)}</span>
+                          <span>{t(submission.gradeLabel)}</span>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
                   <p className="mt-4 rounded-2xl border border-white/8 bg-black/18 px-3 py-3 text-sm leading-6 text-[var(--ui-muted)]">
-                    No submitted reports yet.
+                    {t("No submitted reports yet.")}
                   </p>
                 )}
               </div>
@@ -590,7 +592,7 @@ export function WeeklyTasksSection({
               >
                 <Link href={selectedTask.actionHref}>
                   <UploadCloud className="h-4 w-4" />
-                  Start task upload
+                  {t("Start task upload")}
                 </Link>
               </Button>
               <Button
@@ -605,8 +607,8 @@ export function WeeklyTasksSection({
               >
                 <CheckCircle2 className="h-4 w-4" />
                 {submittingTaskId === selectedTask.id
-                  ? "Submitting"
-                  : "Submit selected report"}
+                  ? t("Submitting")
+                  : t("Submit selected report")}
               </Button>
             </div>
           </div>

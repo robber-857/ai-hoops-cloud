@@ -1,5 +1,9 @@
 "use client";
 
+import { useAppLanguage } from "@/components/account/LanguagePreferenceProvider";
+import { useInterfaceText } from "@/hooks/useInterfaceText";
+
+
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -136,12 +140,13 @@ function HeroMetric({
 }
 
 function CoachDetailLoading() {
+  const t = useInterfaceText();
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#030712] text-white">
       <div className="rounded-lg border border-white/10 bg-white/[0.055] px-8 py-7 text-center shadow-[0_20px_70px_rgba(0,0,0,0.28)] backdrop-blur-2xl">
         <Loader2 className="mx-auto h-9 w-9 animate-spin text-[#65f7ff]" />
         <div className="mt-4 text-[0.72rem] uppercase tracking-[0.28em] text-white/48">
-          Loading class telemetry
+          {t("Loading class telemetry")}
         </div>
       </div>
     </main>
@@ -149,6 +154,8 @@ function CoachDetailLoading() {
 }
 
 export default function CoachClassDetailPage() {
+  const language = useAppLanguage();
+  const t = useInterfaceText();
   const params = useParams<{ classPublicId: string }>();
   const classPublicId = params.classPublicId;
   const user = useAuthStore((state) => state.user);
@@ -333,7 +340,7 @@ export default function CoachClassDetailPage() {
       setTasks((currentTasks) =>
         currentTasks.map((item) => (item.public_id === task.public_id ? updatedTask : item)),
       );
-      setActivityMessage(`Task "${updatedTask.title}" moved to ${updatedTask.status}.`);
+      setActivityMessage(t("Task \"{0}\" moved to {1}.", updatedTask.title, t(updatedTask.status)));
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : "Unable to update task.");
     } finally {
@@ -350,7 +357,7 @@ export default function CoachClassDetailPage() {
       setTasks((currentTasks) =>
         currentTasks.map((item) => (item.public_id === task.public_id ? updatedTask : item)),
       );
-      setActivityMessage(`Task "${updatedTask.title}" updated.`);
+      setActivityMessage(t("Task \"{0}\" updated.", updatedTask.title));
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : "Unable to update task.");
       throw updateError;
@@ -376,7 +383,7 @@ export default function CoachClassDetailPage() {
         currentTasks.map((task) => updatedById.get(task.public_id) ?? task),
       );
       setSelectedTaskIds([]);
-      setActivityMessage(`${response.items.length} tasks moved to ${status}.`);
+      setActivityMessage(t("{0} tasks moved to {1}.", response.items.length, t(status)));
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : "Unable to bulk update tasks.");
     } finally {
@@ -402,7 +409,7 @@ export default function CoachClassDetailPage() {
           item.public_id === announcement.public_id ? updatedAnnouncement : item,
         ),
       );
-      setActivityMessage(`Announcement "${updatedAnnouncement.title}" updated.`);
+      setActivityMessage(t("Announcement \"{0}\" updated.", updatedAnnouncement.title));
     } catch (updateError) {
       setError(
         updateError instanceof Error ? updateError.message : "Unable to update announcement.",
@@ -433,7 +440,7 @@ export default function CoachClassDetailPage() {
         ),
       );
       setSelectedAnnouncementIds([]);
-      setActivityMessage(`${response.items.length} announcements updated.`);
+      setActivityMessage(t("{0} announcements updated.", response.items.length));
     } catch (updateError) {
       setError(
         updateError instanceof Error ? updateError.message : "Unable to bulk update announcements.",
@@ -449,14 +456,14 @@ export default function CoachClassDetailPage() {
 
   if (!canAccessCoach) {
     return (
-      <CoachShell user={user} title="Coach access required" breadcrumb={["Access"]}>
+      <CoachShell user={user} title={t("Coach access required")} breadcrumb={[t("Access")]}>
         <section className="rounded-lg border border-red-400/20 bg-red-500/10 p-8 text-center backdrop-blur-2xl">
           <ShieldAlert className="mx-auto h-10 w-10 text-red-200" />
           <h2 className="mt-5 font-[var(--font-display)] text-2xl font-bold text-white">
-            This workspace is available to coaches only.
+            {t("This workspace is available to coaches only.")}
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-white/58">
-            Current role: {user.role}. Ask an administrator to assign coach or admin access.
+            {t("Current role:")} {t(user.role)}{t(". Ask an administrator to assign coach or admin access.")}
           </p>
         </section>
       </CoachShell>
@@ -476,11 +483,11 @@ export default function CoachClassDetailPage() {
   };
 
   return (
-    <CoachShell user={user} title={title} breadcrumb={["Classes", title]}>
+    <CoachShell user={user} title={title} breadcrumb={[t("Classes"), title]}>
       {error ? (
         <div className="flex items-start gap-3 rounded-lg border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-100">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{error}</span>
+          <span>{t(error)}</span>
         </div>
       ) : null}
 
@@ -495,10 +502,10 @@ export default function CoachClassDetailPage() {
                 )}
               >
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />
-                {classItem?.status ?? "loading"}
+                {t(classItem?.status ?? "Loading")}
               </span>
               <span className="rounded-full border border-[#65f7ff]/24 bg-[#65f7ff]/10 px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#dffbff]">
-                {classItem?.code ?? "Class"}
+                {classItem?.code ?? t("Class")}
               </span>
             </div>
             <h1 className="mt-4 font-[var(--font-display)] text-4xl font-bold tracking-[0.01em] text-white sm:text-5xl">
@@ -506,10 +513,10 @@ export default function CoachClassDetailPage() {
             </h1>
             <p className="mt-4 max-w-3xl text-sm leading-6 text-white/58">
               {classItem?.description ||
-                "Review student telemetry, inspect reports, and publish class operations."}
+                t("Review student telemetry, inspect reports, and publish class operations.")}
             </p>
             <div className="mt-4 text-sm text-white/44">
-              {formatDate(classItem?.start_date)} to {formatDate(classItem?.end_date)}
+              {formatDate(classItem?.start_date, undefined, language)} {t("to")} {formatDate(classItem?.end_date, undefined, language)}
             </div>
           </div>
 
@@ -520,7 +527,7 @@ export default function CoachClassDetailPage() {
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#65f7ff]/34 bg-[#65f7ff]/12 px-4 text-sm font-semibold text-[#dffbff] transition hover:bg-[#65f7ff]/18"
             >
               <ClipboardList className="h-4 w-4" />
-              Publish task
+              {t("Publish task")}
             </button>
             <button
               type="button"
@@ -528,29 +535,29 @@ export default function CoachClassDetailPage() {
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#d8ff5d]/32 bg-[#d8ff5d]/10 px-4 text-sm font-semibold text-[#f1ffc1] transition hover:bg-[#d8ff5d]/16"
             >
               <Megaphone className="h-4 w-4" />
-              Publish announcement
+              {t("Publish announcement")}
             </button>
           </div>
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <HeroMetric label="Students" value={students.length} helper="Active class roster" />
-          <HeroMetric label="Reports" value={summary.reportCount} helper="Original training records in latest 50" />
+          <HeroMetric label={t("Students")} value={students.length} helper={t("Active class roster")} />
+          <HeroMetric label={t("Reports")} value={summary.reportCount} helper={t("Original training records in latest 50")} />
           <HeroMetric
-            label="7-day reports"
+            label={t("7-day reports")}
             value={summary.recentReports}
-            helper="Recent submitted reports"
+            helper={t("Recent submitted reports")}
           />
           <HeroMetric
-            label="Best score"
+            label={t("Best score")}
             value={summary.bestScore}
-            helper={`Average ${formatScore(summary.averageScore)}`}
+            helper={t("Average {0}", formatScore(summary.averageScore))}
           />
-          <HeroMetric label="Open tasks" value={summary.openTasks} helper="Published work queue" />
+          <HeroMetric label={t("Open tasks")} value={summary.openTasks} helper={t("Published work queue")} />
           <HeroMetric
-            label="Pinned notices"
+            label={t("Pinned notices")}
             value={summary.pinnedAnnouncements}
-            helper="Top of class channel"
+            helper={t("Top of class channel")}
           />
         </div>
       </section>
@@ -571,16 +578,16 @@ export default function CoachClassDetailPage() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="text-[0.68rem] uppercase tracking-[0.22em] text-white/42">
-                Class telemetry
+                {t("Class telemetry")}
               </div>
               <h2 className="mt-2 font-[var(--font-display)] text-2xl font-bold text-white">
-                Operations and telemetry
+                {t("Operations and telemetry")}
               </h2>
             </div>
             {isLoading ? (
               <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/18 px-3 py-2 text-sm text-white/58">
                 <Loader2 className="h-4 w-4 animate-spin text-[#65f7ff]" />
-                Loading
+                {t("Loading")}
               </span>
             ) : null}
           </div>
@@ -610,7 +617,7 @@ export default function CoachClassDetailPage() {
                   )}
                 >
                   <span className="relative z-10">
-                    {tab.label} {typeof tab.count === "number" && <span className="text-white/34">{tab.count}</span>}
+                    {t(tab.label)} {typeof tab.count === "number" && <span className="text-white/34">{tab.count}</span>}
                   </span>
                   {isActive ? (
                     <motion.span
@@ -682,13 +689,13 @@ export default function CoachClassDetailPage() {
                         className={filterFieldClass}
                         value={taskStatusFilter}
                         onChange={(event) => setTaskStatusFilter(event.target.value)}
-                        aria-label="Task status filter"
+                        aria-label={t("Task status filter")}
                       >
-                        <option value="">All status</option>
-                        <option value="draft">draft</option>
-                        <option value="published">published</option>
-                        <option value="closed">closed</option>
-                        <option value="archived">archived</option>
+                        <option value="">{t("All status")}</option>
+                        <option value="draft">{t("draft")}</option>
+                        <option value="published">{t("published")}</option>
+                        <option value="closed">{t("closed")}</option>
+                        <option value="archived">{t("archived")}</option>
                       </select>
                       <select
                         className={filterFieldClass}
@@ -696,11 +703,11 @@ export default function CoachClassDetailPage() {
                         onChange={(event) =>
                           setTaskAnalysisFilter(event.target.value as "" | ReportAnalysisType)
                         }
-                        aria-label="Task motion filter"
+                        aria-label={t("Task motion filter")}
                       >
                         {analysisFilterOptions.map((option) => (
                           <option key={option.value || "all"} value={option.value}>
-                            {option.label}
+                            {t(option.label)}
                           </option>
                         ))}
                       </select>
@@ -708,33 +715,33 @@ export default function CoachClassDetailPage() {
                         className={filterFieldClass}
                         value={taskKeywordFilter}
                         onChange={(event) => setTaskKeywordFilter(event.target.value)}
-                        placeholder="Search task"
+                        placeholder={t("Search task")}
                       />
                       <input
                         className={filterFieldClass}
                         type="datetime-local"
                         value={taskFromFilter}
                         onChange={(event) => setTaskFromFilter(event.target.value)}
-                        aria-label="Task from due date"
+                        aria-label={t("Task from due date")}
                       />
                       <input
                         className={filterFieldClass}
                         type="datetime-local"
                         value={taskToFilter}
                         onChange={(event) => setTaskToFilter(event.target.value)}
-                        aria-label="Task to due date"
+                        aria-label={t("Task to due date")}
                       />
                       <button
                         type="submit"
                         className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[#65f7ff]/24 bg-[#65f7ff]/10 px-3 text-xs font-semibold text-[#dffbff] transition hover:bg-[#65f7ff]/16"
                       >
                         <Filter className="h-4 w-4" />
-                        Filter
+                        {t("Filter")}
                       </button>
                     </div>
                     {selectedTaskIds.length > 0 ? (
                       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-white/10 pt-3 text-sm text-white/58">
-                        <span>{selectedTaskIds.length} selected</span>
+                        <span>{selectedTaskIds.length} {t("selected")}</span>
                         <button
                           type="button"
                           disabled={isBulkUpdating}
@@ -742,7 +749,7 @@ export default function CoachClassDetailPage() {
                           className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[#d8ff5d]/24 bg-[#d8ff5d]/10 px-3 text-xs font-semibold text-[#f1ffc1] transition hover:bg-[#d8ff5d]/16 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           <Archive className="h-4 w-4" />
-                          Close selected
+                          {t("Close selected")}
                         </button>
                       </div>
                     ) : null}
@@ -774,55 +781,55 @@ export default function CoachClassDetailPage() {
                         className={filterFieldClass}
                         value={announcementStatusFilter}
                         onChange={(event) => setAnnouncementStatusFilter(event.target.value)}
-                        aria-label="Announcement status filter"
+                        aria-label={t("Announcement status filter")}
                       >
-                        <option value="">All status</option>
-                        <option value="draft">draft</option>
-                        <option value="published">published</option>
-                        <option value="expired">expired</option>
-                        <option value="archived">archived</option>
+                        <option value="">{t("All status")}</option>
+                        <option value="draft">{t("draft")}</option>
+                        <option value="published">{t("published")}</option>
+                        <option value="expired">{t("expired")}</option>
+                        <option value="archived">{t("archived")}</option>
                       </select>
                       <select
                         className={filterFieldClass}
                         value={announcementPinnedFilter}
                         onChange={(event) => setAnnouncementPinnedFilter(event.target.value)}
-                        aria-label="Announcement pinned filter"
+                        aria-label={t("Announcement pinned filter")}
                       >
-                        <option value="">Any pin</option>
-                        <option value="pinned">Pinned</option>
-                        <option value="unpinned">Unpinned</option>
+                        <option value="">{t("Any pin")}</option>
+                        <option value="pinned">{t("Pinned")}</option>
+                        <option value="unpinned">{t("Unpinned")}</option>
                       </select>
                       <input
                         className={filterFieldClass}
                         value={announcementKeywordFilter}
                         onChange={(event) => setAnnouncementKeywordFilter(event.target.value)}
-                        placeholder="Search notice"
+                        placeholder={t("Search notice")}
                       />
                       <input
                         className={filterFieldClass}
                         type="datetime-local"
                         value={announcementFromFilter}
                         onChange={(event) => setAnnouncementFromFilter(event.target.value)}
-                        aria-label="Announcement from publish date"
+                        aria-label={t("Announcement from publish date")}
                       />
                       <input
                         className={filterFieldClass}
                         type="datetime-local"
                         value={announcementToFilter}
                         onChange={(event) => setAnnouncementToFilter(event.target.value)}
-                        aria-label="Announcement to publish date"
+                        aria-label={t("Announcement to publish date")}
                       />
                       <button
                         type="submit"
                         className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[#65f7ff]/24 bg-[#65f7ff]/10 px-3 text-xs font-semibold text-[#dffbff] transition hover:bg-[#65f7ff]/16"
                       >
                         <Filter className="h-4 w-4" />
-                        Filter
+                        {t("Filter")}
                       </button>
                     </div>
                     {selectedAnnouncementIds.length > 0 ? (
                       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-white/10 pt-3 text-sm text-white/58">
-                        <span>{selectedAnnouncementIds.length} selected</span>
+                        <span>{selectedAnnouncementIds.length} {t("selected")}</span>
                         <button
                           type="button"
                           disabled={isBulkUpdating}
@@ -830,7 +837,7 @@ export default function CoachClassDetailPage() {
                           className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.045] px-3 text-xs font-semibold text-white/72 transition hover:border-[#d8ff5d]/24 hover:bg-[#d8ff5d]/10 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           <Archive className="h-4 w-4" />
-                          Archive
+                          {t("Archive")}
                         </button>
                         <button
                           type="button"
@@ -839,7 +846,7 @@ export default function CoachClassDetailPage() {
                           className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[#d8ff5d]/24 bg-[#d8ff5d]/10 px-3 text-xs font-semibold text-[#f1ffc1] transition hover:bg-[#d8ff5d]/16 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           <Pin className="h-4 w-4" />
-                          Pin
+                          {t("Pin")}
                         </button>
                         <button
                           type="button"
@@ -848,7 +855,7 @@ export default function CoachClassDetailPage() {
                           className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[#65f7ff]/24 bg-[#65f7ff]/10 px-3 text-xs font-semibold text-[#dffbff] transition hover:bg-[#65f7ff]/16 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           <PinOff className="h-4 w-4" />
-                          Unpin
+                          {t("Unpin")}
                         </button>
                       </div>
                     ) : null}
@@ -894,7 +901,7 @@ export default function CoachClassDetailPage() {
                       />
                     ) : null}
                     <Icon className="relative h-4 w-4" />
-                    <span className="relative">{item.label}</span>
+                    <span className="relative">{t(item.label)}</span>
                   </button>
                 );
               })}
@@ -916,7 +923,7 @@ export default function CoachClassDetailPage() {
                   isCompact
                   onCreated={(task) => {
                     setTasks((currentTasks) => [task, ...currentTasks]);
-                    setActivityMessage(`Task published to ${task.assignment_count} students.`);
+                    setActivityMessage(t("Task published to {0} students.", task.assignment_count));
                   }}
                 />
               </motion.div>
@@ -935,7 +942,7 @@ export default function CoachClassDetailPage() {
                       announcement,
                       ...currentAnnouncements,
                     ]);
-                    setActivityMessage(`Announcement published: ${announcement.title}`);
+                    setActivityMessage(t("Announcement published: {0}", announcement.title));
                   }}
                 />
               </motion.div>

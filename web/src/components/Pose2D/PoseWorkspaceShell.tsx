@@ -1,5 +1,6 @@
 "use client";
 
+import { usePoseCopy } from "@/components/Pose2D/poseCopy";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -56,6 +57,7 @@ export default function PoseWorkspaceShell({ mode, hasUpload, movementPreview, c
   movementPreview?: ReactNode;
   children: ReactNode;
 }) {
+  const { t } = usePoseCopy();
   const config = modeConfig[mode];
 
   return (
@@ -64,10 +66,8 @@ export default function PoseWorkspaceShell({ mode, hasUpload, movementPreview, c
       <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
         <section className="analysis-surface space-y-5 rounded-[30px] border border-white/10 p-4 sm:p-6 lg:p-8">
           <div>
-            <p className="font-[var(--font-display)] text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-[var(--ui-muted)]">
-              AI Hoops Motion Studio
-            </p>
-            <nav aria-label="Motion studio" className="mt-3 flex flex-wrap gap-2">
+            <p className="font-[var(--font-display)] text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-[var(--ui-muted)]">{t("AI Hoops Motion Studio")}</p>
+            <nav aria-label={t("Motion studio")} className="mt-3 flex flex-wrap gap-2">
               {navItems.map((item) => (
                 <Link
                   key={item.key}
@@ -75,27 +75,27 @@ export default function PoseWorkspaceShell({ mode, hasUpload, movementPreview, c
                   aria-current={item.key === mode ? "page" : undefined}
                   className={cn(navLinkClass, item.key === mode ? config.accentButton : idleLinkClass)}
                 >
-                  {item.label}
+                  {t(item.label)}
                 </Link>
               ))}
-              <Link href={routes.pose2d.report} className={cn(navLinkClass, idleLinkClass)}>Report</Link>
+              <Link href={routes.pose2d.report} className={cn(navLinkClass, idleLinkClass)}>{t("Report")}</Link>
               <AccountEntryButton className={cn(idleLinkClass, "hover:text-[var(--ui-text)]")} />
               <ThemeToggle />
             </nav>
           </div>
           <div>
             <h1 className="font-[var(--font-display)] text-[clamp(2.3rem,6vw,4.5rem)] font-bold leading-tight tracking-[-0.06em]">
-              {config.titleLead}{" "}
-              <span className={config.accentText}>{config.titleAccent}</span>
+              {t(config.titleLead)}{" "}
+              <span className={config.accentText}>{t(config.titleAccent)}</span>
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--ui-muted)] sm:text-base">{config.description}</p>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--ui-muted)] sm:text-base">{t(config.description)}</p>
           </div>
         </section>
 
         {movementPreview}
 
-        <section aria-label={hasUpload ? "Analysis session" : "Choose and upload"} className="analysis-surface rounded-[28px] border border-white/10 p-4 sm:p-6">
-          {hasUpload && <h2 className="mb-4 text-xl font-semibold sm:text-2xl">Analysis session</h2>}
+        <section aria-label={t(hasUpload ? "Analysis session" : "Choose and upload")} className="analysis-surface rounded-[28px] border border-white/10 p-4 sm:p-6">
+          {hasUpload && <h2 className="mb-4 text-xl font-semibold sm:text-2xl">{t("Analysis session")}</h2>}
           {children}
         </section>
       </div>

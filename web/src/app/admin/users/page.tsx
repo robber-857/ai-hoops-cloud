@@ -1,4 +1,7 @@
 "use client";
+import { useAppLanguage } from "@/components/account/LanguagePreferenceProvider";
+import { useAdminText } from "@/components/admin/adminCopy";
+
 
 import { staffName } from "@/lib/staffNames";
 import { isAdminRole } from "@/lib/authRedirect";
@@ -70,6 +73,8 @@ function selectedClassIds(user: AdminUserDetailRead | null) {
 }
 
 export default function AdminUsersPage() {
+  const language = useAppLanguage();
+  const t = useAdminText();
   const user = useAuthStore((state) => state.user);
   const hasInitialized = useAuthStore((state) => state.hasInitialized);
   const isInitializing = useAuthStore((state) => state.isInitializing);
@@ -232,7 +237,7 @@ export default function AdminUsersPage() {
             ? createForm.class_public_ids
             : [],
       });
-      setMessage(`Created ${displayName(createdUser)}.`);
+      setMessage(t("Created {0}.", displayName(createdUser)));
       setCreateForm({
         username: "",
         password: "",
@@ -270,7 +275,7 @@ export default function AdminUsersPage() {
         password: editPassword || undefined,
         class_public_ids: editRole === "coach" || editRole === "student" ? editClassIds : [],
       });
-      setMessage(`Updated ${displayName(updatedUser)}.`);
+      setMessage(t("Updated {0}.", displayName(updatedUser)));
       await loadUsers();
       await loadSelectedUser(updatedUser.public_id);
     } catch (saveError) {
@@ -285,7 +290,7 @@ export default function AdminUsersPage() {
     setMessage(null);
     try {
       const updatedUser = await adminService.updateUser(targetUser.public_id, { status });
-      setMessage(`${displayName(updatedUser)} is now ${updatedUser.status}.`);
+      setMessage(t("{0} is now {1}.", displayName(updatedUser), t(updatedUser.status)));
       await loadUsers();
       if (selectedUser?.public_id === targetUser.public_id) {
         await loadSelectedUser(targetUser.public_id);
@@ -304,11 +309,11 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <AdminShell user={user} title="Registered Users" breadcrumb={["Users"]}>
+    <AdminShell user={user} title={t("Registered Users")} breadcrumb={[t("Users")]}>
       {error ? (
         <div className="flex items-start gap-3 rounded-lg border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-100">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{error}</span>
+          <span>{t(error)}</span>
         </div>
       ) : null}
       {message ? (
@@ -322,26 +327,26 @@ export default function AdminUsersPage() {
         <section className="min-w-0 rounded-lg border border-white/10 bg-white/[0.055] p-5 backdrop-blur-2xl">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <div className={labelClass}>People registry</div>
+              <div className={labelClass}>{t("People registry")}</div>
               <h1 className="mt-2 font-[var(--font-display)] text-2xl font-bold text-white">
-                Coaches and students
+                {t("Coaches and students")}
               </h1>
-              <p className="mt-2 text-sm text-white/52">{total} registered records</p>
+              <p className="mt-2 text-sm text-white/52">{total} {t("registered records")}</p>
             </div>
             <form className="grid gap-3 md:grid-cols-[9rem_9rem_minmax(12rem,1fr)_auto]" onSubmit={submitFilters}>
               <select className={fieldClass} value={roleFilter} onChange={(event) => setRoleFilter(event.target.value as "" | AdminUserRole)}>
-                <option value="">All roles</option>
+                <option value="">{t("All roles")}</option>
                 {roles.map((role) => (
                   <option key={role} value={role}>
-                    {roleLabel(role)}
+                    {t(roleLabel(role))}
                   </option>
                 ))}
               </select>
               <select className={fieldClass} value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "" | AdminUserStatus)}>
-                <option value="">All status</option>
+                <option value="">{t("All status")}</option>
                 {statuses.map((status) => (
                   <option key={status} value={status}>
-                    {status}
+                    {t(status)}
                   </option>
                 ))}
               </select>
@@ -349,14 +354,14 @@ export default function AdminUsersPage() {
                 className={fieldClass}
                 value={keyword}
                 onChange={(event) => setKeyword(event.target.value)}
-                placeholder="Name, email, phone"
+                placeholder={t("Name, email, phone")}
               />
               <button
                 type="submit"
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#65f7ff]/24 bg-[#65f7ff]/10 px-4 text-sm font-semibold text-[#dffbff] transition hover:bg-[#65f7ff]/16"
               >
                 <Search className="h-4 w-4" />
-                Search
+                {t("Search")}
               </button>
             </form>
           </div>
@@ -366,13 +371,13 @@ export default function AdminUsersPage() {
               <table className="min-w-[980px] w-full border-collapse text-left text-sm">
                 <thead className="border-b border-white/10 bg-white/[0.035] text-[0.68rem] uppercase tracking-[0.18em] text-white/42">
                   <tr>
-                    <th className="px-4 py-3 font-semibold">User</th>
-                    <th className="px-4 py-3 font-semibold">Contact</th>
-                    <th className="px-4 py-3 font-semibold">Role</th>
-                    <th className="px-4 py-3 font-semibold">Classes</th>
-                    <th className="px-4 py-3 text-right font-semibold">Reports</th>
-                    <th className="px-4 py-3 font-semibold">Status</th>
-                    <th className="px-4 py-3 text-right font-semibold">Actions</th>
+                    <th className="px-4 py-3 font-semibold">{t("User")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Contact")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Role")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Classes")}</th>
+                    <th className="px-4 py-3 text-right font-semibold">{t("Reports")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Status")}</th>
+                    <th className="px-4 py-3 text-right font-semibold">{t("Actions")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/8">
@@ -385,13 +390,13 @@ export default function AdminUsersPage() {
                         <div>{item.email || "--"}</div>
                         <div className="mt-1 text-xs text-white/40">{item.phone_number}</div>
                       </td>
-                      <td className="px-4 py-4 text-white/72">{roleLabel(item.role)}</td>
+                      <td className="px-4 py-4 text-white/72">{t(roleLabel(item.role))}</td>
                       <td className="px-4 py-4 text-white/62">
                         <div className="max-w-[16rem] truncate">
                           {item.class_names.length > 0 ? item.class_names.join(", ") : "--"}
                         </div>
                         <div className="mt-1 text-xs text-white/38">
-                          {item.camp_names.length > 0 ? item.camp_names.join(", ") : "No camp"}
+                          {item.camp_names.length > 0 ? item.camp_names.join(", ") : t("No camp")}
                         </div>
                       </td>
                       <td className="px-4 py-4 text-right font-semibold text-white">
@@ -399,19 +404,19 @@ export default function AdminUsersPage() {
                       </td>
                       <td className="px-4 py-4">
                         <span className={cn("rounded-full border px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em]", statusTone(item.status))}>
-                          {item.status}
+                          {t(item.status)}
                         </span>
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex justify-end gap-2">
-                          {(item.role === "student" || item.role === "user") && <Link href={routes.coach.studentProfile(item.public_id)} className="inline-flex min-h-9 items-center rounded-lg border border-white/20 px-3 text-xs text-white">Player profile</Link>}
+                          {(item.role === "student" || item.role === "user") && <Link href={routes.coach.studentProfile(item.public_id)} className="inline-flex min-h-9 items-center rounded-lg border border-white/20 px-3 text-xs text-white">{t("Player profile")}</Link>}
                           <button
                             type="button"
                             onClick={() => loadSelectedUser(item.public_id)}
                             className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[#65f7ff]/24 bg-[#65f7ff]/10 px-3 text-xs font-semibold text-[#dffbff] transition hover:bg-[#65f7ff]/16"
                           >
                             <Eye className="h-4 w-4" />
-                            Detail
+                            {t("Detail")}
                           </button>
                           {item.public_id !== user.public_id && item.role !== "super_admin"
                             && (isSystemAdmin || !isAdminRole(item.role)) && (item.status === "active" ? (
@@ -421,7 +426,7 @@ export default function AdminUsersPage() {
                               className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-red-300/24 bg-red-400/10 px-3 text-xs font-semibold text-red-100 transition hover:bg-red-400/16"
                             >
                               <UserX className="h-4 w-4" />
-                              Disable
+                              {t("Disable")}
                             </button>
                           ) : (
                             <button
@@ -430,7 +435,7 @@ export default function AdminUsersPage() {
                               className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[#d8ff5d]/24 bg-[#d8ff5d]/10 px-3 text-xs font-semibold text-[#f1ffc1] transition hover:bg-[#d8ff5d]/16"
                             >
                               <RotateCcw className="h-4 w-4" />
-                              Restore
+                              {t("Restore")}
                             </button>
                           ))}
                         </div>
@@ -443,10 +448,10 @@ export default function AdminUsersPage() {
                         {isLoading ? (
                           <span className="inline-flex items-center gap-2">
                             <Loader2 className="h-4 w-4 animate-spin text-[#65f7ff]" />
-                            Loading users
+                            {t("Loading users")}
                           </span>
                         ) : (
-                          "No users match the current filters."
+                          t("No users match the current filters.")
                         )}
                       </td>
                     </tr>
@@ -459,21 +464,21 @@ export default function AdminUsersPage() {
           {selectedUser && !canEditSelection && (
             <section className="mt-5 rounded-lg border border-white/10 p-4">
               <h2 className="text-lg font-semibold">{displayName(selectedUser)}</h2>
-              <p className="mt-1 text-sm text-white/65">{roleLabel(selectedUser.role)} · {selectedUser.status}</p>
-              <p className="mt-1 text-sm text-white/65">A system administrator can manage this account.</p>
+              <p className="mt-1 text-sm text-white/65">{t(roleLabel(selectedUser.role))} · {t(selectedUser.status)}</p>
+              <p className="mt-1 text-sm text-white/65">{t("A system administrator can manage this account.")}</p>
             </section>
           )}
           {selectedUser && canEditSelection ? (
             <form className="mt-5 rounded-lg border border-white/10 bg-black/16 p-4" onSubmit={saveSelectedUser}>
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <div className={labelClass}>Selected user</div>
+                  <div className={labelClass}>{t("Selected user")}</div>
                   <h2 className="mt-2 font-[var(--font-display)] text-xl font-bold text-white">
                     {displayName(selectedUser)}
                   </h2>
                   <p className="mt-1 text-sm text-white/48">
-                    Last login {formatDateTime(selectedUser.last_login_at)} / Last training{" "}
-                    {formatDateTime(selectedUser.last_training_at)}
+                    {t("Last login")} {formatDateTime(selectedUser.last_login_at, language)} {t("/ Last training")}{" "}
+                    {formatDateTime(selectedUser.last_training_at, language)}
                   </p>
                 </div>
                 <button
@@ -482,51 +487,51 @@ export default function AdminUsersPage() {
                   className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[#d8ff5d]/24 bg-[#d8ff5d]/10 px-4 text-sm font-semibold text-[#f1ffc1] transition hover:bg-[#d8ff5d]/16 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                  Save user
+                  {t("Save user")}
                 </button>
               </div>
 
               <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 <label className="block space-y-2">
-                  <span className={labelClass}>Name</span>
+                  <span className={labelClass}>{t("Name")}</span>
                   <input className={fieldClass} value={editNickname} onChange={(event) => setEditNickname(event.target.value)} />
                 </label>
                 <label className="block space-y-2">
-                  <span className={labelClass}>Email</span>
+                  <span className={labelClass}>{t("Email")}</span>
                   <input className={fieldClass} value={editEmail} onChange={(event) => setEditEmail(event.target.value)} />
                 </label>
                 <label className="block space-y-2">
-                  <span className={labelClass}>Phone</span>
+                  <span className={labelClass}>{t("Phone")}</span>
                   <input className={fieldClass} value={editPhone} onChange={(event) => setEditPhone(event.target.value)} />
                 </label>
                 <label className="block space-y-2">
-                  <span className={labelClass}>Role</span>
+                  <span className={labelClass}>{t("Role")}</span>
                   <select className={fieldClass} value={editRole} disabled={selectionRoleLocked} onChange={(event) => setEditRole(event.target.value as AdminUserRole)}>
                     {(selectionRoleLocked ? [selectedUser.role] : editableRoles).map((role) => (
                       <option key={role} value={role}>
-                        {roleLabel(role)}
+                        {t(roleLabel(role))}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label className="block space-y-2">
-                  <span className={labelClass}>Status</span>
+                  <span className={labelClass}>{t("Status")}</span>
                   <select className={fieldClass} value={editStatus} disabled={selectionRoleLocked} onChange={(event) => setEditStatus(event.target.value as AdminUserStatus)}>
                     {statuses.map((status) => (
                       <option key={status} value={status}>
-                        {status}
+                        {t(status)}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label className="block space-y-2">
-                  <span className={labelClass}>Reset password</span>
-                  <input className={fieldClass} value={editPassword} onChange={(event) => setEditPassword(event.target.value)} placeholder="Leave blank" type="password" />
+                  <span className={labelClass}>{t("Reset password")}</span>
+                  <input className={fieldClass} value={editPassword} onChange={(event) => setEditPassword(event.target.value)} placeholder={t("Leave blank")} type="password" />
                 </label>
               </div>
 
               <div className="mt-5">
-                <div className={labelClass}>Class assignment</div>
+                <div className={labelClass}>{t("Class assignment")}</div>
                 <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                   {filteredClasses.map((classItem) => (
                     <label
@@ -548,7 +553,7 @@ export default function AdminUsersPage() {
                   ))}
                   {filteredClasses.length === 0 ? (
                     <div className="rounded-lg border border-white/10 bg-black/18 p-4 text-sm text-white/48">
-                      Create classes before assigning users.
+                      {t("Create classes before assigning users.")}
                     </div>
                   ) : null}
                 </div>
@@ -564,55 +569,55 @@ export default function AdminUsersPage() {
                 <UserCog className="h-5 w-5" />
               </span>
               <div>
-                <div className={labelClass}>Create account</div>
+                <div className={labelClass}>{t("Create account")}</div>
                 <h2 className="font-[var(--font-display)] text-xl font-bold text-white">
-                  {isSystemAdmin ? "Add coach, student or admin" : "Add coach or student"}
+                  {isSystemAdmin ? t("Add coach, student or admin") : t("Add coach or student")}
                 </h2>
               </div>
             </div>
             <form className="mt-5 space-y-4" onSubmit={createUser}>
               <label className="block space-y-2">
-                <span className={labelClass}>Username</span>
+                <span className={labelClass}>{t("Username")}</span>
                 <input className={fieldClass} value={createForm.username} onChange={(event) => setCreateForm((current) => ({ ...current, username: event.target.value }))} required />
               </label>
               <label className="block space-y-2">
-                <span className={labelClass}>Temporary password</span>
+                <span className={labelClass}>{t("Temporary password")}</span>
                 <input className={fieldClass} value={createForm.password} onChange={(event) => setCreateForm((current) => ({ ...current, password: event.target.value }))} type="password" required />
               </label>
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="block space-y-2">
-                  <span className={labelClass}>Role</span>
+                  <span className={labelClass}>{t("Role")}</span>
                   <select className={fieldClass} value={createForm.role} onChange={(event) => setCreateForm((current) => ({ ...current, role: event.target.value as AdminUserRole }))}>
-                    <option value="student">student</option>
-                    <option value="coach">coach</option>
-                    {isSystemAdmin && <option value="admin">admin</option>}
+                    <option value="student">{t("student")}</option>
+                    <option value="coach">{t("coach")}</option>
+                    {isSystemAdmin && <option value="admin">{t("admin")}</option>}
                   </select>
                 </label>
                 <label className="block space-y-2">
-                  <span className={labelClass}>Status</span>
+                  <span className={labelClass}>{t("Status")}</span>
                   <select className={fieldClass} value={createForm.status} onChange={(event) => setCreateForm((current) => ({ ...current, status: event.target.value as AdminUserStatus }))}>
                     {statuses.map((status) => (
                       <option key={status} value={status}>
-                        {status}
+                        {t(status)}
                       </option>
                     ))}
                   </select>
                 </label>
               </div>
               <label className="block space-y-2">
-                <span className={labelClass}>Name</span>
+                <span className={labelClass}>{t("Name")}</span>
                 <input className={fieldClass} value={createForm.nickname ?? ""} onChange={(event) => setCreateForm((current) => ({ ...current, nickname: event.target.value }))} />
               </label>
               <label className="block space-y-2">
-                <span className={labelClass}>Email</span>
+                <span className={labelClass}>{t("Email")}</span>
                 <input className={fieldClass} value={createForm.email ?? ""} onChange={(event) => setCreateForm((current) => ({ ...current, email: event.target.value }))} />
               </label>
               <label className="block space-y-2">
-                <span className={labelClass}>Phone</span>
+                <span className={labelClass}>{t("Phone")}</span>
                 <input className={fieldClass} value={createForm.phone_number} onChange={(event) => setCreateForm((current) => ({ ...current, phone_number: event.target.value }))} required />
               </label>
               <div>
-                <div className={labelClass}>Assign classes</div>
+                <div className={labelClass}>{t("Assign classes")}</div>
                 <div className="mt-3 max-h-64 space-y-2 overflow-y-auto pr-1">
                   {filteredClasses.map((classItem) => (
                     <label key={classItem.public_id} className="flex min-h-11 items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/18 px-3 text-sm text-white/66">
@@ -636,7 +641,7 @@ export default function AdminUsersPage() {
                 className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#65f7ff]/34 bg-[#65f7ff]/12 px-4 text-sm font-semibold text-[#dffbff] transition hover:bg-[#65f7ff]/18 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                Create user
+                {t("Create user")}
               </button>
             </form>
           </section>

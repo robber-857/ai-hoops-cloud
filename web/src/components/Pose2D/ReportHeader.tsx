@@ -1,5 +1,6 @@
 "use client";
 
+import { usePoseCopy } from "@/components/Pose2D/poseCopy";
 import Image from "next/image";
 import Link from "next/link";
 import { Check, ChevronLeft, Link as LinkIcon, Printer } from "lucide-react";
@@ -17,19 +18,20 @@ type ReportHeaderProps = {
 };
 
 export function ReportHeader({ backHref, reportId, onShare, copied, shareDisabled }: ReportHeaderProps) {
+  const { language, t } = usePoseCopy();
   const shareLabel = copied ? "Copied" : "Share";
 
   return (
     <header className="pose-report-header sticky top-0 z-50 border-b">
       <div className="mx-auto grid min-h-14 max-w-7xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3 sm:min-h-16 sm:gap-3 sm:px-6 md:grid-cols-[1fr_auto_1fr]">
         <div className="flex min-w-0 items-center gap-2">
-          <Link className="pose-report-control" href={backHref} aria-label="Back" title="Back">
+          <Link className="pose-report-control" href={backHref} aria-label={t("Back")} title={t("Back")}>
             <ChevronLeft size={20} aria-hidden="true" />
           </Link>
           <div className="pose-report-heading sr-only sm:not-sr-only">
-            <h1 className="text-sm font-bold leading-tight sm:text-base">Analysis report</h1>
+            <h1 className="text-sm font-bold leading-tight sm:text-base">{t("Analysis report")}</h1>
             <p className="pose-report-id mt-0.5 text-xs leading-tight">
-              {reportId ? `Report ID: …${reportId.slice(-6)}` : `Generated on ${new Date().toLocaleDateString()}`}
+              {t(reportId ? `Report ID: …${reportId.slice(-6)}` : `Generated on ${new Date().toLocaleDateString(language === "zh-CN" ? "zh-CN" : "en-AU")}`)}
             </p>
           </div>
         </div>
@@ -60,22 +62,22 @@ export function ReportHeader({ backHref, reportId, onShare, copied, shareDisable
               className="pose-report-control pose-report-share"
               onClick={onShare}
               disabled={shareDisabled}
-              aria-label={shareLabel}
-              title={shareLabel}
+              aria-label={t(shareLabel)}
+              title={t(shareLabel)}
             >
               {copied ? <Check size={16} aria-hidden="true" /> : <LinkIcon size={16} aria-hidden="true" />}
-              <span className="hidden sm:inline">{shareLabel}</span>
+              <span className="hidden sm:inline">{t(shareLabel)}</span>
             </button>
           )}
           <button
             type="button"
             className="pose-report-control"
             onClick={() => window.print()}
-            aria-label="Print or save as PDF"
-            title="Print or save as PDF"
+            aria-label={t("Print or save as PDF")}
+            title={t("Print or save as PDF")}
           >
             <Printer size={16} aria-hidden="true" />
-            <span className="hidden sm:inline">Print</span>
+            <span className="hidden sm:inline">{t("Print")}</span>
           </button>
         </div>
       </div>

@@ -2,6 +2,8 @@
 
 "use client";
 
+import { templateDisplayName } from "@/lib/templateLanguage";
+import { usePoseCopy } from "@/components/Pose2D/poseCopy";
 import { useState, useEffect, Suspense, useMemo, useRef } from "react";
 import { isAdminRole } from "@/lib/authRedirect";
 import Link from "next/link";
@@ -82,6 +84,7 @@ function getSafeReturnTo(value: string | null): string | null {
 }
 
 function ReportContent() {
+  const { language, t } = usePoseCopy();
   const { currentAngles, currentVideoUrl, currentTemplate, currentTimeline } = useAnalysisStore();
   const user = useAuthStore((state) => state.user);
 
@@ -497,10 +500,10 @@ function ReportContent() {
   if (reportId && reportLoadError && !loading) {
     return <div className="report-shell flex min-h-screen items-center justify-center p-6 text-white">
       <div className="max-w-lg space-y-4 rounded-2xl border border-white/10 p-6">
-        <h1 className="text-xl font-semibold">Could not load report</h1>
-        <p role="alert">{reportLoadError}</p>
-        <Button className="ui-button" onClick={() => setReportLoadAttempt((attempt) => attempt + 1)}>Retry loading report</Button>
-        <Link href={backHref} className="ml-4 underline">Back</Link>
+        <h1 className="text-xl font-semibold">{t("Could not load report")}</h1>
+        <p role="alert">{t(reportLoadError)}</p>
+        <Button className="ui-button" onClick={() => setReportLoadAttempt((attempt) => attempt + 1)}>{t("Retry loading report")}</Button>
+        <Link href={backHref} className="ml-4 underline">{t("Back")}</Link>
       </div>
     </div>;
   }
@@ -515,7 +518,7 @@ function ReportContent() {
           <div className="pointer-events-none absolute right-[-6rem] top-[8rem] h-[20rem] w-[20rem] rounded-full bg-sky-400/20 blur-3xl sm:h-[24rem] sm:w-[24rem]" />
           <div className="relative z-10 flex flex-col items-center gap-3 rounded-[28px] border border-white/10 bg-white/[0.06] px-8 py-7 shadow-[0_28px_80px_rgba(0,0,0,0.36)] backdrop-blur-xl">
             <div className="h-8 w-8 rounded-full border-4 border-[#E35757] border-t-transparent animate-spin" />
-            <p className="font-bold text-white/75 uppercase tracking-[0.34em]">Loading Report...</p>
+            <p className="font-bold text-white/75 uppercase tracking-[0.34em]">{t("Loading Report...")}</p>
           </div>
         </div>
      );
@@ -551,12 +554,10 @@ function ReportContent() {
       />
 
       <main className="max-w-7xl mx-auto p-3 sm:p-6 space-y-4 sm:space-y-6 relative z-10">
-        <section aria-label="Report settings" className="report-module rounded-2xl p-4 sm:p-5">
+        <section aria-label={t("Report settings")} className="report-module rounded-2xl p-4 sm:p-5">
           <div className="grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_11rem] sm:gap-4 lg:grid-cols-[minmax(0,26rem)_11rem_minmax(0,1fr)]">
             <div className="min-w-0">
-              <label htmlFor="report-template" className="report-field-label">
-                Select Action Template
-              </label>
+              <label htmlFor="report-template" className="report-field-label">{t("Select Action Template")}</label>
               <div className="relative">
                 <select
                   id="report-template"
@@ -573,7 +574,7 @@ function ReportContent() {
                 >
                   {templates.map((t) => (
                     <option key={t.templateId} value={t.templateId}>
-                      {dbTemplateSnapshot?.templateId === t.templateId ? dbTemplateSnapshot.displayName : t.displayName}
+                      {templateDisplayName(t.templateId, dbTemplateSnapshot?.templateId === t.templateId ? dbTemplateSnapshot.displayName : t.displayName, language)}
                     </option>
                   ))}
                 </select>
@@ -582,9 +583,7 @@ function ReportContent() {
             </div>
 
             <div className="min-w-0">
-              <label htmlFor="report-age" className="report-field-label">
-                Age Group
-              </label>
+              <label htmlFor="report-age" className="report-field-label">{t("Age Group")}</label>
               <div className="relative">
                 <select
                   className="report-select"
@@ -602,8 +601,7 @@ function ReportContent() {
                 >
                   {Object.keys(globalConfig.ageToleranceScale).map((age) => (
                     <option key={age} value={age}>
-                      {age} Years
-                    </option>
+                      {age} {t("Years")}</option>
                   ))}
                 </select>
                 <ChevronDown size={16} aria-hidden="true" className="report-chevron" />
@@ -613,28 +611,27 @@ function ReportContent() {
             {reportId && (
               <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 sm:col-span-2 lg:col-span-1 lg:min-h-11">
                 <span role="status" className="report-sync-state" data-state={isTrainingAgePreview && reportSyncState === "idle" ? "preview" : reportSyncState}>
-                  {reportSyncLabel}
+                  {t(reportSyncLabel)}
                 </span>
                 {user && !isSharedView && (
                   <a className="ui-button" href="#coach-feedback">
-                    <MessageCircle size={16} aria-hidden="true" /> Coach feedback
-                  </a>
+                    <MessageCircle size={16} aria-hidden="true" /> {t("Coach feedback")}</a>
                 )}
               </div>
             )}
           </div>
           {isTrainingAgePreview && (
             <div className="report-secondary mt-4 flex flex-wrap items-center gap-3 text-sm">
-              <p className="w-full">Preview for ages {ageGroup}. Save as a new report to keep this result. The original report and measured values stay unchanged.</p>
+              <p className="w-full">{language === "zh-CN" ? `正在预览 ${ageGroup} 岁年龄组。可另存为新报告以保留此次结果，原报告和测量值会保留。` : `Preview for ages ${ageGroup}. Save as a new report to keep this result. The original report and measured values stay unchanged.`}</p>
               <Button className="ui-button ui-primary" onClick={handleSaveAgeReport} disabled={reportSyncState === "saving" || agePreviewResult?.analysisStatus !== "ready" || !canReanalyzeAge}>
-                {reportSyncState === "saving" ? "Saving…" : "Save as new report"}
+                {t(reportSyncState === "saving" ? "Saving…" : "Save as new report")}
               </Button>
               <Button className="ui-button" variant="outline" disabled={reportSyncState === "saving"} onClick={() => {
                 setAgeGroup(savedAgeGroup);
                 setAgeSaveError(null);
                 setReportSyncState("idle");
-              }}>Cancel</Button>
-              {ageSaveError && <p role="alert" className="w-full text-red-300">{ageSaveError}</p>}
+              }}>{t("Cancel")}</Button>
+              {ageSaveError && <p role="alert" className="w-full text-red-300">{t(ageSaveError)}</p>}
             </div>
           )}
         </section>
@@ -643,16 +640,16 @@ function ReportContent() {
           <div className="flex items-start gap-3 rounded-lg border border-sky-300/25 bg-sky-300/10 p-4 text-sky-100">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-sky-300" />
             <div>
-              <h5 className="text-sm font-semibold">Check the camera view</h5>
+              <h5 className="text-sm font-semibold">{t("Check the camera view")}</h5>
               <p className="mt-1 text-xs leading-5 text-sky-100/85 sm:text-sm">
-                This movement is designed for a {dbCameraContext?.expected ?? selectedTemplate?.camera} view.
+                {language === "zh-CN"
+                  ? `该动作应从${t(dbCameraContext?.expected ?? selectedTemplate?.camera ?? "")}拍摄。`
+                  : `This movement is designed for a ${dbCameraContext?.expected ?? selectedTemplate?.camera} view.`}
                 {dbCameraContext?.instructions
-                  ? ` ${dbCameraContext.instructions}`
-                  : " Keep the full body and required joints visible."}
+                  ? ` ${t(dbCameraContext.instructions)}`
+                  : ` ${t("Keep the full body and required joints visible.")}`}
               </p>
-              <p className="mt-1 text-xs text-sky-100/65">
-                This is a filming tip only and does not change the score.
-              </p>
+              <p className="mt-1 text-xs text-sky-100/65">{t("This is a filming tip only and does not change the score.")}</p>
             </div>
           </div>
         )}
@@ -661,9 +658,9 @@ function ReportContent() {
           <div className="flex items-start gap-3 rounded-lg border border-amber-300/25 bg-amber-300/10 p-4 text-amber-100">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" />
             <div>
-              <h5 className="text-sm font-semibold">Template version data needs attention</h5>
+              <h5 className="text-sm font-semibold">{t("Template version data needs attention")}</h5>
               <p className="mt-1 text-xs leading-5 text-amber-100/85 sm:text-sm">
-                {trainingTemplateContractError}
+                {t(trainingTemplateContractError)}
               </p>
             </div>
           </div>
@@ -673,11 +670,8 @@ function ReportContent() {
           <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 text-amber-900 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
             <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
             <div>
-              <h5 className="text-amber-800 font-semibold text-sm">Insufficient Data</h5>
-              <p className="text-amber-700/90 mt-1 text-xs sm:text-sm">
-                The clip did not contain a complete, clearly visible movement for this exercise.
-                Check the required camera view and keep the full body and required joints visible.
-              </p>
+              <h5 className="text-amber-800 font-semibold text-sm">{t("Insufficient Data")}</h5>
+              <p className="text-amber-700/90 mt-1 text-xs sm:text-sm">{t("The clip did not contain a complete, clearly visible movement for this exercise. Check the required camera view and keep the full body and required joints visible.")}</p>
             </div>
           </div>
         )}
@@ -691,22 +685,21 @@ function ReportContent() {
                 <section aria-labelledby="report-replay-title" className="report-module overflow-hidden rounded-2xl">
                   <div className="report-module-header flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3.5 sm:px-5">
                     <h2 id="report-replay-title" className="flex items-center gap-2 text-base font-semibold">
-                      <Activity size={17} aria-hidden="true" />Analysis Replay
-                    </h2>
-                    {finalVideoUrl && <span className="report-secondary text-xs">Recommended playback: ~10s</span>}
+                      <Activity size={17} aria-hidden="true" />{t("Analysis Replay")}</h2>
+                    {finalVideoUrl && <span className="report-secondary text-xs">{t("Recommended playback: ~10s")}</span>}
                   </div>
                   <div className="aspect-video bg-black">
                     {finalVideoUrl ? (
                       <video
                         src={finalVideoUrl}
                         className="h-full w-full object-contain"
-                        aria-label="Analysis replay"
+                        aria-label={t("Analysis replay")}
                         controls
                         playsInline
                         loop
                       />
                     ) : (
-                      <p className="report-video-empty grid h-full place-items-center text-sm">Video Not Found</p>
+                      <p className="report-video-empty grid h-full place-items-center text-sm">{t("Video Not Found")}</p>
                     )}
                   </div>
                 </section>
@@ -729,9 +722,9 @@ function ReportContent() {
               <div className="relative min-w-0">
                 <section aria-labelledby="report-findings-title" className="report-findings-panel report-module flex flex-col overflow-hidden rounded-2xl lg:absolute lg:inset-0">
                   <div className="report-module-header flex shrink-0 items-center justify-between gap-3 px-4 py-3.5 sm:px-5">
-                    <h2 id="report-findings-title" className="text-base font-semibold">Top Findings</h2>
+                    <h2 id="report-findings-title" className="text-base font-semibold">{t("Top Findings")}</h2>
                     <span className="report-secondary text-xs font-medium">
-                      {finalResult.findings.length} {finalResult.findings.length === 1 ? "check" : "checks"}
+                      {finalResult.findings.length} {t(finalResult.findings.length === 1 ? "check" : "checks")}
                     </span>
                   </div>
                   <div className="report-findings-scroll min-h-0 lg:overflow-y-auto">
@@ -743,8 +736,7 @@ function ReportContent() {
                       </ul>
                     ) : (
                       <p className="report-secondary flex items-center justify-center gap-2 p-6 text-sm">
-                        <CheckCircle2 size={18} aria-hidden="true" />No critical findings found.
-                      </p>
+                        <CheckCircle2 size={18} aria-hidden="true" />{t("No critical findings found.")}</p>
                     )}
                   </div>
                 </section>
@@ -754,7 +746,7 @@ function ReportContent() {
         ) : (
           <div className="report-module h-64 flex flex-col items-center justify-center text-white/50 rounded-2xl border-dashed gap-4">
             <Activity className="w-6 h-6 opacity-40" />
-            <p className="text-sm font-semibold text-white/72">Ready for Analysis</p>
+            <p className="text-sm font-semibold text-white/72">{t("Ready for Analysis")}</p>
           </div>
         )}
         {reportId && user && !isSharedView && <ReportFeedbackPanel key={`${user.public_id}:${reportId}`} reportId={reportId} />}
@@ -764,6 +756,7 @@ function ReportContent() {
 }
 
 export default function ReportPage() {
+  const { t } = usePoseCopy();
   return (
     <Suspense fallback={
       <div className="report-shell relative min-h-screen overflow-x-hidden flex items-center justify-center">
@@ -774,7 +767,7 @@ export default function ReportPage() {
         <div className="pointer-events-none absolute right-[-6rem] top-[8rem] h-[20rem] w-[20rem] rounded-full bg-sky-400/20 blur-3xl sm:h-[24rem] sm:w-[24rem]" />
         <div className="flex flex-col items-center gap-3">
            <div className="w-8 h-8 border-4 border-[#E35757] border-t-transparent rounded-full animate-spin"></div>
-           <p className="text-white/75 font-medium">Loading...</p>
+           <p className="text-white/75 font-medium">{t("Loading...")}</p>
         </div>
       </div>
     }>

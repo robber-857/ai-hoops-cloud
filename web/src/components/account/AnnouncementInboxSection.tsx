@@ -1,3 +1,5 @@
+"use client";
+import { usePlayerCopy } from "@/components/account/playerCopy";
 import { Bell, CheckCircle2, ChevronDown, Pin } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -12,8 +14,8 @@ type AnnouncementInboxSectionProps = {
   onToggle: (announcement: AccountAnnouncement) => void;
 };
 
-function formatAnnouncementDate(input: string) {
-  return new Intl.DateTimeFormat("en-AU", {
+function formatAnnouncementDate(input: string, locale: string) {
+  return new Intl.DateTimeFormat(locale, {
     month: "short",
     day: "numeric",
     hour: "2-digit",
@@ -27,6 +29,7 @@ export function AnnouncementInboxSection({
   expandedId,
   onToggle,
 }: AnnouncementInboxSectionProps) {
+  const { t, locale, isChinese } = usePlayerCopy();
   return (
     <section className="analysis-surface min-w-0 rounded-[28px] border border-white/10 p-4 sm:rounded-[32px] sm:p-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -36,10 +39,10 @@ export function AnnouncementInboxSection({
           </span>
           <div className="min-w-0">
             <div className="text-[0.72rem] uppercase tracking-[0.28em] text-white/42">
-              Announcements
+              {t("Announcements")}
             </div>
             <h2 className="mt-1 break-words text-lg font-semibold text-white sm:text-xl">
-              Messages from coaches and admins
+              {t("Messages from coaches and admins")}
             </h2>
           </div>
         </div>
@@ -51,7 +54,7 @@ export function AnnouncementInboxSection({
               : "border-white/12 bg-white/[0.04] text-white/58",
           )}
         >
-          {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
+          {unreadCount > 0 ? `${unreadCount} ${isChinese ? "条未读" : "unread"}` : t("All caught up")}
         </Badge>
       </div>
 
@@ -82,7 +85,7 @@ export function AnnouncementInboxSection({
                     )}
                   </div>
                   <div className="mt-1 break-words text-[0.66rem] uppercase tracking-[0.12em] text-white/36 sm:text-xs sm:tracking-[0.18em]">
-                    {announcement.scopeLabel} / {formatAnnouncementDate(announcement.publishedAt)}
+                    {isChinese && !announcement.scopeIsName ? (announcement.targetRole ? `${t(announcement.targetRole)}角色` : t(announcement.scopeLabel)) : announcement.scopeLabel} / {formatAnnouncementDate(announcement.publishedAt, locale)}
                   </div>
                 </div>
                 <ChevronDown
@@ -103,7 +106,7 @@ export function AnnouncementInboxSection({
 
         {announcements.length === 0 ? (
           <div className="px-4 py-8 text-center text-sm text-white/48">
-            No announcements for your account yet.
+            {t("No announcements for your account yet.")}
           </div>
         ) : null}
       </div>

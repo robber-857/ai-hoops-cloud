@@ -1,4 +1,6 @@
 "use client";
+import { useAdminText } from "@/components/admin/adminCopy";
+
 import { useEffect, useRef, useState } from "react";
 import {
   adminService,
@@ -17,6 +19,7 @@ export function AddClassMembersByName({
   members: AdminClassMemberRead[];
   onAdded: () => Promise<void>;
 }) {
+  const t = useAdminText();
   const [query, setQuery] = useState(""),
     [role, setRole] = useState<"student" | "coach">("student"),
     [page, setPage] = useState(1),
@@ -81,12 +84,12 @@ export function AddClassMembersByName({
       } catch (e) {
         failed.push(person);
         errors.push(
-          `${staffName(person)} (${staffContact(person)}): ${e instanceof Error ? e.message : "Could not add member."}`,
+          `${staffName(person)} (${staffContact(person)}): ${t(e instanceof Error ? e.message : "Could not add member.")}`,
         );
       }
     }
     setSelected(failed);
-    setMessage(`Added ${selected.length - failed.length} member(s).`);
+    setMessage(t("Added {0} member(s).", selected.length - failed.length));
     setError(errors.join(" "));
     try {
       await onAdded();
@@ -94,7 +97,7 @@ export function AddClassMembersByName({
       setError(
         (current) =>
           current +
-          " Memberships could not refresh. Reload the page to check saved changes.",
+          t(" Memberships could not refresh. Reload the page to check saved changes."),
       );
     } finally {
       setBusy(false);
@@ -103,16 +106,15 @@ export function AddClassMembersByName({
   }
   return (
     <section className="min-w-0 rounded-lg border border-white/10 bg-white/[0.055] p-5">
-      <h2 className="text-xl font-semibold">Add members by name</h2>
+      <h2 className="text-xl font-semibold">{t("Add members by name")}</h2>
       <p className="mt-2 text-sm text-white/70">
-        Search for a name or contact, then select the right person. Contacts
-        help distinguish people with the same name.
+        {t("Search for a name or contact, then select the right person. Contacts help distinguish people with the same name.")}
       </p>
       <fieldset disabled={busy} className="mt-5 space-y-4">
         <label className="block space-y-2 text-sm">
-          Member role
+          {t("Member role")}
           <select
-            aria-label="Member role"
+            aria-label={t("Member role")}
             className={field}
             value={role}
             onChange={(e) => {
@@ -121,12 +123,12 @@ export function AddClassMembersByName({
               setPage(1);
             }}
           >
-            <option value="student">Student</option>
-            <option value="coach">Coach</option>
+            <option value="student">{t("Student")}</option>
+            <option value="coach">{t("Coach")}</option>
           </select>
         </label>
         <label className="block space-y-2 text-sm">
-          Find by name or contact
+          {t("Find by name or contact")}
           <input
             className={field}
             value={query}
@@ -134,19 +136,19 @@ export function AddClassMembersByName({
               setQuery(e.target.value);
               setPage(1);
             }}
-            placeholder="Name, email or phone"
+            placeholder={t("Name, email or phone")}
           />
         </label>
-        {loading && <p role="status">Searching members…</p>}
+        {loading && <p role="status">{t("Searching members…")}</p>}
         {error && (
           <div role="alert" className="text-sm text-red-200">
-            {error}
+            {t(error)}
             <button
               type="button"
               className="ml-2 min-h-11 underline"
               onClick={() => setRetry((v) => v + 1)}
             >
-              Retry search
+              {t("Retry search")}
             </button>
           </div>
         )}
@@ -188,7 +190,7 @@ export function AddClassMembersByName({
                       </span>
                       <span className="block text-xs text-white/70">
                         {staffContact(person)}
-                        {exists ? " · Already in class" : ""}
+                        {exists ? t(" · Already in class") : ""}
                       </span>
                     </span>
                   </label>
@@ -198,7 +200,7 @@ export function AddClassMembersByName({
         </ul>
         {!loading && !rows.length && !error && (
           <p className="text-sm text-white/70">
-            No matching members. Try another name or contact.
+            {t("No matching members. Try another name or contact.")}
           </p>
         )}
         <div className="flex flex-wrap items-center gap-3 text-sm">
@@ -208,21 +210,21 @@ export function AddClassMembersByName({
             disabled={loading || page <= 1}
             onClick={() => setPage((v) => v - 1)}
           >
-            Previous results
+            {t("Previous results")}
           </button>
-          <span>Page {page}</span>
+          <span>{t("Page")} {page}</span>
           <button
             type="button"
             className="min-h-11 underline disabled:opacity-40"
             disabled={loading || page * 10 >= total}
             onClick={() => setPage((v) => v + 1)}
           >
-            Next results
+            {t("Next results")}
           </button>
         </div>
         {selected.length > 0 && (
           <p className="text-sm text-white/80">
-            Selected:{" "}
+            {t("Selected:")}{" "}
             {selected
               .map((s) => `${staffName(s)} (${staffContact(s)})`)
               .join("; ")}
@@ -235,8 +237,8 @@ export function AddClassMembersByName({
           className="min-h-11 rounded-lg bg-[#d8ff5d] px-5 font-semibold text-black disabled:opacity-50"
         >
           {busy
-            ? "Adding members…"
-            : `Add selected members (${selected.length})`}
+            ? t("Adding members…")
+            : t("Add selected members ({0})", selected.length)}
         </button>
       </fieldset>
     </section>

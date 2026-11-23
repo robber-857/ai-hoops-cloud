@@ -93,7 +93,7 @@ test.describe("simplified training and food nutrition with real dedicated APIs",
     const basics = section(page, "Player profile");
     const nickname = `UI Athlete ${seed.namespace}`;
     await expect(basics.getByLabel("Started training on", { exact: true })).toHaveAttribute("placeholder", "yyyy/mm/dd");
-    await expect(basics.getByRole("combobox", { name: "Language", exact: true })).toHaveValue("en");
+    await expect(page.getByRole("link", { name: "Settings", exact: true }).first()).toHaveAttribute("href", "/settings");
     await basics.getByLabel(/Player name \/ nickname/).fill(nickname);
     await fillDate(basics.getByLabel("Started training on", { exact: true }), dates.started);
     await expect(basics.locator("output")).toHaveText("2 years");
@@ -252,8 +252,7 @@ test.describe("simplified training and food nutrition with real dedicated APIs",
     await expect(page.getByText(/Food composition data represents/)).toHaveCount(0);
     await page.goto("/me/profile");
     const basics = section(page, "Player profile");
-    const language = basics.getByRole("combobox", { name: "Language", exact: true });
-    await expect(language).toHaveValue("en");
+    const language = page.getByRole("combobox", { name: /^(Language|语言)$/ });
     const start = basics.getByLabel("Started training on", { exact: true });
     await expect(start).toBeEnabled();
     await expect(start).toHaveValue(sydneyDates().started.replaceAll("-", "/"));
@@ -261,14 +260,16 @@ test.describe("simplified training and food nutrition with real dedicated APIs",
     await start.fill("2026/02/30");
     await expect.poll(() => start.evaluate((element: HTMLInputElement) => element.validity.valid)).toBe(false);
     await start.fill(existingDate);
+    await page.getByRole("link", { name: "Settings", exact: true }).click();
+    await expect(language).toHaveValue("en");
     await language.selectOption("zh-CN");
     const pending = page.waitForResponse(r => apiResponse(r, "/me/profile", "PATCH"));
-    await basics.getByRole("button", { name: "Save profile", exact: true }).click();
+    await page.getByRole("button", { name: "Save settings", exact: true }).click();
     const saved = await pending;
     expect(saved.status()).toBe(200);
     expect(saved.request().postDataJSON()).toMatchObject({ preferred_language: "zh-CN" });
     expect(await saved.json()).toMatchObject({ preferred_language: "zh-CN", training_started_on: existingDate.replaceAll("/", "-") });
-    await expect(basics.getByText(/Profile saved\./)).toBeVisible();
+    await expect(page.getByRole("status")).toContainText(/设置已保存|Settings saved/);
     await page.goto("/foods");
     await expect(page.getByRole("heading", { name: "食材营养", exact: true })).toBeVisible();
     await page.reload();
@@ -281,7 +282,7 @@ test.describe("simplified training and food nutrition with real dedicated APIs",
     await expect(page.getByRole("heading", { name: "Food nutrition", exact: true })).toBeVisible();
     await expect(page.locator("article").first()).toContainText("Chicken breast");
     await logout(page);
-    await login(page, seed.accounts.parent, "/me/profile");
+    await login(page, seed.accounts.parent, "/settings");
     await expect(language).toHaveValue("zh-CN");
     await language.selectOption("en");
     await page.route("**/api/v1/me/profile", route => {
@@ -292,25 +293,24 @@ test.describe("simplified training and food nutrition with real dedicated APIs",
         body: JSON.stringify({ detail: "E2E temporary profile failure" }),
       });
     }, { times: 1 });
-    await basics.getByRole("button", { name: "Save profile", exact: true }).click();
-    await expect(basics.getByRole("alert")).toContainText("E2E temporary profile failure");
+    await page.getByRole("button", { name: "保存设置" }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText("请重试");
     await expect(language).toHaveValue("en");
     const retried = page.waitForResponse(r => apiResponse(r, "/me/profile", "PATCH"));
-    await basics.getByRole("button", { name: "Save profile", exact: true }).click();
+    await page.getByRole("button", { name: "保存设置" }).click();
     expect((await retried).status()).toBe(200);
-    await expect(basics.getByText(/Profile saved\./)).toBeVisible();
+    await expect(page.getByRole("status")).toContainText(/设置已保存|Settings saved/);
     await page.goto("/foods");
     await expect(page.getByRole("heading", { name: "Food nutrition", exact: true })).toBeVisible();
   });
 
   test("foods use official per-100g data, category/search/pagination and retry work on desktop and mobile", async ({ page, seed }) => {
-    await login(page, seed.accounts.parent, "/me/profile");
-    const basics = section(page, "Player profile");
-    await basics.getByRole("combobox", { name: "Language", exact: true }).selectOption("zh-CN");
+    await login(page, seed.accounts.parent, "/settings");
+    await page.getByRole("combobox", { name: "Language", exact: true }).selectOption("zh-CN");
     const preference = page.waitForResponse(r => apiResponse(r, "/me/profile", "PATCH"));
-    await basics.getByRole("button", { name: "Save profile", exact: true }).click();
+    await page.getByRole("button", { name: "Save settings", exact: true }).click();
     expect((await preference).status()).toBe(200);
-    await expect(basics.getByText(/Profile saved\./)).toBeVisible();
+    await expect(page.getByRole("status")).toContainText(/设置已保存|Settings saved/);
     await page.goto("/foods");
     await expect(page.getByRole("heading", { name: "食材营养", exact: true })).toBeVisible();
     await expect(page.getByRole("status").filter({ hasText: "共 28 条匹配食材" })).toBeVisible();
@@ -364,29 +364,29 @@ test.describe("simplified training and food nutrition with real dedicated APIs",
       await assertNoHorizontalOverflow(page);
     }
     await page.setViewportSize({ width: 390, height: 844 });
-    const menu = page.getByRole("button", { name: "Open workspace menu", exact: true });
+    const menu = page.getByRole("button", { name: "打开工作区菜单", exact: true });
     await menu.focus();
     await menu.press("Enter");
-    const drawer = page.getByRole("dialog", { name: "Player hub", exact: true });
+    const drawer = page.getByRole("dialog", { name: "学员中心", exact: true });
     await expect(drawer).toBeVisible();
-    const close = drawer.getByRole("button", { name: "Close workspace menu", exact: true });
+    const close = drawer.getByRole("button", { name: "关闭工作区菜单", exact: true });
     await expect(close).toBeFocused();
     await close.press("Shift+Tab");
-    await expect(drawer.getByRole("button", { name: "Log Out", exact: true })).toBeFocused();
+    await expect(drawer.getByRole("button", { name: "退出登录", exact: true })).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(close).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(drawer).not.toBeVisible();
     await expect(menu).toBeFocused();
     await menu.press("Enter");
-    const profileLink = drawer.getByRole("link", { name: "Personal profile", exact: true });
+    const profileLink = drawer.getByRole("link", { name: "个人资料", exact: true });
     await profileLink.focus();
     await profileLink.press("Enter");
     await expect(page).toHaveURL(/\/me\/profile$/);
-    await expect(section(page, "Player profile").locator("output")).toHaveText("2 years");
+    await expect(section(page, "学员资料").locator("output")).toHaveText("2 年");
     await assertNoHorizontalOverflow(page);
     await page.goto("/me");
-    await expect(section(page, "Today’s training")).toContainText("13 personal training minutes");
+    await expect(section(page, "今日训练")).toContainText("13 分钟个人训练");
     await assertNoHorizontalOverflow(page);
   });
 });

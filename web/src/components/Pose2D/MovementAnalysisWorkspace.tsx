@@ -1,5 +1,6 @@
 "use client";
 
+import { usePoseCopy } from "@/components/Pose2D/poseCopy";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -28,6 +29,7 @@ type TaskLookup = { assignmentId: string; task?: TaskDetailRead; error?: string 
 type Upload = { file: File | null; url: string | null; session: CompletedUploadSession | null };
 
 export default function MovementAnalysisWorkspace({ mode }: { mode: Mode }) {
+  const { language } = usePoseCopy();
   const searchParams = useSearchParams();
   const search = searchParams.toString();
   const assignmentId = searchParams.get("taskAssignmentId");
@@ -123,6 +125,7 @@ export default function MovementAnalysisWorkspace({ mode }: { mode: Mode }) {
     >
       {upload ? (
         <PoseAnalysisView
+          language={language}
           file={upload.file}
           videoUrl={upload.url}
           uploadSession={upload.session}

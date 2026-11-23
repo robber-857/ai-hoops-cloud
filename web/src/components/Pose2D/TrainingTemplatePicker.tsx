@@ -1,5 +1,6 @@
 "use client";
 
+import { usePoseCopy } from "@/components/Pose2D/poseCopy";
 import {
   Camera,
   CheckCircle2,
@@ -34,6 +35,7 @@ export default function MovementTemplatePicker({
   error,
   onSelect,
 }: Props) {
+  const { language, t } = usePoseCopy();
   return (
     <section aria-labelledby="movement-template-heading" className="py-2">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -41,22 +43,18 @@ export default function MovementTemplatePicker({
           <h2
             id="movement-template-heading"
             className="text-xl font-semibold text-[var(--ui-text)] sm:text-2xl"
-          >
-            Choose your movement
-          </h2>
+          >{t("Choose your movement")}</h2>
         </div>
         {locked ? (
           <div className="inline-flex min-h-10 items-center gap-2 self-start rounded-lg border border-[var(--ui-border)] bg-[var(--ui-subtle)] px-3 py-2 text-sm text-[var(--ui-muted)] sm:self-auto">
-            <LockKeyhole className="h-4 w-4 shrink-0" aria-hidden="true" />
-            Coach task locked
-          </div>
+            <LockKeyhole className="h-4 w-4 shrink-0" aria-hidden="true" />{t("Coach task locked")}</div>
         ) : null}
       </div>
 
       {error ? (
         <div role="alert" className="mt-4 flex items-start gap-3 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-subtle)] px-4 py-3 text-sm leading-6 text-[var(--ui-danger)]">
           <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>{error}</span>
+          <span>{t(error)}</span>
         </div>
       ) : null}
 
@@ -75,7 +73,7 @@ export default function MovementTemplatePicker({
             const isSelected = selectedCode === item.template.templateId;
             const isReady = item.availability === "ready";
             const isLockedOut = locked && !isSelected;
-            const presentation = getMovementPresentation(item.template);
+            const presentation = getMovementPresentation(item.template, language);
 
             return (
               <button
@@ -99,7 +97,7 @@ export default function MovementTemplatePicker({
                     </div>
                     <div className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-[var(--ui-muted)]">
                       <Camera className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                      {cameraLabel(item.template.camera)}
+                      {t(cameraLabel(item.template.camera))}
                     </div>
                   </div>
                   {isSelected ? (
@@ -112,7 +110,7 @@ export default function MovementTemplatePicker({
                 </div>
 
                 <p className="mt-3 text-sm leading-6 text-[var(--ui-muted)]">
-                  {presentation.filming}
+                  {t(presentation.filming)}
                 </p>
 
                 <div
@@ -121,7 +119,7 @@ export default function MovementTemplatePicker({
                     isReady ? "text-[var(--ui-chart-teal)]" : "text-[var(--ui-chart-orange)]",
                   ].join(" ")}
                 >
-                  {item.availabilityMessage}
+                  {t(item.availabilityMessage)}
                 </div>
               </button>
             );

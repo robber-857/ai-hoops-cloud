@@ -1,4 +1,7 @@
 "use client";
+import { useAdminText } from "@/components/admin/adminCopy";
+
+import { useAppLanguage } from "@/components/account/LanguagePreferenceProvider";
 import { staffName } from "@/lib/staffNames";
 import { isAdminRole } from "@/lib/authRedirect";
 
@@ -68,6 +71,8 @@ function assignmentProgress(task: AdminTaskRead) {
 }
 
 export default function AdminTasksPage() {
+  const t = useAdminText();
+  const language = useAppLanguage();
   const user = useAuthStore((state) => state.user);
   const hasInitialized = useAuthStore((state) => state.hasInitialized);
   const isInitializing = useAuthStore((state) => state.isInitializing);
@@ -173,7 +178,7 @@ export default function AdminTasksPage() {
         status: detailStatus,
       });
       setSelectedTask(updated);
-      setMessage(`Task ${updated.title} is now ${updated.status}.`);
+      setMessage(t("Task {0} is now {1}.", updated.title, t(updated.status)));
       await loadTasks();
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Unable to update task.");
@@ -191,11 +196,11 @@ export default function AdminTasksPage() {
   }
 
   return (
-    <AdminShell user={user} title="Task Supervision" breadcrumb={["Tasks"]}>
+    <AdminShell user={user} title={t("Task Supervision")} breadcrumb={[t("Tasks")]}>
       {error ? (
         <div className="flex items-start gap-3 rounded-lg border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-100">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{error}</span>
+          <span>{t(error)}</span>
         </div>
       ) : null}
       {message ? (
@@ -209,18 +214,18 @@ export default function AdminTasksPage() {
         <section className="min-w-0 rounded-lg border border-white/10 bg-white/[0.055] p-5 backdrop-blur-2xl">
           <div>
             <div>
-              <div className={labelClass}>Coach task monitor</div>
+              <div className={labelClass}>{t("Coach task monitor")}</div>
               <h1 className="mt-2 font-[var(--font-display)] text-2xl font-bold text-white">
-                Training assignments
+                {t("Training assignments")}
               </h1>
-              <p className="mt-2 text-sm text-white/52">{tasks.length} tasks in the current view</p>
+              <p className="mt-2 text-sm text-white/52">{tasks.length} {t("tasks in the current view")}</p>
             </div>
           </div>
 
           <form className={cn(adminFilterFormClass, "2xl:grid-cols-7")} onSubmit={submitFilters}>
-            <AdminFilterField label="Coach">
+            <AdminFilterField label={t("Coach")}>
               <select className={fieldClass} value={coachFilter} onChange={(event) => setCoachFilter(event.target.value)}>
-                <option value="">All coaches</option>
+                <option value="">{t("All coaches")}</option>
                 {coaches.map((coach) => (
                   <option key={coach.public_id} value={coach.public_id}>
                     {staffName(coach)}
@@ -228,9 +233,9 @@ export default function AdminTasksPage() {
                 ))}
               </select>
             </AdminFilterField>
-            <AdminFilterField label="Camp">
+            <AdminFilterField label={t("Camp")}>
               <select className={fieldClass} value={campFilter} onChange={(event) => setCampFilter(event.target.value)}>
-                <option value="">All camps</option>
+                <option value="">{t("All camps")}</option>
                 {camps.map((camp) => (
                   <option key={camp.public_id} value={camp.public_id}>
                     {camp.name}
@@ -238,9 +243,9 @@ export default function AdminTasksPage() {
                 ))}
               </select>
             </AdminFilterField>
-            <AdminFilterField label="Class">
+            <AdminFilterField label={t("Class")}>
               <select className={fieldClass} value={classFilter} onChange={(event) => setClassFilter(event.target.value)}>
-                <option value="">All classes</option>
+                <option value="">{t("All classes")}</option>
                 {classes.map((classItem) => (
                   <option key={classItem.public_id} value={classItem.public_id}>
                     {classItem.name}
@@ -248,38 +253,38 @@ export default function AdminTasksPage() {
                 ))}
               </select>
             </AdminFilterField>
-            <AdminFilterField label="Status">
+            <AdminFilterField label={t("Status")}>
               <select className={fieldClass} value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-                <option value="">All status</option>
+                <option value="">{t("All status")}</option>
                 {taskStatuses.map((status) => (
                   <option key={status} value={status}>
-                    {status}
+                    {t(status)}
                   </option>
                 ))}
               </select>
             </AdminFilterField>
-            <AdminFilterField label="Motion">
+            <AdminFilterField label={t("Motion")}>
               <select className={fieldClass} value={analysisTypeFilter} onChange={(event) => setAnalysisTypeFilter(event.target.value as ReportAnalysisType | "")}>
-                <option value="">All motions</option>
+                <option value="">{t("All motions")}</option>
                 {analysisTypes.map((type) => (
                   <option key={type} value={type}>
-                    {analysisTypeLabels[type]}
+                    {t(analysisTypeLabels[type])}
                   </option>
                 ))}
               </select>
             </AdminFilterField>
-            <AdminFilterField label="Keyword">
+            <AdminFilterField label={t("Keyword")}>
               <input
                 className={fieldClass}
                 value={keyword}
                 onChange={(event) => setKeyword(event.target.value)}
-                placeholder="Title, description, or template"
+                placeholder={t("Title, description, or template")}
               />
             </AdminFilterField>
             <AdminFilterAction>
               <button type="submit" className={adminFilterButtonClass}>
                 <Search className="h-4 w-4" />
-                Search
+                {t("Search")}
               </button>
             </AdminFilterAction>
           </form>
@@ -289,14 +294,14 @@ export default function AdminTasksPage() {
               <table className="min-w-[1080px] w-full border-collapse text-left text-sm">
                 <thead className="border-b border-white/10 bg-white/[0.035] text-[0.68rem] uppercase tracking-[0.18em] text-white/42">
                   <tr>
-                    <th className="px-4 py-3 font-semibold">Task</th>
-                    <th className="px-4 py-3 font-semibold">Coach</th>
-                    <th className="px-4 py-3 font-semibold">Class</th>
-                    <th className="px-4 py-3 font-semibold">Motion</th>
-                    <th className="px-4 py-3 text-right font-semibold">Progress</th>
-                    <th className="px-4 py-3 font-semibold">Due</th>
-                    <th className="px-4 py-3 font-semibold">Status</th>
-                    <th className="px-4 py-3 text-right font-semibold">Open</th>
+                    <th className="px-4 py-3 font-semibold">{t("Task")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Coach")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Class")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Motion")}</th>
+                    <th className="px-4 py-3 text-right font-semibold">{t("Progress")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Due")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Status")}</th>
+                    <th className="px-4 py-3 text-right font-semibold">{t("Open")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/8">
@@ -308,36 +313,36 @@ export default function AdminTasksPage() {
                           {task.title}
                         </div>
                         <div className="mt-1 max-w-[20rem] truncate text-xs text-white/42">
-                          {task.description || "No description"}
+                          {task.description || t("No description")}
                         </div>
                       </td>
                       <td className="px-4 py-4 text-white/62">{task.coach_name}</td>
                       <td className="px-4 py-4 text-white/62">
                         <div>{task.class_name}</div>
-                        <div className="mt-1 text-xs text-white/38">{task.camp_name || "No camp"}</div>
+                        <div className="mt-1 text-xs text-white/38">{task.camp_name || t("No camp")}</div>
                       </td>
                       <td className="px-4 py-4 text-white/62">
-                        <div>{task.analysis_type ? analysisTypeLabels[task.analysis_type] : "Any"}</div>
+                        <div>{task.analysis_type ? t(analysisTypeLabels[task.analysis_type]) : t("Any")}</div>
                         <div className="mt-1 max-w-[13rem] truncate text-xs text-white/38">
-                          {getTemplateDisplayName(task.template_code)}
+                          {getTemplateDisplayName(task.template_code, language)}
                         </div>
                       </td>
                       <td className="px-4 py-4 text-right">
                         <div className="font-[var(--font-display)] text-xl font-bold text-[#d8ff5d]">
                           {task.completed_assignment_count}/{task.assignment_count}
                         </div>
-                        <div className="mt-1 text-xs text-white/42">{assignmentProgress(task)}% complete</div>
+                        <div className="mt-1 text-xs text-white/42">{assignmentProgress(task)}{t("% complete")}</div>
                       </td>
-                      <td className="px-4 py-4 text-white/62">{formatDateTime(task.due_at)}</td>
+                      <td className="px-4 py-4 text-white/62">{formatDateTime(task.due_at, language)}</td>
                       <td className="px-4 py-4">
                         <span className={cn("rounded-full border px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em]", statusTone(task.status))}>
-                          {task.status}
+                          {t(task.status)}
                         </span>
                       </td>
                       <td className="px-4 py-4 text-right">
                         <button type="button" onClick={() => loadTaskDetail(task.public_id)} className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[#65f7ff]/24 bg-[#65f7ff]/10 px-3 text-xs font-semibold text-[#dffbff] transition hover:bg-[#65f7ff]/16">
                           <Eye className="h-4 w-4" />
-                          Detail
+                          {t("Detail")}
                         </button>
                       </td>
                     </tr>
@@ -348,10 +353,10 @@ export default function AdminTasksPage() {
                         {isLoading ? (
                           <span className="inline-flex items-center gap-2">
                             <Loader2 className="h-4 w-4 animate-spin text-[#65f7ff]" />
-                            Loading tasks
+                            {t("Loading tasks")}
                           </span>
                         ) : (
-                          "No tasks match the current filters."
+                          t("No tasks match the current filters.")
                         )}
                       </td>
                     </tr>
@@ -364,54 +369,54 @@ export default function AdminTasksPage() {
 
         <aside className="space-y-5">
           <section className="rounded-lg border border-white/10 bg-white/[0.055] p-5 backdrop-blur-2xl">
-            <div className={labelClass}>Task detail</div>
+            <div className={labelClass}>{t("Task detail")}</div>
             {selectedTask ? (
               <>
                 <h2 className="mt-2 font-[var(--font-display)] text-xl font-bold text-white">
                   {selectedTask.title}
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-white/52">
-                  {selectedTask.description || "No task description."}
+                  {selectedTask.description || t("No task description.")}
                 </p>
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-lg border border-white/10 bg-black/18 p-3">
-                    <div className={labelClass}>Assignments</div>
+                    <div className={labelClass}>{t("Assignments")}</div>
                     <div className="mt-2 font-[var(--font-display)] text-2xl font-bold text-[#d8ff5d]">
                       {selectedTask.completed_assignment_count}/{selectedTask.assignment_count}
                     </div>
                   </div>
                   <div className="rounded-lg border border-white/10 bg-black/18 p-3">
-                    <div className={labelClass}>Due</div>
+                    <div className={labelClass}>{t("Due")}</div>
                     <div className="mt-2 text-sm font-semibold text-white">
-                      {formatDateTime(selectedTask.due_at)}
+                      {formatDateTime(selectedTask.due_at, language)}
                     </div>
                   </div>
                 </div>
                 <label className="mt-5 block space-y-2">
-                  <span className={labelClass}>Admin status override</span>
+                  <span className={labelClass}>{t("Admin status override")}</span>
                   <select className={fieldClass} value={detailStatus} onChange={(event) => setDetailStatus(event.target.value)}>
                     {taskStatuses.map((status) => (
                       <option key={status} value={status}>
-                        {status}
+                        {t(status)}
                       </option>
                     ))}
                   </select>
                 </label>
                 <button type="button" onClick={saveTaskStatus} disabled={isSaving} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#d8ff5d]/32 bg-[#d8ff5d]/10 px-4 text-sm font-semibold text-[#f1ffc1] transition hover:bg-[#d8ff5d]/16 disabled:cursor-not-allowed disabled:opacity-60">
                   {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                  Save status
+                  {t("Save status")}
                 </button>
               </>
             ) : (
               <p className="mt-3 text-sm leading-6 text-white/50">
-                Select a task to inspect assignments and supervise status.
+                {t("Select a task to inspect assignments and supervise status.")}
               </p>
             )}
           </section>
 
           {selectedTask ? (
             <section className="rounded-lg border border-white/10 bg-white/[0.055] p-5 backdrop-blur-2xl">
-              <div className={labelClass}>Student progress</div>
+              <div className={labelClass}>{t("Student progress")}</div>
               <div className="mt-4 max-h-[32rem] space-y-3 overflow-y-auto pr-1">
                 {selectedTask.assignments.map((assignment) => (
                   <div key={assignment.public_id} className="rounded-lg border border-white/10 bg-black/18 p-3">
@@ -419,23 +424,23 @@ export default function AdminTasksPage() {
                       <div className="min-w-0">
                         <div className="truncate font-semibold text-white">{assignment.student_name}</div>
                         <div className="mt-1 text-xs text-white/40">
-                          Last submission {formatDateTime(assignment.last_submission_at)}
+                          {t("Last submission")} {formatDateTime(assignment.last_submission_at, language)}
                         </div>
                       </div>
                       <span className={cn("rounded-full border px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.12em]", statusTone(assignment.status))}>
-                        {assignment.status}
+                        {t(assignment.status)}
                       </span>
                     </div>
                     <div className="mt-3 flex items-center justify-between text-xs text-white/48">
-                      <span>{assignment.completed_sessions} sessions</span>
-                      <span>Best {assignment.best_score ?? "--"}</span>
+                      <span>{assignment.completed_sessions} {t("sessions")}</span>
+                      <span>{t("Best")} {assignment.best_score ?? "--"}</span>
                       <span>{assignment.progress_percent ?? 0}%</span>
                     </div>
                   </div>
                 ))}
                 {selectedTask.assignments.length === 0 ? (
                   <div className="rounded-lg border border-white/10 bg-black/18 p-5 text-center text-sm text-white/48">
-                    No assignments are attached to this task.
+                    {t("No assignments are attached to this task.")}
                   </div>
                 ) : null}
               </div>

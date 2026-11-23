@@ -1,4 +1,7 @@
 "use client";
+import { useAppLanguage } from "@/components/account/LanguagePreferenceProvider";
+import { useAdminText } from "@/components/admin/adminCopy";
+
 
 import { useEffect, useState } from "react";
 import { isAdminRole } from "@/lib/authRedirect";
@@ -55,17 +58,17 @@ function statusTone(status: string) {
   return "border-[#65f7ff]/24 bg-[#65f7ff]/10 text-[#dffbff]";
 }
 
-function scopeLabel(item: AdminAnnouncementRead) {
+function scopeLabel(item: AdminAnnouncementRead, t: (value: string) => string) {
   if (item.scope_type === "camp") {
-    return item.camp_name || "Camp";
+    return item.camp_name || t("Camp");
   }
   if (item.scope_type === "class") {
-    return item.class_name || "Class";
+    return item.class_name || t("Class");
   }
   if (item.scope_type === "role") {
-    return item.target_role || "Role";
+    return t(item.target_role || "Role");
   }
-  return "Global";
+  return t("Global");
 }
 
 function scopedPayload(form: AdminCreateAnnouncementPayload): AdminCreateAnnouncementPayload {
@@ -139,6 +142,8 @@ function emptyForm(): AdminCreateAnnouncementPayload {
 }
 
 export default function AdminAnnouncementsPage() {
+  const language = useAppLanguage();
+  const t = useAdminText();
   const user = useAuthStore((state) => state.user);
   const hasInitialized = useAuthStore((state) => state.hasInitialized);
   const isInitializing = useAuthStore((state) => state.isInitializing);
@@ -230,7 +235,7 @@ export default function AdminAnnouncementsPage() {
           content: form.content.trim(),
         }),
       );
-      setMessage(`Published ${created.title}.`);
+      setMessage(t("Published {0}.", created.title));
       setForm(emptyForm());
       await loadAnnouncements();
       setSelectedAnnouncement(null);
@@ -274,7 +279,7 @@ export default function AdminAnnouncementsPage() {
           content: form.content.trim(),
         }),
       );
-      setMessage(`Updated ${updated.title}.`);
+      setMessage(t("Updated {0}.", updated.title));
       await loadAnnouncements();
       setSelectedAnnouncement(updated);
     } catch (saveError) {
@@ -303,7 +308,7 @@ export default function AdminAnnouncementsPage() {
     setMessage(null);
     try {
       await adminService.archiveAnnouncement(item.public_id);
-      setMessage(`Archived ${item.title}.`);
+      setMessage(t("Archived {0}.", item.title));
       await loadAnnouncements();
       if (selectedAnnouncement?.public_id === item.public_id) {
         setSelectedAnnouncement(null);
@@ -333,11 +338,11 @@ export default function AdminAnnouncementsPage() {
   }
 
   return (
-    <AdminShell user={user} title="Announcements" breadcrumb={["Announcements"]}>
+    <AdminShell user={user} title={t("Announcements")} breadcrumb={[t("Announcements")]}>
       {error ? (
         <div className="flex items-start gap-3 rounded-lg border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-100">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{error}</span>
+          <span>{t(error)}</span>
         </div>
       ) : null}
       {message ? (
@@ -351,49 +356,49 @@ export default function AdminAnnouncementsPage() {
         <section className="min-w-0 rounded-lg border border-white/10 bg-white/[0.055] p-5 backdrop-blur-2xl">
           <div>
             <div>
-              <div className={labelClass}>Broadcast center</div>
+              <div className={labelClass}>{t("Broadcast center")}</div>
               <h1 className="mt-2 font-[var(--font-display)] text-2xl font-bold text-white">
-                Scope-aware announcements
+                {t("Scope-aware announcements")}
               </h1>
               <p className="mt-2 text-sm text-white/52">
-                {announcements.length} announcements in the current view
+                {announcements.length} {t("announcements in the current view")}
               </p>
             </div>
           </div>
 
           <form className={cn(adminFilterFormClass, "lg:grid-cols-4")} onSubmit={submitFilters}>
-            <AdminFilterField label="Scope">
+            <AdminFilterField label={t("Scope")}>
               <select className={fieldClass} value={scopeFilter} onChange={(event) => setScopeFilter(event.target.value as AdminAnnouncementScopeType | "")}>
-                <option value="">All scopes</option>
+                <option value="">{t("All scopes")}</option>
                 {scopes.map((scope) => (
                   <option key={scope} value={scope}>
-                    {scope}
+                    {t(scope)}
                   </option>
                 ))}
               </select>
             </AdminFilterField>
-            <AdminFilterField label="Status">
+            <AdminFilterField label={t("Status")}>
               <select className={fieldClass} value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-                <option value="">All status</option>
+                <option value="">{t("All status")}</option>
                 {statuses.map((status) => (
                   <option key={status} value={status}>
-                    {status}
+                    {t(status)}
                   </option>
                 ))}
               </select>
             </AdminFilterField>
-            <AdminFilterField label="Keyword">
+            <AdminFilterField label={t("Keyword")}>
               <input
                 className={fieldClass}
                 value={keyword}
                 onChange={(event) => setKeyword(event.target.value)}
-                placeholder="Title or content"
+                placeholder={t("Title or content")}
               />
             </AdminFilterField>
             <AdminFilterAction>
               <button type="submit" className={adminFilterButtonClass}>
                 <Search className="h-4 w-4" />
-                Search
+                {t("Search")}
               </button>
             </AdminFilterAction>
           </form>
@@ -403,12 +408,12 @@ export default function AdminAnnouncementsPage() {
               <table className="min-w-[980px] w-full border-collapse text-left text-sm">
                 <thead className="border-b border-white/10 bg-white/[0.035] text-[0.68rem] uppercase tracking-[0.18em] text-white/42">
                   <tr>
-                    <th className="px-4 py-3 font-semibold">Announcement</th>
-                    <th className="px-4 py-3 font-semibold">Scope</th>
-                    <th className="px-4 py-3 text-right font-semibold">Notify</th>
-                    <th className="px-4 py-3 font-semibold">Publish</th>
-                    <th className="px-4 py-3 font-semibold">Status</th>
-                    <th className="px-4 py-3 text-right font-semibold">Actions</th>
+                    <th className="px-4 py-3 font-semibold">{t("Announcement")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Scope")}</th>
+                    <th className="px-4 py-3 text-right font-semibold">{t("Notify")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Publish")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Status")}</th>
+                    <th className="px-4 py-3 text-right font-semibold">{t("Actions")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/8">
@@ -424,30 +429,30 @@ export default function AdminAnnouncementsPage() {
                         </div>
                       </td>
                       <td className="px-4 py-4 text-white/62">
-                        <div className="font-semibold text-white">{scopeLabel(item)}</div>
-                        <div className="mt-1 text-xs text-white/38">{item.scope_type}</div>
+                        <div className="font-semibold text-white">{scopeLabel(item, t)}</div>
+                        <div className="mt-1 text-xs text-white/38">{t(item.scope_type)}</div>
                       </td>
                       <td className="px-4 py-4 text-right">
                         <div className="font-[var(--font-display)] text-xl font-bold text-[#d8ff5d]">
                           {item.notification_count}
                         </div>
-                        <div className="mt-1 text-xs text-white/42">{item.read_count} read</div>
+                        <div className="mt-1 text-xs text-white/42">{item.read_count} {t("read")}</div>
                       </td>
-                      <td className="px-4 py-4 text-white/62">{formatDateTime(item.publish_at || item.created_at)}</td>
+                      <td className="px-4 py-4 text-white/62">{formatDateTime(item.publish_at || item.created_at, language)}</td>
                       <td className="px-4 py-4">
                         <span className={cn("rounded-full border px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em]", statusTone(item.status))}>
-                          {item.status}
+                          {t(item.status)}
                         </span>
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex justify-end gap-2">
                           <button type="button" onClick={() => selectAnnouncement(item)} className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[#65f7ff]/24 bg-[#65f7ff]/10 px-3 text-xs font-semibold text-[#dffbff] transition hover:bg-[#65f7ff]/16">
                             <Save className="h-4 w-4" />
-                            Edit
+                            {t("Edit")}
                           </button>
                           <button type="button" onClick={() => archiveAnnouncement(item)} className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.045] px-3 text-xs font-semibold text-white/72 transition hover:border-red-300/24 hover:bg-red-400/10 hover:text-red-100">
                             <Archive className="h-4 w-4" />
-                            Archive
+                            {t("Archive")}
                           </button>
                         </div>
                       </td>
@@ -459,10 +464,10 @@ export default function AdminAnnouncementsPage() {
                         {isLoading ? (
                           <span className="inline-flex items-center gap-2">
                             <Loader2 className="h-4 w-4 animate-spin text-[#65f7ff]" />
-                            Loading announcements
+                            {t("Loading announcements")}
                           </span>
                         ) : (
-                          "No announcements match the current filters."
+                          t("No announcements match the current filters.")
                         )}
                       </td>
                     </tr>
@@ -474,26 +479,26 @@ export default function AdminAnnouncementsPage() {
         </section>
 
         <aside className="rounded-lg border border-white/10 bg-white/[0.055] p-5 backdrop-blur-2xl">
-          <div className={labelClass}>{selectedAnnouncement ? "Edit announcement" : "Create announcement"}</div>
+          <div className={labelClass}>{selectedAnnouncement ? t("Edit announcement") : t("Create announcement")}</div>
           <h2 className="mt-2 font-[var(--font-display)] text-xl font-bold text-white">
-            {selectedAnnouncement ? selectedAnnouncement.title : "Publish broadcast"}
+            {selectedAnnouncement ? selectedAnnouncement.title : t("Publish broadcast")}
           </h2>
           <form className="mt-5 space-y-4" onSubmit={submitAnnouncementForm}>
             <label className="block space-y-2">
-              <span className={labelClass}>Scope</span>
+              <span className={labelClass}>{t("Scope")}</span>
               <select className={fieldClass} value={form.scope_type} onChange={(event) => setForm((current) => ({ ...current, scope_type: event.target.value as AdminAnnouncementScopeType }))}>
                 {scopes.map((scope) => (
                   <option key={scope} value={scope}>
-                    {scope}
+                    {t(scope)}
                   </option>
                 ))}
               </select>
             </label>
             {form.scope_type === "camp" ? (
               <label className="block space-y-2">
-                <span className={labelClass}>Camp</span>
+                <span className={labelClass}>{t("Camp")}</span>
                 <select className={fieldClass} value={form.camp_public_id ?? ""} onChange={(event) => setForm((current) => ({ ...current, camp_public_id: event.target.value }))} required>
-                  <option value="">Select camp</option>
+                  <option value="">{t("Select camp")}</option>
                   {camps.map((camp) => (
                     <option key={camp.public_id} value={camp.public_id}>
                       {camp.name}
@@ -504,9 +509,9 @@ export default function AdminAnnouncementsPage() {
             ) : null}
             {form.scope_type === "class" ? (
               <label className="block space-y-2">
-                <span className={labelClass}>Class</span>
+                <span className={labelClass}>{t("Class")}</span>
                 <select className={fieldClass} value={form.class_public_id ?? ""} onChange={(event) => setForm((current) => ({ ...current, class_public_id: event.target.value }))} required>
-                  <option value="">Select class</option>
+                  <option value="">{t("Select class")}</option>
                   {classes.map((classItem) => (
                     <option key={classItem.public_id} value={classItem.public_id}>
                       {classItem.name} / {classItem.camp_name}
@@ -517,42 +522,42 @@ export default function AdminAnnouncementsPage() {
             ) : null}
             {form.scope_type === "role" ? (
               <label className="block space-y-2">
-                <span className={labelClass}>Target role</span>
+                <span className={labelClass}>{t("Target role")}</span>
                 <select className={fieldClass} value={form.target_role ?? "student"} onChange={(event) => setForm((current) => ({ ...current, target_role: event.target.value as AdminUserRole }))}>
                   {targetRoles.map((role) => (
                     <option key={role} value={role}>
-                      {role}
+                      {t(role)}
                     </option>
                   ))}
                 </select>
               </label>
             ) : null}
             <label className="block space-y-2">
-              <span className={labelClass}>Title</span>
+              <span className={labelClass}>{t("Title")}</span>
               <input className={fieldClass} value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} required />
             </label>
             <label className="block space-y-2">
-              <span className={labelClass}>Content</span>
+              <span className={labelClass}>{t("Content")}</span>
               <textarea className={`${fieldClass} min-h-36 resize-y py-3`} value={form.content} onChange={(event) => setForm((current) => ({ ...current, content: event.target.value }))} required />
             </label>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block space-y-2">
-                <span className={labelClass}>Status</span>
+                <span className={labelClass}>{t("Status")}</span>
                 <select className={fieldClass} value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}>
                   {statuses.map((status) => (
                     <option key={status} value={status}>
-                      {status}
+                      {t(status)}
                     </option>
                   ))}
                 </select>
               </label>
               <label className="flex min-h-11 items-center justify-between gap-4 rounded-lg border border-white/10 bg-black/20 px-3">
-                <span className="text-sm font-semibold text-white/72">Pinned</span>
+                <span className="text-sm font-semibold text-white/72">{t("Pinned")}</span>
                 <input type="checkbox" checked={Boolean(form.is_pinned)} onChange={(event) => setForm((current) => ({ ...current, is_pinned: event.target.checked }))} className="h-4 w-4 accent-[#d8ff5d]" />
               </label>
             </div>
             <label className="flex min-h-11 items-center justify-between gap-4 rounded-lg border border-white/10 bg-black/20 px-3">
-              <span className="text-sm font-semibold text-white/72">Notify recipients</span>
+              <span className="text-sm font-semibold text-white/72">{t("Notify recipients")}</span>
               <input type="checkbox" checked={Boolean(form.notify_recipients)} onChange={(event) => setForm((current) => ({ ...current, notify_recipients: event.target.checked }))} className="h-4 w-4 accent-[#d8ff5d]" />
             </label>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -563,9 +568,9 @@ export default function AdminAnnouncementsPage() {
                 return (
                   <>
                     <div className="grid gap-3 rounded-lg border border-white/10 bg-black/16 p-3">
-                      <div className={labelClass}>Publish schedule</div>
+                      <div className={labelClass}>{t("Publish schedule")}</div>
                       <label className="block space-y-2">
-                        <span className="text-xs font-semibold text-white/58">Date</span>
+                        <span className="text-xs font-semibold text-white/58">{t("Date")}</span>
                         <input
                           className={fieldClass}
                           type="date"
@@ -580,7 +585,7 @@ export default function AdminAnnouncementsPage() {
                         />
                       </label>
                       <label className="block space-y-2">
-                        <span className="text-xs font-semibold text-white/58">Time</span>
+                        <span className="text-xs font-semibold text-white/58">{t("Time")}</span>
                         <input
                           className={fieldClass}
                           type="time"
@@ -598,9 +603,9 @@ export default function AdminAnnouncementsPage() {
                       </label>
                     </div>
                     <div className="grid gap-3 rounded-lg border border-white/10 bg-black/16 p-3">
-                      <div className={labelClass}>Expire schedule</div>
+                      <div className={labelClass}>{t("Expire schedule")}</div>
                       <label className="block space-y-2">
-                        <span className="text-xs font-semibold text-white/58">Date</span>
+                        <span className="text-xs font-semibold text-white/58">{t("Date")}</span>
                         <input
                           className={fieldClass}
                           type="date"
@@ -615,7 +620,7 @@ export default function AdminAnnouncementsPage() {
                         />
                       </label>
                       <label className="block space-y-2">
-                        <span className="text-xs font-semibold text-white/58">Time</span>
+                        <span className="text-xs font-semibold text-white/58">{t("Time")}</span>
                         <input
                           className={fieldClass}
                           type="time"
@@ -639,17 +644,17 @@ export default function AdminAnnouncementsPage() {
             {selectedAnnouncement ? (
               <button type="button" onClick={saveSelectedAnnouncement} disabled={isSaving} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#d8ff5d]/32 bg-[#d8ff5d]/10 px-4 text-sm font-semibold text-[#f1ffc1] transition hover:bg-[#d8ff5d]/16 disabled:cursor-not-allowed disabled:opacity-60">
                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Save announcement
+                {t("Save announcement")}
               </button>
             ) : (
               <button type="submit" disabled={isSaving} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#65f7ff]/34 bg-[#65f7ff]/12 px-4 text-sm font-semibold text-[#dffbff] transition hover:bg-[#65f7ff]/18 disabled:cursor-not-allowed disabled:opacity-60">
                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                Create announcement
+                {t("Create announcement")}
               </button>
             )}
             {selectedAnnouncement ? (
               <button type="button" onClick={startNewAnnouncement} className="inline-flex min-h-10 w-full items-center justify-center rounded-lg border border-white/10 bg-white/[0.045] px-4 text-sm font-semibold text-white/62 transition hover:bg-white/[0.08]">
-                New announcement
+                {t("New announcement")}
               </button>
             ) : null}
           </form>

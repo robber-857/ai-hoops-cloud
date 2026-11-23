@@ -68,6 +68,8 @@ export type AccountAnnouncement = {
   title: string;
   content: string;
   scopeLabel: string;
+  scopeIsName?: boolean;
+  targetRole?: string | null;
   publishedAt: string;
   isPinned: boolean;
   isRead: boolean;

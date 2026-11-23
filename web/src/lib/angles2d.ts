@@ -79,20 +79,24 @@ function drawAngle(
  * @param ctx - Canvas 2D 上下文
  * @param landmarks - MediaPipe 返回的关节点数组
  */
-export function calculateAndDrawAngles(ctx: CanvasRenderingContext2D, landmarks: NormalizedLandmarkList) {
+export function calculateAndDrawAngles(
+  ctx: CanvasRenderingContext2D,
+  landmarks: NormalizedLandmarkList,
+  label: (name: string) => string = name => name,
+) {
   // 索引来自 MediaPipe Pose Landkmarks 文档
   // 左肘
-  drawAngle(ctx, landmarks, 11, 13, 15, 'L Elbow');
+  drawAngle(ctx, landmarks, 11, 13, 15, label('L Elbow'));
   // 右肘
-  drawAngle(ctx, landmarks, 12, 14, 16, 'R Elbow');
+  drawAngle(ctx, landmarks, 12, 14, 16, label('R Elbow'));
   // 左膝
-  drawAngle(ctx, landmarks, 23, 25, 27, 'L Knee');
+  drawAngle(ctx, landmarks, 23, 25, 27, label('L Knee'));
   // 右膝
-  drawAngle(ctx, landmarks, 24, 26, 28, 'R Knee');
+  drawAngle(ctx, landmarks, 24, 26, 28, label('R Knee'));
   // 左肩
-  drawAngle(ctx, landmarks, 13, 11, 23, 'L Shoulder');
+  drawAngle(ctx, landmarks, 13, 11, 23, label('L Shoulder'));
   // 右肩
-  drawAngle(ctx, landmarks, 14, 12, 24, 'R Shoulder');
+  drawAngle(ctx, landmarks, 14, 12, 24, label('R Shoulder'));
 }
 
 // --- 以下是为 React 组件 (PoseAnalysisView) 新增/恢复的函数 ---

@@ -1,6 +1,8 @@
+"use client";
+import { usePlayerCopy } from "@/components/account/playerCopy";
 import Link from "next/link";
 import { ArrowUpRight, CalendarDays, Dumbbell, UsersRound } from "lucide-react";
-import { getTemplateById } from "@/config/templates";
+import { templateDisplayName } from "@/lib/templateLanguage";
 import type { CampPlan } from "@/services/campPlans";
 export const focusLabels: Record<string, string> = {
   fitness: "Fitness foundations",
@@ -9,15 +11,16 @@ export const focusLabels: Record<string, string> = {
   general: "All-round development",
 };
 export function PlanDetails({ plan }: { plan: CampPlan }) {
+  const { t, language, isChinese } = usePlayerCopy();
   return (
     <div className="min-w-0 break-words">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div>
           <h2 className="text-xl font-bold tracking-tight">{plan.title}</h2>
-          <p className="mt-1 text-sm font-medium text-[var(--ui-muted)]">{focusLabels[plan.focus] ?? plan.focus}</p>
+          <p className="mt-1 text-sm font-medium text-[var(--ui-muted)]">{t(focusLabels[plan.focus] ?? plan.focus)}</p>
         </div>
         <span className="rounded-full bg-[var(--ui-accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--ui-accent)]">
-          {plan.status === "draft" ? "Draft" : "Published"}
+          {plan.status === "draft" ? t("Draft") : t("Published")}
         </span>
       </div>
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm text-[var(--ui-muted)]">
@@ -27,12 +30,12 @@ export function PlanDetails({ plan }: { plan: CampPlan }) {
         </span>
         <span className="inline-flex min-w-0 items-center gap-1.5">
           <UsersRound size={16} className="shrink-0" aria-hidden="true" />
-          {plan.class_name} · {plan.student_name ? `Personal plan for ${plan.student_name}` : "Class plan"}
+          {plan.class_name} · {plan.student_name ? (isChinese ? `${plan.student_name}的个人计划` : `Personal plan for ${plan.student_name}`) : t("Class plan")}
         </span>
       </div>
       {plan.supersedes_public_id && (
         <p className="mt-3 text-sm text-[var(--ui-accent)]">
-          Updated plan. Earlier versions are available in history.
+          {t("Updated plan. Earlier versions are available in history.")}
         </p>
       )}
       {plan.notes && (
@@ -41,14 +44,14 @@ export function PlanDetails({ plan }: { plan: CampPlan }) {
       <ol className="mt-5 space-y-2.5">
         {plan.items.map((item, index) => {
           const workload = [
-            item.sets && `${item.sets} ${item.sets === 1 ? "set" : "sets"}`,
-            item.reps && `${item.reps} ${item.reps === 1 ? "rep" : "reps"}`,
-            item.duration_minutes && `${item.duration_minutes} min`,
+            item.sets && `${item.sets} ${item.sets === 1 ? t("set") : t("sets")}`,
+            item.reps && `${item.reps} ${item.reps === 1 ? t("rep") : t("reps")}`,
+            item.duration_minutes && `${item.duration_minutes} ${isChinese ? "分钟" : "min"}`,
           ].filter(Boolean);
           const assessmentHref = item.template_code && ["training", "shooting", "dribbling"].includes(item.analysis_type ?? "")
             ? `/pose-2d/${item.analysis_type}?templateCode=${encodeURIComponent(item.template_code)}&classId=${encodeURIComponent(plan.class_public_id)}`
             : null;
-          const assessmentName = item.template_code ? getTemplateById(item.template_code)?.displayName : null;
+          const assessmentName = templateDisplayName(item.template_code, null, language) || item.name;
           return (
             <li key={index} className="flex flex-col gap-3 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-subtle)] p-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex min-w-0 gap-3">
@@ -64,7 +67,7 @@ export function PlanDetails({ plan }: { plan: CampPlan }) {
                       ))}
                     </div>
                   ) : (
-                    <p className="mt-1 text-sm text-[var(--ui-muted)]">Follow coach instructions</p>
+                    <p className="mt-1 text-sm text-[var(--ui-muted)]">{t("Follow coach instructions")}</p>
                   )}
                   {item.instructions && (
                     <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--ui-muted)]">{item.instructions}</p>
@@ -75,9 +78,9 @@ export function PlanDetails({ plan }: { plan: CampPlan }) {
                 <Link
                   className="ui-button ui-primary self-start sm:shrink-0"
                   href={assessmentHref}
-                  aria-label={`Start assessment for ${assessmentName ?? item.name}`}
+                  aria-label={language === "zh-CN" ? `开始评估：${assessmentName}` : `Start assessment for ${assessmentName}`}
                 >
-                  Start assessment <ArrowUpRight size={16} aria-hidden="true" />
+                  {t("Start assessment")} <ArrowUpRight size={16} aria-hidden="true" />
                 </Link>
               )}
             </li>

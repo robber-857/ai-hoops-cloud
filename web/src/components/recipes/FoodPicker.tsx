@@ -1,8 +1,12 @@
 "use client";
+
+import { useInterfaceText } from "@/hooks/useInterfaceText";
+
 import { useEffect, useState } from "react";
 import { recipeService, type Food } from "@/services/recipes";
 import { field, button, ErrorNotice } from "./RecipeShared";
 export function FoodPicker({ onAdd }: { onAdd: (food: Food) => void }) {
+  const t = useInterfaceText();
   const [releases, setReleases] = useState<{ id: number; name: string }[]>([]);
   const [release, setRelease] = useState(0),
     [query, setQuery] = useState(""),
@@ -65,16 +69,15 @@ export function FoodPicker({ onAdd }: { onAdd: (food: Food) => void }) {
   }, [release, query, offset, retry]);
   return (
     <section className="mt-6 border-t border-white/20 pt-5">
-      <h3 className="text-xl font-semibold">Find an ingredient</h3>
+      <h3 className="text-xl font-semibold">{t("Find an ingredient")}</h3>
       <p className="mt-2 text-sm text-white/70">
-        Choose the food and cooking state that match your edible ingredient
-        weight.
+        {t("Choose the food and cooking state that match your edible ingredient weight.")}
       </p>
       <div className="my-4 grid gap-4 sm:grid-cols-2">
         <label>
-          Food source
+          {t("Food source")}
           <select
-            aria-label="Food source"
+            aria-label={t("Food source")}
             className={field}
             value={release}
             onChange={(e) => {
@@ -83,7 +86,7 @@ export function FoodPicker({ onAdd }: { onAdd: (food: Food) => void }) {
             }}
           >
             <option value={0} disabled>
-              Select source
+              {t("Select source")}
             </option>
             {releases.map((r) => (
               <option key={r.id} value={r.id}>
@@ -93,7 +96,7 @@ export function FoodPicker({ onAdd }: { onAdd: (food: Food) => void }) {
           </select>
         </label>
         <label>
-          Food name
+          {t("Food name")}
           <input
             className={field}
             value={query}
@@ -101,7 +104,7 @@ export function FoodPicker({ onAdd }: { onAdd: (food: Food) => void }) {
               setQuery(e.target.value);
               setOffset(0);
             }}
-            placeholder="For example, rice cooked"
+            placeholder={t("For example, rice cooked")}
           />
         </label>
       </div>
@@ -109,11 +112,11 @@ export function FoodPicker({ onAdd }: { onAdd: (food: Food) => void }) {
         <ErrorNotice error={error} retry={() => setRetry((v) => v + 1)} />
       )}
       {loading ? (
-        <p role="status">Searching foods…</p>
+        <p role="status">{t("Searching foods…")}</p>
       ) : !release ? (
-        <p>No food source has been imported yet.</p>
+        <p>{t("No food source has been imported yet.")}</p>
       ) : !foods.length ? (
-        <p>No matching foods. Try a shorter name.</p>
+        <p>{t("No matching foods. Try a shorter name.")}</p>
       ) : (
         <ul className="max-h-96 overflow-y-auto divide-y divide-white/20">
           {foods.map((f) => (
@@ -122,23 +125,23 @@ export function FoodPicker({ onAdd }: { onAdd: (food: Food) => void }) {
               className="flex items-start justify-between gap-4 py-4"
             >
               <div className="min-w-0">
-                <p className="break-words font-medium">{f.name?.trim() || "Food name unavailable — retry the search"}</p>
+                <p className="break-words font-medium">{f.name?.trim() || t("Food name unavailable — retry the search")}</p>
                 <p className="mt-1 text-sm text-white/70">
                   {f.details["Food Description"]}
                 </p>
                 <p className="mt-1 text-xs text-white/60">
-                  Analysed portion:{" "}
-                  {f.details["Analysed Portion"] || "Not specified"}
+                  {t("Analysed portion:")}{" "}
+                  {f.details["Analysed Portion"] || t("Not specified")}
                 </p>
               </div>
               <button
                 type="button"
                 className={button + " shrink-0"}
                 disabled={!f.name?.trim()}
-                aria-label={`Add ${f.name}`}
+                aria-label={t("Add {0}", f.name)}
                 onClick={() => onAdd(f)}
               >
-                Add
+                {t("Add")}
               </button>
             </li>
           ))}
@@ -151,7 +154,7 @@ export function FoodPicker({ onAdd }: { onAdd: (food: Food) => void }) {
           disabled={loading || offset === 0}
           onClick={() => setOffset((v) => Math.max(0, v - 20))}
         >
-          Previous foods
+          {t("Previous foods")}
         </button>
         <button
           type="button"
@@ -159,7 +162,7 @@ export function FoodPicker({ onAdd }: { onAdd: (food: Food) => void }) {
           disabled={loading || !more || !!error}
           onClick={() => setOffset((v) => v + 20)}
         >
-          Next foods
+          {t("Next foods")}
         </button>
       </div>
     </section>

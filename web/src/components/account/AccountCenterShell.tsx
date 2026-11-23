@@ -1,5 +1,8 @@
 "use client";
 
+import { useInterfaceText } from "@/hooks/useInterfaceText";
+
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -11,6 +14,7 @@ import {
   accountNavigation,
   accountNavigationSections,
   profileNavigation,
+  settingsNavigation,
   trainingNavigation,
 } from "./accountNavigation";
 import { routes } from "@/lib/routes";
@@ -32,17 +36,18 @@ function AccountNavLink({
   collapsed: boolean;
 }) {
   const Icon = item.icon;
+  const t = useInterfaceText();
 
   return (
     <Link
       href={item.href}
-      title={collapsed ? item.label : undefined}
-      aria-label={collapsed ? item.label : undefined}
+      title={collapsed ? t(item.label) : undefined}
+      aria-label={collapsed ? t(item.label) : undefined}
       aria-current={matches(pathname, item) ? "page" : undefined}
       className={cn("account-nav-item", collapsed && "justify-center")}
     >
       <Icon size={17} aria-hidden="true" className="shrink-0" />
-      {!collapsed && item.label}
+      {!collapsed && t(item.label)}
     </Link>
   );
 }
@@ -54,6 +59,7 @@ export function AccountCenterShell({
   children: React.ReactNode;
   username: string;
 }) {
+  const t = useInterfaceText();
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const pageLabel = accountNavigation.find((item) => matches(pathname, item))?.label;
@@ -77,11 +83,11 @@ export function AccountCenterShell({
         href="#account-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-2 focus:z-[80] focus:bg-[var(--ui-action)] focus:p-3 focus:text-[var(--ui-action-text)]"
       >
-        Skip to content
+        {t("Skip to content")}
       </a>
       <aside className="sticky top-0 hidden h-dvh flex-col border-r border-[var(--ui-border)] bg-[var(--ui-sidebar)] px-3 pb-4 pt-3 lg:flex">
         <div className={cn("flex min-h-12 items-center justify-between gap-1 px-1", collapsed && "flex-col pb-2")}>
-          <Link href={routes.home} aria-label="AI Hoops home" className="flex items-center gap-2.5 rounded-md">
+          <Link href={routes.home} aria-label={t("AI Hoops home")} className="flex items-center gap-2.5 rounded-md">
             <span className="flex size-8 items-center justify-center rounded-lg bg-[var(--ui-action)] text-[var(--ui-action-text)]">
               <CircleDot size={19} aria-hidden="true" />
             </span>
@@ -92,8 +98,8 @@ export function AccountCenterShell({
             onClick={() => setCollapsed(!collapsed)}
             aria-expanded={!collapsed}
             aria-controls="student-sidebar"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={collapsed ? t("Expand sidebar") : t("Collapse sidebar")}
+            title={collapsed ? t("Expand sidebar") : t("Collapse sidebar")}
             className="flex size-10 shrink-0 items-center justify-center rounded-lg text-[var(--ui-muted)] hover:bg-[var(--ui-subtle)]"
           >
             {collapsed ? <PanelLeftOpen size={17} aria-hidden="true" /> : <PanelLeftClose size={17} aria-hidden="true" />}
@@ -101,13 +107,13 @@ export function AccountCenterShell({
         </div>
         <nav
           id="student-sidebar"
-          aria-label="Personal center"
+          aria-label={t("Personal center")}
           className="mt-3 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1 py-1"
         >
           {accountNavigationSections.map((section) => (
             <div key={section.label} className="space-y-0.5">
               {!collapsed && (
-                <div className="mb-1 px-2 text-xs font-semibold text-[var(--ui-muted)]">{section.label}</div>
+                <div className="mb-1 px-2 text-xs font-semibold text-[var(--ui-muted)]">{t(section.label)}</div>
               )}
               {section.items.map((item) => (
                 <AccountNavLink key={item.href} item={item} pathname={pathname} collapsed={collapsed} />
@@ -117,8 +123,9 @@ export function AccountCenterShell({
         </nav>
         <div className="mt-3 border-t border-[var(--ui-border)] pt-3">
           <AccountNavLink item={profileNavigation} pathname={pathname} collapsed={collapsed} />
+          <AccountNavLink item={settingsNavigation} pathname={pathname} collapsed={collapsed} />
           <LogoutButton
-            label={collapsed ? "" : "Log out"}
+            label={collapsed ? "" : t("Log out")}
             className={cn("mt-1 w-full justify-start rounded-lg border-0 bg-transparent px-2.5 text-[var(--ui-muted)] shadow-none hover:bg-[var(--ui-subtle)]", collapsed && "justify-center")}
           />
         </div>
@@ -134,32 +141,32 @@ export function AccountCenterShell({
               AI Hoops
             </Link>
             <div className="hidden min-w-0 items-center gap-2 text-sm text-[var(--ui-muted)] lg:flex">
-              <span>Player hub</span>
+              <span>{t("Player hub")}</span>
               {pageLabel && <>
                 <ChevronRight size={14} aria-hidden="true" />
-                <span className="truncate font-semibold text-[var(--ui-text)]">{pageLabel}</span>
+                <span className="truncate font-semibold text-[var(--ui-text)]">{t(pageLabel)}</span>
               </>}
             </div>
             <div className="flex shrink-0 items-center gap-2 sm:gap-3">
               <ThemeToggle />
               <Link
                 href={routes.user.profile}
-                aria-label="Open personal profile"
+                aria-label={t("Open personal profile")}
                 className="flex min-h-11 items-center gap-2 rounded-lg p-1.5 hover:bg-[var(--ui-subtle)]"
               >
                 {avatar}
                 <span className="hidden max-w-32 truncate text-sm font-semibold sm:block">{username}</span>
               </Link>
-              <WorkspaceMobileMenu items={accountNavigation} eyebrow="Player hub" variant="drawer" />
+              <WorkspaceMobileMenu items={accountNavigation} eyebrow={t("Player hub")} variant="drawer" />
             </div>
           </div>
         </header>
-        <nav aria-label="Training workspaces" className="border-b border-[var(--ui-border)] bg-[var(--ui-surface)]">
+        <nav aria-label={t("Training workspaces")} className="border-b border-[var(--ui-border)] bg-[var(--ui-surface)]">
           <div className="mx-auto grid max-w-[1440px] grid-cols-3 items-center gap-1 px-3 sm:flex sm:gap-2 sm:px-6 lg:px-8">
-            <span className="mr-1 hidden text-xs font-semibold text-[var(--ui-muted)] lg:block">Video analysis</span>
+            <span className="mr-1 hidden text-xs font-semibold text-[var(--ui-muted)] lg:block">{t("Video analysis")}</span>
             {trainingNavigation.map(({ href, label, icon: Icon }) => (
               <Link key={href} href={href} className="account-nav-item justify-center sm:px-3">
-                <Icon size={15} aria-hidden="true" className="hidden sm:block" /> {label}
+                <Icon size={15} aria-hidden="true" className="hidden sm:block" /> {t(label)}
               </Link>
             ))}
           </div>

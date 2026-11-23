@@ -1,4 +1,5 @@
 "use client";
+import { usePlayerCopy } from "@/components/account/playerCopy";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -19,6 +20,7 @@ export function LogoutButton({
   className,
   label = "Log Out",
 }: LogoutButtonProps) {
+  const { t } = usePlayerCopy();
   const router = useRouter();
   const clearSession = useAuthStore((state) => state.clearSession);
   const [isPending, setIsPending] = useState(false);
@@ -45,7 +47,7 @@ export function LogoutButton({
   return (
     <Button
       type="button"
-      aria-label={label || "Log out"}
+      aria-label={t(label || "Log out")}
       onClick={handleLogout}
       disabled={isPending}
       className={cn(
@@ -58,7 +60,7 @@ export function LogoutButton({
       ) : (
         <LogOut className="h-4 w-4" />
       )}
-      {label}
+      {t(label)}
     </Button>
   );
 }
