@@ -1,4 +1,5 @@
 "use client";
+import { usePlayerCopy } from "@/components/account/playerCopy";
 
 import { useEffect, useState, type FormEvent } from "react";
 import { Film, Play, Upload } from "lucide-react";
@@ -7,9 +8,10 @@ import { classCollaboration, type ClassVideo } from "@/services/classCollaborati
 
 const surface = "rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] p-4 text-[var(--ui-text)] sm:p-5";
 const button = "inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-bg)] px-3 py-2 text-sm font-semibold text-[var(--ui-text)] hover:bg-[var(--ui-subtle)] disabled:opacity-55";
-const dates = new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeZone: "Australia/Sydney" });
+
 
 function VideoPlayer({ videoId }: { videoId: string }) {
+  const { t } = usePlayerCopy();
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -20,7 +22,7 @@ function VideoPlayer({ videoId }: { videoId: string }) {
     try {
       setUrl((await classCollaboration.playback(videoId)).url);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not open this video.");
+      setError(reason instanceof Error ? reason.message : t("Could not open this video."));
     } finally {
       setBusy(false);
     }
@@ -30,21 +32,23 @@ function VideoPlayer({ videoId }: { videoId: string }) {
     <div className="space-y-2">
       {url ? (
         <video className="block max-h-72 w-full rounded-lg bg-black" controls playsInline autoPlay preload="metadata"
-          aria-label="Class video" src={url} onError={() => {
+          aria-label={t("Class video")} src={url} onError={() => {
             setUrl("");
             setError("Playback was interrupted. Open the video again to retry.");
           }} />
       ) : (
         <button type="button" onClick={() => void play()} disabled={busy} className={button}>
-          <Play className="size-4" /> {busy ? "Opening…" : error ? "Retry playback" : "Play video"}
+          <Play className="size-4" /> {busy ? t("Opening…") : error ? t("Retry playback") : t("Play video")}
         </button>
       )}
-      {error && <p role="alert" className="text-sm text-[var(--ui-danger)]">{error}</p>}
+      {error && <p role="alert" className="text-sm text-[var(--ui-danger)]">{t(error)}</p>}
     </div>
   );
 }
 
 export function ClassVideoLibrary({ classId, canUpload = false }: { classId?: string; canUpload?: boolean }) {
+  const { t, locale, isChinese } = usePlayerCopy();
+  const dates = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "Australia/Sydney" });
   const [videos, setVideos] = useState<ClassVideo[]>([]);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
@@ -79,7 +83,7 @@ export function ClassVideoLibrary({ classId, canUpload = false }: { classId?: st
       setHasMore(page.has_more);
       setOffset((current) => current + page.items.length);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not load more videos.");
+      setError(reason instanceof Error ? reason.message : t("Could not load more videos."));
     } finally {
       setBusy("");
     }
@@ -103,17 +107,17 @@ export function ClassVideoLibrary({ classId, canUpload = false }: { classId?: st
       const video = await classCollaboration.uploadVideo(classId, title, file);
       setVideos((current) => [video, ...current]);
       setOffset((current) => current + 1);
-      setNotice(`${video.title} is now available to the class.`);
+      setNotice(isChinese ? `《${video.title}》已发布到班级视频库。` : `${video.title} is now available to the class.`);
       form.reset();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not upload the video.");
+      setError(reason instanceof Error ? reason.message : t("Could not upload the video."));
     } finally {
       setBusy("");
     }
   }
 
   async function archive(video: ClassVideo) {
-    if (!classId || !window.confirm(`Remove “${video.title}” from the class video library?`)) return;
+    if (!classId || !window.confirm(isChinese ? `确定从班级视频库移除《${video.title}》？` : `Remove “${video.title}” from the class video library?`)) return;
     setBusy(video.public_id);
     setError("");
     setNotice("");
@@ -123,49 +127,49 @@ export function ClassVideoLibrary({ classId, canUpload = false }: { classId?: st
       setOffset((current) => Math.max(0, current - 1));
       setNotice("Video removed from the class library.");
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not remove the video.");
+      setError(reason instanceof Error ? reason.message : t("Could not remove the video."));
     } finally {
       setBusy("");
     }
   }
 
   return (
-    <section className="space-y-5 text-[var(--ui-text)]" aria-label="Class video library">
+    <section className="space-y-5 text-[var(--ui-text)]" aria-label={t("Class video library")}>
       {classId && canUpload && (
         <form onSubmit={(event) => void upload(event)} className={`space-y-4 ${surface}`}>
           <div>
-            <h3 className="font-semibold">Share a video with the class</h3>
-            <p className="mt-1 text-sm text-[var(--ui-muted)]">Current class members can watch it. MP4 or WebM, up to 50 MB.</p>
+            <h3 className="font-semibold">{t("Share a video with the class")}</h3>
+            <p className="mt-1 text-sm text-[var(--ui-muted)]">{t("Current class members can watch it. MP4 or WebM, up to 50 MB.")}</p>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <label className="min-w-0 space-y-1 text-sm font-medium">
-              <span>Video title</span>
+              <span>{t("Video title")}</span>
               <input name="title" required maxLength={140} className="block min-h-10 w-full rounded-lg border border-[var(--ui-border)] bg-[var(--ui-bg)] px-3" disabled={!!busy || loading} />
             </label>
             <label className="min-w-0 space-y-1 text-sm font-medium">
-              <span>Video file</span>
+              <span>{t("Video file")}</span>
               <input type="file" name="video" required accept="video/mp4,video/webm,.mp4,.webm"
                 className="block min-h-10 w-full rounded-lg border border-[var(--ui-border)] bg-[var(--ui-bg)] p-2 text-sm" disabled={!!busy || loading} />
             </label>
           </div>
-          <button type="submit" className={button} disabled={!!busy || loading}><Upload className="size-4" /> {busy === "upload" ? "Uploading…" : "Upload video"}</button>
+          <button type="submit" className={button} disabled={!!busy || loading}><Upload className="size-4" /> {busy === "upload" ? t("Uploading…") : t("Upload video")}</button>
         </form>
       )}
 
-      {notice && <p role="status" className="text-sm">{notice}</p>}
+      {notice && <p role="status" className="text-sm">{t(notice)}</p>}
       {error && (
         <div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-[var(--ui-danger)]">
-          <p>{error}</p>
+          <p>{t(error)}</p>
           {!videos.length && <button type="button" className={button} disabled={loading || !!busy} onClick={() => {
             setError("");
             setLoading(true);
             setReload((current) => current + 1);
-          }}>Retry</button>}
+          }}>{t("Retry")}</button>}
         </div>
       )}
-      {loading && <p role="status" className="text-sm text-[var(--ui-muted)]">Loading videos…</p>}
+      {loading && <p role="status" className="text-sm text-[var(--ui-muted)]">{t("Loading videos…")}</p>}
       {!loading && !error && videos.length === 0 &&
-        <div className={`flex items-center gap-3 ${surface}`}><Film className="size-5 shrink-0" /> <p className="text-sm text-[var(--ui-muted)]">No class videos have been shared yet.</p></div>}
+        <div className={`flex items-center gap-3 ${surface}`}><Film className="size-5 shrink-0" /> <p className="text-sm text-[var(--ui-muted)]">{t("No class videos have been shared yet.")}</p></div>}
 
       {videos.length > 0 && (
         <ul className="grid gap-3 lg:grid-cols-2">
@@ -178,7 +182,7 @@ export function ClassVideoLibrary({ classId, canUpload = false }: { classId?: st
                 </div>
                 {classId && (
                   <button type="button" disabled={!!busy} className="min-h-10 text-sm text-[var(--ui-muted)] hover:underline disabled:opacity-55"
-                    onClick={() => void archive(video)}>Remove</button>
+                    onClick={() => void archive(video)}>{t("Remove")}</button>
                 )}
               </div>
               <VideoPlayer videoId={video.public_id} />
@@ -186,7 +190,7 @@ export function ClassVideoLibrary({ classId, canUpload = false }: { classId?: st
           ))}
         </ul>
       )}
-      {hasMore && <button type="button" disabled={!!busy} className={button} onClick={() => void loadMore()}>{busy === "more" ? "Loading…" : "Load more videos"}</button>}
+      {hasMore && <button type="button" disabled={!!busy} className={button} onClick={() => void loadMore()}>{busy === "more" ? t("Loading…") : t("Load more videos")}</button>}
     </section>
   );
 }

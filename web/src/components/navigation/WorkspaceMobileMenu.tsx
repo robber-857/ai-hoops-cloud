@@ -1,5 +1,8 @@
 "use client";
 
+import { useInterfaceText } from "@/hooks/useInterfaceText";
+
+
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
@@ -60,6 +63,7 @@ function FullscreenWorkspaceMenu({
   eyebrow,
   accent = "lime",
 }: WorkspaceMobileMenuProps) {
+  const t = useInterfaceText();
   const pathname = usePathname();
   const user = useAuthStore((state) => state.user);
   const reduceMotion = useReducedMotion();
@@ -151,8 +155,8 @@ function FullscreenWorkspaceMenu({
         className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-white/12 bg-white/[0.045] text-white/78 outline-none transition lg:hidden ${styles.trigger}`}
         aria-controls={menuId}
         aria-expanded={isOpen}
-        aria-label={isOpen ? "Close workspace menu" : "Open workspace menu"}
-        title={isOpen ? "Close menu" : "Open menu"}
+        aria-label={isOpen ? t("Close workspace menu") : t("Open workspace menu")}
+        title={isOpen ? t("Close menu") : t("Open menu")}
         onClick={() => setIsOpen((current) => !current)}
       >
         {isOpen ? <X className="h-5 w-5" aria-hidden="true" /> : <Menu className="h-5 w-5" aria-hidden="true" />}
@@ -167,7 +171,7 @@ function FullscreenWorkspaceMenu({
             className="theme-workspace fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-[#05070c] px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[calc(5.75rem+env(safe-area-inset-top))] text-white lg:hidden"
             role="dialog"
             aria-modal="true"
-            aria-label={`${eyebrow} navigation`}
+            aria-label={t("{0} navigation", eyebrow)}
             initial={reduceMotion ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -187,7 +191,7 @@ function FullscreenWorkspaceMenu({
                 {eyebrow}
               </p>
 
-              <nav className="border-y border-white/12" aria-label="Workspace navigation">
+              <nav className="border-y border-white/12" aria-label={t("Workspace navigation")}>
                 {items.map((item, index) => {
                   const isActive = isActivePath(pathname, item);
 
@@ -218,7 +222,7 @@ function FullscreenWorkspaceMenu({
                           {String(index + 1).padStart(2, "0")}
                         </span>
                         <span className="min-w-0 break-words font-[var(--font-display)] text-xl font-bold uppercase leading-tight">
-                          {item.label}
+                          {t(item.label)}
                         </span>
                         <ChevronRight
                           className={`h-5 w-5 justify-self-end ${
@@ -244,13 +248,13 @@ function FullscreenWorkspaceMenu({
                       {username}
                     </span>
                     <span className="mt-0.5 block text-[0.65rem] uppercase text-white/42">
-                      {role}
+                      {t(role)}
                     </span>
                   </span>
                 </div>
 
                 <LogoutButton
-                  label="Log out"
+                  label={t("Log out")}
                   className="mt-4 min-h-12 w-full justify-between rounded-lg border-red-300/20 bg-red-400/10 px-4 text-sm"
                 />
               </div>

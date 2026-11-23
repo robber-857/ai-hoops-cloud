@@ -4,6 +4,7 @@ import { useSyncExternalStore } from "react";
 import { Moon, Sun } from "lucide-react";
 import { themeChangeEvent, themeStorageKey } from "@/lib/workspaceTheme";
 import { cn } from "@/lib/utils";
+import { useInterfaceText } from "@/hooks/useInterfaceText";
 
 type Theme = "light" | "dark";
 
@@ -34,7 +35,8 @@ function subscribe(listener: () => void) {
 
 export function ThemeToggle({ className }: { className?: string }) {
   const isLight = useSyncExternalStore(subscribe, getTheme, () => "dark") === "light";
-  const label = isLight ? "Switch to dark mode" : "Switch to light mode";
+  const t = useInterfaceText();
+  const label = t(isLight ? "Switch to dark mode" : "Switch to light mode");
 
   return (
     <button

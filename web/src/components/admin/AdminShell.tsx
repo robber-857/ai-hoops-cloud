@@ -1,4 +1,6 @@
 "use client";
+import { useAdminText } from "@/components/admin/adminCopy";
+
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -11,6 +13,7 @@ import {
   ClipboardList,
   LayoutDashboard,
   Megaphone,
+  Settings,
   ShieldCheck,
   UsersRound,
 } from "lucide-react";
@@ -39,6 +42,7 @@ const navItems = [
   { href: routes.admin.announcements, label: "Announcements", icon: Megaphone },
   { href: routes.admin.tasks, label: "Tasks", icon: ClipboardList },
   { href: routes.admin.notifications, label: "Notifications", icon: Bell },
+  { href: routes.settings, label: "Settings", icon: Settings },
 ];
 
 const mobileNavItems = navItems.map((item, index) => ({
@@ -48,12 +52,13 @@ const mobileNavItems = navItems.map((item, index) => ({
 }));
 
 export function AdminLoadingSurface() {
+  const t = useAdminText();
   return (
     <main className="theme-workspace flex min-h-screen items-center justify-center bg-[#05070c] text-white">
       <div className="rounded-lg border border-white/10 bg-white/[0.055] px-8 py-7 text-center shadow-[0_20px_70px_rgba(0,0,0,0.28)] backdrop-blur-2xl">
         <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-[#65f7ff]/60 border-t-transparent" />
         <div className="mt-4 text-[0.72rem] uppercase tracking-[0.28em] text-white/48">
-          Loading admin console
+          {t("Loading admin console")}
         </div>
       </div>
     </main>
@@ -61,16 +66,16 @@ export function AdminLoadingSurface() {
 }
 
 export function AdminForbiddenSurface({ user }: { user: AuthUser }) {
+  const t = useAdminText();
   return (
-    <AdminShell user={user} title="Admin access required" breadcrumb={["Access"]}>
+    <AdminShell user={user} title={t("Admin access required")} breadcrumb={[t("Access")]}>
       <section className="rounded-lg border border-red-400/20 bg-red-500/10 p-8 text-center backdrop-blur-2xl">
         <AlertTriangle className="mx-auto h-10 w-10 text-red-200" />
         <h2 className="mt-5 font-[var(--font-display)] text-2xl font-bold text-white">
-          This workspace is available to administrators only.
+          {t("This workspace is available to administrators only.")}
         </h2>
         <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-white/58">
-          Current role: {user.role}. Use an admin account to maintain camps, classes, members, and
-          templates.
+          {t("Current role:")} {t(user.role)}{t(". Use an admin account to maintain camps, classes, members, and templates.")}
         </p>
       </section>
     </AdminShell>
@@ -78,28 +83,29 @@ export function AdminForbiddenSurface({ user }: { user: AuthUser }) {
 }
 
 export function AdminShell({ children, user, title, breadcrumb }: AdminShellProps) {
+  const t = useAdminText();
   const pathname = usePathname();
   const username = user.nickname?.trim() || user.username;
 
   return (
     <main className="theme-workspace min-h-screen bg-[#05070c] text-white">
       <div className="workspace-dark-decoration fixed inset-0 bg-[radial-gradient(circle_at_12%_8%,rgba(101,247,255,0.12),transparent_28%),radial-gradient(circle_at_88%_16%,rgba(216,255,93,0.08),transparent_24%),linear-gradient(135deg,#05070c_0%,#08111d_48%,#05070c_100%)]" />
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[16rem] border-r border-white/10 bg-[#07111d]/68 px-4 py-5 shadow-[18px_0_60px_rgba(0,0,0,0.24)] backdrop-blur-2xl lg:block">
-        <Link href={routes.admin.home} className="flex items-center gap-3 px-2">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[16rem] flex-col border-r border-white/10 bg-[#07111d]/68 px-4 py-5 shadow-[18px_0_60px_rgba(0,0,0,0.24)] backdrop-blur-2xl lg:flex">
+        <Link href={routes.admin.home} className="flex shrink-0 items-center gap-3 px-2">
           <span className="flex h-11 w-11 items-center justify-center rounded-lg border border-[#65f7ff]/28 bg-[#65f7ff]/12 text-[#65f7ff]">
             <ShieldCheck className="h-5 w-5" />
           </span>
           <span>
             <span className="block font-[var(--font-display)] text-lg font-bold text-white">
-              AI Hoops
+              {t("AI Hoops")}
             </span>
             <span className="block text-[0.68rem] uppercase tracking-[0.24em] text-[#65f7ff]/70">
-              Admin Ops
+              {t("Admin Ops")}
             </span>
           </span>
         </Link>
 
-        <nav className="mt-10 space-y-2">
+        <nav className="mt-6 min-h-0 flex-1 space-y-2 overflow-y-auto px-1 py-1">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive =
@@ -109,6 +115,7 @@ export function AdminShell({ children, user, title, breadcrumb }: AdminShellProp
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "flex min-h-12 items-center gap-3 rounded-lg px-3 text-sm font-semibold transition",
                   isActive
@@ -117,16 +124,16 @@ export function AdminShell({ children, user, title, breadcrumb }: AdminShellProp
                 )}
               >
                 <Icon className="h-4 w-4 text-[#65f7ff]" />
-                {item.label}
+                {t(item.label)}
               </Link>
             );
           })}
         </nav>
 
-        <div className="absolute inset-x-4 bottom-5 rounded-lg border border-white/10 bg-white/[0.045] p-4">
+        <div className="mt-4 shrink-0 rounded-lg border border-white/10 bg-white/[0.045] p-4">
           <div className="text-sm font-semibold text-white">{username}</div>
           <div className="mt-1 text-[0.68rem] uppercase tracking-[0.2em] text-white/45">
-            {user.role}
+            {t(user.role)}
           </div>
         </div>
       </aside>
@@ -136,7 +143,7 @@ export function AdminShell({ children, user, title, breadcrumb }: AdminShellProp
           <div className="flex min-h-16 items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1 text-[0.68rem] uppercase tracking-[0.18em] text-white/46">
-                <span>Admin</span>
+                <span>{t("Admin")}</span>
                 {breadcrumb.map((item) => (
                   <span key={item} className="flex items-center gap-1">
                     <ChevronRight className="h-3 w-3 text-[#65f7ff]/60" />
@@ -150,13 +157,13 @@ export function AdminShell({ children, user, title, breadcrumb }: AdminShellProp
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <LogoutButton
-                label="Log out"
+                label={t("Log out")}
                 className="hidden min-h-10 rounded-lg border-white/10 bg-white/[0.045] px-3 text-xs text-white/72 hover:bg-white/[0.08] lg:inline-flex"
               />
               <ThemeToggle />
               <WorkspaceMobileMenu
-                items={mobileNavItems}
-                eyebrow="Admin workspace"
+                items={mobileNavItems.map(item => ({ ...item, label: t(item.label) }))}
+                eyebrow={t("Admin workspace")}
                 accent="cyan"
               />
             </div>

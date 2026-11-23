@@ -1,3 +1,5 @@
+"use client";
+import { usePlayerCopy } from "@/components/account/playerCopy";
 import Link from "next/link";
 import { CalendarDays, Mail, Phone, ShieldCheck, Sparkles } from "lucide-react";
 
@@ -34,12 +36,13 @@ export function ProfileSummaryCard({
   joinedLabel,
   displayName,
 }: ProfileSummaryCardProps) {
+  const { t, isChinese } = usePlayerCopy();
   const avatarFallback = getAvatarFallback(user, displayName);
   const primaryHref =
     latestReport?.linkable
       ? `${routes.pose2d.report}?id=${latestReport.id}`
       : routes.pose2d.shooting;
-  const primaryLabel = latestReport?.linkable ? "Open Latest Report" : "Continue Training";
+  const primaryLabel = latestReport?.linkable ? t("Open Latest Report") : t("Continue Training");
 
   return (
     <section className="analysis-surface relative min-w-0 overflow-hidden rounded-[28px] border border-white/10 p-4 sm:rounded-[32px] sm:p-7 lg:p-8">
@@ -64,13 +67,13 @@ export function ProfileSummaryCard({
           <div className="min-w-0">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <Badge className="max-w-full border border-[#d8ff5d]/25 bg-[#d8ff5d]/12 text-[#e8ff9a]">
-                {user.is_active ? "Active account" : "Inactive"}
+                {user.is_active ? t("Active account") : t("Inactive")}
               </Badge>
               <Badge
                 variant="outline"
                 className="max-w-full border-white/12 bg-white/[0.03] text-white/62"
               >
-                {reportSource === "live" ? "Live history" : "Preview metrics"}
+                {reportSource === "live" ? t("Live history") : t("Preview metrics")}
               </Badge>
             </div>
 
@@ -82,16 +85,16 @@ export function ProfileSummaryCard({
             <div className="mt-5 grid gap-3 text-sm text-white/70 sm:grid-cols-2">
               <div className="flex min-w-0 items-center gap-2">
                 <Mail className="h-4 w-4 shrink-0 text-[#d8ff5d]" />
-                <span className="min-w-0 truncate">{user.email ?? "Email not added yet"}</span>
+                <span className="min-w-0 truncate">{user.email ?? t("Email not added yet")}</span>
               </div>
               <div className="flex min-w-0 items-center gap-2">
                 <Phone className="h-4 w-4 shrink-0 text-[#d8ff5d]" />
-                <span className="min-w-0 truncate">{user.phone_number || "Phone not added yet"}</span>
+                <span className="min-w-0 truncate">{user.phone_number || t("Phone not added yet")}</span>
               </div>
               <div className="flex min-w-0 items-center gap-2">
                 <ShieldCheck className="h-4 w-4 shrink-0 text-[#d8ff5d]" />
                 <span className="min-w-0 truncate">
-                  {user.is_active ? "Verified training account" : "Account pending"}
+                  {user.is_active ? t("Verified training account") : t("Account pending")}
                 </span>
               </div>
               <div className="flex min-w-0 items-center gap-2">
@@ -120,19 +123,17 @@ export function ProfileSummaryCard({
         <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <div className="text-[0.66rem] uppercase tracking-[0.18em] text-white/40 sm:text-[0.68rem] sm:tracking-[0.26em]">
-              Current focus
+              {t("Current focus")}
             </div>
             <div className="mt-2 break-words text-sm leading-6 text-white/78">
               {latestReport
-                ? `Latest ${latestReport.analysisType} report scored ${Math.round(
-                    latestReport.score
-                  )} and is ready to reopen.`
-                : "Start your next session from the shooting workspace and the center will update from there."}
+                ? (isChinese ? `最近的${t(latestReport.analysisType)}报告得分为 ${Math.round(latestReport.score)}，可以重新查看。` : `Latest ${latestReport.analysisType} report scored ${Math.round(latestReport.score)} and is ready to reopen.`)
+                : t("Start your next session from the shooting workspace and the center will update from there.")}
             </div>
           </div>
           {latestReport && (
             <div className="w-fit shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[0.7rem] uppercase tracking-[0.16em] text-white/56 sm:tracking-[0.24em]">
-              Grade {latestReport.grade}
+              {t("Grade")} {latestReport.grade}
             </div>
           )}
         </div>

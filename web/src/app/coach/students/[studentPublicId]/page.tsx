@@ -1,5 +1,9 @@
 "use client";
 
+import { useAppLanguage } from "@/components/account/LanguagePreferenceProvider";
+import { useInterfaceText } from "@/hooks/useInterfaceText";
+
+
 import { useEffect, useMemo, useState } from "react";
 import { isAdminRole } from "@/lib/authRedirect";
 import { useParams } from "next/navigation";
@@ -31,12 +35,13 @@ import {
 import { useAuthStore } from "@/store/authStore";
 
 function StudentProfileLoading() {
+  const t = useInterfaceText();
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#030712] text-white">
       <div className="rounded-lg border border-white/10 bg-white/[0.055] px-8 py-7 text-center shadow-[0_20px_70px_rgba(0,0,0,0.28)] backdrop-blur-2xl">
         <Loader2 className="mx-auto h-9 w-9 animate-spin text-[#65f7ff]" />
         <div className="mt-4 text-[0.72rem] uppercase tracking-[0.28em] text-white/48">
-          Loading student file
+          {t("Loading student file")}
         </div>
       </div>
     </main>
@@ -64,6 +69,8 @@ function ProfileMetric({
 }
 
 export default function CoachStudentProfilePage() {
+  const language = useAppLanguage();
+  const t = useInterfaceText();
   const params = useParams<{ studentPublicId: string }>();
   const studentPublicId = params.studentPublicId;
   const user = useAuthStore((state) => state.user);
@@ -106,7 +113,7 @@ export default function CoachStudentProfilePage() {
         if (!isActive) {
           return;
         }
-        setError(fetchError instanceof Error ? fetchError.message : "Unable to load student.");
+        setError(fetchError instanceof Error ? fetchError.message : t("Unable to load student."));
       })
       .finally(() => {
         if (isActive) {
@@ -132,14 +139,14 @@ export default function CoachStudentProfilePage() {
 
   if (!canAccessCoach) {
     return (
-      <CoachShell user={user} title="Coach access required" breadcrumb={["Access"]}>
+      <CoachShell user={user} title={t("Coach access required")} breadcrumb={[t("Access")]}>
         <section className="rounded-lg border border-red-400/20 bg-red-500/10 p-8 text-center backdrop-blur-2xl">
           <ShieldAlert className="mx-auto h-10 w-10 text-red-200" />
           <h2 className="mt-5 font-[var(--font-display)] text-2xl font-bold text-white">
-            This workspace is available to coaches only.
+            {t("This workspace is available to coaches only.")}
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-white/58">
-            Current role: {user.role}. Ask an administrator to assign coach or admin access.
+            {t("Current role:")} {t(user.role)}{t(". Ask an administrator to assign coach or admin access.")}
           </p>
         </section>
       </CoachShell>
@@ -147,7 +154,7 @@ export default function CoachStudentProfilePage() {
   }
 
   return (
-    <CoachShell user={user} title={displayName} breadcrumb={["Students", displayName]}>
+    <CoachShell user={user} title={displayName} breadcrumb={[t("Students"), displayName]}>
       {error ? (
         <div className="flex items-start gap-3 rounded-lg border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-100">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -163,7 +170,7 @@ export default function CoachStudentProfilePage() {
             </span>
             <div className="min-w-0">
               <div className="text-[0.68rem] uppercase tracking-[0.24em] text-[#65f7ff]/75">
-                Student training file
+                {t("Student training file")}
               </div>
               <h1 className="mt-3 font-[var(--font-display)] text-4xl font-bold tracking-[0.01em] text-white sm:text-5xl">
                 {displayName}
@@ -177,31 +184,31 @@ export default function CoachStudentProfilePage() {
           {isLoading ? (
             <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/18 px-3 py-2 text-sm text-white/58">
               <Loader2 className="h-4 w-4 animate-spin text-[#65f7ff]" />
-              Loading
+              {t("Loading")}
             </span>
           ) : null}
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <ProfileMetric
-            label="Reports"
+            label={t("Reports")}
             value={String(profile?.report_count ?? 0)}
-            helper="Accessible class reports"
+            helper={t("Accessible class reports")}
           />
           <ProfileMetric
-            label="Best score"
+            label={t("Best score")}
             value={formatScore(profile?.best_score ?? null)}
-            helper={`Last report ${formatDateTime(profile?.last_report_at ?? null)}`}
+            helper={t("Last report {0}", formatDateTime(profile?.last_report_at ?? null, language))}
           />
           <ProfileMetric
-            label="Tasks"
+            label={t("Tasks")}
             value={String(profile?.task_summary.assigned_count ?? 0)}
-            helper={`${profile?.task_summary.completed_count ?? 0} completed`}
+            helper={t("{0} completed", profile?.task_summary.completed_count ?? 0)}
           />
           <ProfileMetric
-            label="Pending"
+            label={t("Pending")}
             value={String(profile?.task_summary.pending_count ?? 0)}
-            helper={`Latest ${formatDateTime(profile?.task_summary.latest_submission_at ?? null)}`}
+            helper={t("Latest {0}", formatDateTime(profile?.task_summary.latest_submission_at ?? null, language))}
           />
         </div>
       </section>
@@ -212,12 +219,12 @@ export default function CoachStudentProfilePage() {
           animate={{ opacity: 1, y: 0 }}
           className="rounded-lg border border-white/10 bg-white/[0.055] p-5 backdrop-blur-2xl"
         >
-          <h2 className="text-xl font-bold text-white">Player profile</h2>
-          <p className="mt-2 text-sm text-white/60">Latest details saved by the player or parent.</p>
+          <h2 className="text-xl font-bold text-white">{t("Player profile")}</h2>
+          <p className="mt-2 text-sm text-white/60">{t("Latest details saved by the player or parent.")}</p>
           <dl className="my-5 grid grid-cols-2 gap-4 text-sm">
             {[
               ["Started training on", formatDateInput(profile?.training_started_on) || "Not recorded"],
-              ["Training experience", trainingDurationLabel(profile?.training_started_on)],
+              ["Training experience", trainingDurationLabel(profile?.training_started_on, undefined, language)],
               ["Date of birth", formatDateInput(profile?.latest_measurement?.date_of_birth) || "Not recorded"],
               ["Age", ageYears(profile?.latest_measurement?.date_of_birth)?.toString() ?? "Not recorded"],
               ["Height", profile?.latest_measurement ? `${profile.latest_measurement.height_cm} cm` : "Not recorded"],
@@ -225,12 +232,12 @@ export default function CoachStudentProfilePage() {
               ["Sex", profile?.latest_measurement?.sex ?? "Not recorded"],
               ["BMI", profile?.latest_measurement?.bmi ?? "Not recorded"],
               ["Measured on", formatDateInput(profile?.latest_measurement?.measured_on) || "Not recorded"],
-            ].map(([label, value]) => <div key={label}><dt className="text-white/55">{label}</dt><dd className="mt-1 text-white">{value}</dd></div>)}
+            ].map(([label, value]) => <div key={label}><dt className="text-white/55">{t(label)}</dt><dd className="mt-1 text-white">{t(value)}</dd></div>)}
           </dl>
           <div className="flex items-center gap-3">
             <Trophy className="h-5 w-5 text-[#d8ff5d]" />
             <h2 className="font-[var(--font-display)] text-xl font-bold text-white">
-              Class memberships
+              {t("Class memberships")}
             </h2>
           </div>
           <div className="mt-5 space-y-3">
@@ -247,11 +254,11 @@ export default function CoachStudentProfilePage() {
                     </div>
                   </div>
                   <span className="rounded-full border border-[#d8ff5d]/24 bg-[#d8ff5d]/10 px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[#e8ff9a]">
-                    {membership.status}
+                    {t(membership.status)}
                   </span>
                 </div>
                 <div className="mt-3 text-xs text-white/44">
-                  Joined {formatDateTime(membership.joined_at)}
+                  {t("Joined")} {formatDateTime(membership.joined_at, language)}
                 </div>
               </div>
             ))}
@@ -266,13 +273,13 @@ export default function CoachStudentProfilePage() {
         >
           <div className="mb-5">
             <div className="text-[0.68rem] uppercase tracking-[0.22em] text-white/42">
-              Report history
+              {t("Report history")}
             </div>
             <h2 className="mt-2 font-[var(--font-display)] text-2xl font-bold text-white">
-              Recent reports
+              {t("Recent reports")}
             </h2>
           </div>
-          {isLoading ? <p role="status">Loading reports…</p> : error ? null : <><CoachReportTable
+          {isLoading ? <p role="status">{t("Loading reports…")}</p> : error ? null : <><CoachReportTable
             reports={reports}
             returnTo={routes.coach.studentProfile(studentPublicId)}
           /><ReportPagination key={reportPage} page={reportPage} total={reportTotal} onChange={setReportPage} /></>}

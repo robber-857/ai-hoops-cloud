@@ -11,6 +11,9 @@ import {
 } from "react";
 
 import { getTemplateById } from "@/config/templates";
+import { useAppLanguage } from "./LanguagePreferenceProvider";
+import type { AppLanguage } from "@/lib/language";
+import { templateDisplayName } from "@/lib/templateLanguage";
 import type {
   AccountAnalysisType,
   AccountAnnouncement,
@@ -127,14 +130,20 @@ function normalizeAnalysisType(
   return template?.mode ?? "shooting";
 }
 
+function reportTitle(code: string | null, comparison: boolean, language: AppLanguage) {
+  const name = templateDisplayName(code, null, language) || (language === "zh-CN" ? "动作分析" : "Motion review");
+  return comparison ? `${name} · ${language === "zh-CN" ? "年龄组对比" : "Age comparison"}` : name;
+}
+
+export function localizeAccountReport(report: AccountReport, language: AppLanguage): AccountReport {
+  return { ...report, templateName: reportTitle(report.templateCode, report.isAgeComparison === true, language) };
+}
+
 export function normalizeReport(row: ReportListItem): AccountReport | null {
   const analysisType = normalizeAnalysisType(
     row.analysis_type,
     row.template_code,
   );
-  const template = row.template_code
-    ? getTemplateById(row.template_code)
-    : null;
   const score = Number(row.overall_score ?? 0);
   const createdAt = row.created_at ?? new Date().toISOString();
 
@@ -146,7 +155,7 @@ export function normalizeReport(row: ReportListItem): AccountReport | null {
     id: row.public_id,
     analysisType,
     templateCode: row.template_code ?? null,
-    templateName: `${template?.displayName ?? row.template_code ?? "Motion review"}${row.is_age_comparison ? " · Age comparison" : ""}`,
+    templateName: reportTitle(row.template_code, row.is_age_comparison === true, "en"),
     score,
     grade: row.grade ?? getGrade(score),
     createdAt,
@@ -159,33 +168,32 @@ export function selectActivityReports(reports: AccountReport[]): AccountReport[]
   return reports.filter((report) => !report.isAgeComparison);
 }
 
-function formatRelativeTime(input: string): string {
+function formatRelativeTime(input: string, language: AppLanguage): string {
   const target = new Date(input).getTime();
   const diffMs = target - Date.now();
   const absMinutes = Math.round(Math.abs(diffMs) / 60000);
 
   if (absMinutes < 60) {
-    return `${absMinutes || 1}m ago`;
+    return language === "zh-CN" ? `${absMinutes || 1} 分钟前` : `${absMinutes || 1}m ago`;
   }
 
   const absHours = Math.round(absMinutes / 60);
   if (absHours < 24) {
-    return `${absHours}h ago`;
+    return language === "zh-CN" ? `${absHours} 小时前` : `${absHours}h ago`;
   }
 
   const absDays = Math.round(absHours / 24);
   if (absDays < 7) {
-    return `${absDays}d ago`;
+    return language === "zh-CN" ? `${absDays} 天前` : `${absDays}d ago`;
   }
 
-  return new Intl.DateTimeFormat("en-AU", {
-    month: "short",
-    day: "numeric",
+  return new Intl.DateTimeFormat(language === "en" ? "en-AU" : language, {
+    month: "short", day: "numeric",
   }).format(new Date(input));
 }
 
-function formatRefreshTime(input: string): string {
-  return new Intl.DateTimeFormat("en-AU", {
+function formatRefreshTime(input: string, language: AppLanguage): string {
+  return new Intl.DateTimeFormat(language === "en" ? "en-AU" : language, {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(input));
@@ -320,7 +328,8 @@ function getTaskTargetMetrics(task: TaskSummaryRead): TaskTargetMetrics {
 function getTargetLabel({
   targetSessions,
   targetScore,
-}: TaskTargetMetrics): string {
+}: TaskTargetMetrics, language: AppLanguage): string {
+  if (language === "zh-CN") return `${targetSessions} 次训练${targetScore > 0 ? ` / ${Math.round(targetScore)} 分` : ""}`;
   if (targetScore > 0) {
     return `${targetSessions} sessions / ${Math.round(targetScore)} pts`;
   }
@@ -330,19 +339,22 @@ function getTargetLabel({
 function getProgressDetailLabel(
   task: TaskSummaryRead,
   targets: TaskTargetMetrics,
+  language: AppLanguage,
 ): string {
-  return `${task.completed_sessions}/${targets.targetSessions} sessions`;
+  return `${task.completed_sessions}/${targets.targetSessions} ${language === "zh-CN" ? "次训练" : "sessions"}`;
 }
 
 function getScoreGateLabel(
   task: TaskSummaryRead,
   targets: TaskTargetMetrics,
+  language: AppLanguage,
 ): string | null {
   if (targets.targetScore <= 0) {
     return null;
   }
 
   const bestScore = task.best_score !== null ? Math.round(task.best_score) : 0;
+  if (language === "zh-CN") return `得分目标 ${bestScore}/${Math.round(targets.targetScore)} 分`;
   return `Score gate ${bestScore}/${Math.round(targets.targetScore)} pts`;
 }
 
@@ -368,12 +380,12 @@ export function findCandidateReports(
     );
 }
 
-function buildReportOptions(reports: AccountReport[]): TaskReportOption[] {
+function buildReportOptions(reports: AccountReport[], language: AppLanguage): TaskReportOption[] {
   return reports.map((report) => ({
     id: report.id,
     label: report.templateName,
-    scoreLabel: `${Math.round(report.score)} pts`,
-    dateLabel: new Intl.DateTimeFormat("en-AU", {
+    scoreLabel: `${Math.round(report.score)} ${language === "zh-CN" ? "分" : "pts"}`,
+    dateLabel: new Intl.DateTimeFormat(language === "en" ? "en-AU" : language, {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -383,21 +395,22 @@ function buildReportOptions(reports: AccountReport[]): TaskReportOption[] {
 
 function normalizeTaskSubmission(
   row: TaskSubmissionReportRead,
+  language: AppLanguage,
 ): TaskSubmissionHistoryItem {
   const analysisType = normalizeAnalysisType(
     row.analysis_type,
     row.template_code,
   );
-  const templateName = getTemplateName(row.template_code, analysisType);
+  const templateName = getTemplateName(row.template_code, analysisType, language);
   return {
     id: row.report_public_id,
     title: templateName,
     scoreLabel:
       row.overall_score !== null
-        ? `${Math.round(row.overall_score)} pts`
+        ? `${Math.round(row.overall_score)} ${language === "zh-CN" ? "分" : "pts"}`
         : "No score",
-    gradeLabel: row.grade ? `Grade ${row.grade}` : "No grade",
-    dateLabel: new Intl.DateTimeFormat("en-AU", {
+    gradeLabel: row.grade ? `${language === "zh-CN" ? "等级" : "Grade"} ${row.grade}` : "No grade",
+    dateLabel: new Intl.DateTimeFormat(language === "en" ? "en-AU" : language, {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -405,30 +418,31 @@ function normalizeTaskSubmission(
   };
 }
 
-function normalizeTaskDetail(task: TaskDetailRead): WeeklyTaskDetail {
+function normalizeTaskDetail(task: TaskDetailRead, language: AppLanguage): WeeklyTaskDetail {
   return {
-    submissionHistory: task.submission_reports.map(normalizeTaskSubmission),
+    submissionHistory: task.submission_reports.map((row) => normalizeTaskSubmission(row, language)),
   };
 }
 
 function getTemplateName(
   templateCode: string | null,
   analysisType: AccountAnalysisType,
+  language: AppLanguage,
 ): string {
-  const template = templateCode ? getTemplateById(templateCode) : null;
-  return template?.displayName ?? templateCode ?? `${analysisType} practice`;
+  return templateDisplayName(templateCode, null, language) || (language === "zh-CN" ? "动作练习" : `${analysisType} practice`);
 }
 
 function normalizeTask(
   task: TaskSummaryRead,
   reports: AccountReport[],
+  language: AppLanguage,
 ): WeeklyTask {
   const progress = Math.max(0, Math.min(1, (task.progress_percent ?? 0) / 100));
   const analysisType = normalizeAnalysisType(
     task.analysis_type,
     task.template_code,
   );
-  const templateName = getTemplateName(task.template_code, analysisType);
+  const templateName = getTemplateName(task.template_code, analysisType, language);
   const candidateReports = findCandidateReports(task, reports);
   const candidateReport = candidateReports[0] ?? null;
   const targets = getTaskTargetMetrics(task);
@@ -439,7 +453,7 @@ function normalizeTask(
         ? "in_progress"
         : "pending";
   const dueLabel = task.due_at
-    ? new Intl.DateTimeFormat("en-AU", {
+    ? new Intl.DateTimeFormat(language === "en" ? "en-AU" : language, {
         month: "short",
         day: "numeric",
       }).format(new Date(task.due_at))
@@ -450,25 +464,25 @@ function normalizeTask(
     title: task.title,
     description:
       task.description?.trim() ||
-      `Assigned for ${task.class_name} using ${templateName}.`,
+      (language === "zh-CN" ? `${task.class_name}的训练任务，使用${templateName}模板。` : `Assigned for ${task.class_name} using ${templateName}.`),
     progress,
     status,
-    valueLabel: getProgressDetailLabel(task, targets),
-    progressDetailLabel: getProgressDetailLabel(task, targets),
-    scoreGateLabel: getScoreGateLabel(task, targets),
+    valueLabel: getProgressDetailLabel(task, targets, language),
+    progressDetailLabel: getProgressDetailLabel(task, targets, language),
+    scoreGateLabel: getScoreGateLabel(task, targets, language),
     dueLabel,
     actionHref: getTaskActionHref(task, analysisType),
     className: task.class_name,
     analysisType,
     templateCode: task.template_code,
     templateName,
-    targetLabel: getTargetLabel(targets),
+    targetLabel: getTargetLabel(targets, language),
     completedSessions: task.completed_sessions,
     candidateReportId: candidateReport?.id ?? null,
     candidateReportLabel: candidateReport
-      ? `${candidateReport.templateName} - ${Math.round(candidateReport.score)} pts`
+      ? `${candidateReport.templateName} - ${Math.round(candidateReport.score)} ${language === "zh-CN" ? "分" : "pts"}`
       : null,
-    reportOptions: buildReportOptions(candidateReports),
+    reportOptions: buildReportOptions(candidateReports, language),
     latestReportId: task.latest_report_public_id,
   };
 }
@@ -537,6 +551,8 @@ function normalizeAnnouncement(
     title: announcement.title,
     content: announcement.content,
     scopeLabel: getAnnouncementScopeLabel(announcement),
+    scopeIsName: (announcement.scope_type === "class" && Boolean(announcement.class_name)) || (announcement.scope_type === "camp" && Boolean(announcement.camp_name)),
+    targetRole: announcement.scope_type === "role" ? announcement.target_role : null,
     publishedAt: announcement.publish_at ?? announcement.created_at,
     isPinned: announcement.is_pinned,
     isRead: announcement.is_read,
@@ -551,6 +567,7 @@ function getErrorMessage(error: unknown, fallback: string): string {
 }
 
 function useAccountData() {
+  const language = useAppLanguage();
   const [measurementDraft, setMeasurementDraft] =
     useState<PlayerMeasurementDraft | null>(null);
   const [selectedTaskReports, setSelectedTaskReports] = useState<
@@ -706,7 +723,7 @@ function useAccountData() {
   }, [hasInitialized, isAuthenticated, user, reloadVersion]);
 
   const dashboard = useMemo(() => {
-    const sortedReports = [...reports].sort(
+    const sortedReports = reports.map((report) => localizeAccountReport(report, language)).sort(
       (left, right) =>
         new Date(right.createdAt).getTime() -
         new Date(left.createdAt).getTime(),
@@ -753,7 +770,7 @@ function useAccountData() {
             value: String(liveStats.active_tasks),
             helper:
               liveStats.unread_notifications > 0
-                ? `${liveStats.unread_notifications} unread ${liveStats.unread_notifications === 1 ? "notification" : "notifications"}`
+                ? language === "zh-CN" ? `${liveStats.unread_notifications} 条未读通知` : `${liveStats.unread_notifications} unread ${liveStats.unread_notifications === 1 ? "notification" : "notifications"}`
                 : "No unread notifications",
           },
         ]
@@ -780,7 +797,7 @@ function useAccountData() {
           {
             label: "Last analysis",
             value: latestReport
-              ? formatRelativeTime(latestReport.createdAt)
+              ? formatRelativeTime(latestReport.createdAt, language)
               : "--",
             helper: latestReport ? latestReport.templateName : "No uploads yet",
           },
@@ -789,7 +806,7 @@ function useAccountData() {
     return {
       latestReport,
       stats,
-      tasks: backendTasks.map((task) => normalizeTask(task, sortedReports)),
+      tasks: backendTasks.map((task) => normalizeTask(task, sortedReports, language)),
       trendPointsByType,
       streak,
       recentReports: sortedReports,
@@ -798,6 +815,7 @@ function useAccountData() {
     backendStats,
     backendTasks,
     backendTrendPointsByType,
+    language,
     reportSource,
     reports,
   ]);
@@ -806,13 +824,13 @@ function useAccountData() {
     return Object.fromEntries(
       Object.entries(taskDetailsById).map(([taskId, detail]) => [
         taskId,
-        normalizeTaskDetail(detail),
+        normalizeTaskDetail(detail, language),
       ]),
     );
-  }, [taskDetailsById]);
+  }, [taskDetailsById, language]);
 
   const taskRefreshLabel = lastTaskRefreshAt
-    ? `Updated ${formatRefreshTime(lastTaskRefreshAt)}`
+    ? `${language === "zh-CN" ? "更新于" : "Updated"} ${formatRefreshTime(lastTaskRefreshAt, language)}`
     : reportSource === "live"
       ? "Live data"
       : "Not updated yet";

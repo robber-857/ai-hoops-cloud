@@ -1,4 +1,7 @@
 "use client";
+import { useAppLanguage } from "@/components/account/LanguagePreferenceProvider";
+import { useAdminText } from "@/components/admin/adminCopy";
+
 
 import { useEffect, useState } from "react";
 import { isAdminRole } from "@/lib/authRedirect";
@@ -28,6 +31,8 @@ function toApiDate(value: string) {
 }
 
 export default function AdminClassesPage() {
+  const language = useAppLanguage();
+  const t = useAdminText();
   const user = useAuthStore((state) => state.user);
   const hasInitialized = useAuthStore((state) => state.hasInitialized);
   const isInitializing = useAuthStore((state) => state.isInitializing);
@@ -117,7 +122,7 @@ export default function AdminClassesPage() {
         start_date: toApiDate(startDate),
         end_date: toApiDate(endDate),
       });
-      setMessage(`Created class ${classItem.name}.`);
+      setMessage(t("Created class {0}.", classItem.name));
       setName("");
       setCode("");
       setDescription("");
@@ -147,7 +152,7 @@ export default function AdminClassesPage() {
           item.public_id === classItem.public_id ? updatedClass : item,
         ),
       );
-      setMessage(`Updated ${updatedClass.name} to ${updatedClass.status}.`);
+      setMessage(t("Updated {0} to {1}.", updatedClass.name, t(updatedClass.status)));
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : "Unable to update class.");
     } finally {
@@ -164,11 +169,11 @@ export default function AdminClassesPage() {
   }
 
   return (
-    <AdminShell user={user} title="Classes" breadcrumb={["Classes"]}>
+    <AdminShell user={user} title={t("Classes")} breadcrumb={[t("Classes")]}>
       {error ? (
         <div className="flex items-start gap-3 rounded-lg border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-100">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{error}</span>
+          <span>{t(error)}</span>
         </div>
       ) : null}
       {message ? (
@@ -182,10 +187,10 @@ export default function AdminClassesPage() {
           <div className="flex items-center justify-between gap-4">
             <div>
               <div className="text-[0.68rem] uppercase tracking-[0.22em] text-white/42">
-                Class registry
+                {t("Class registry")}
               </div>
               <h1 className="mt-2 font-[var(--font-display)] text-2xl font-bold text-white">
-                Classes
+                {t("Classes")}
               </h1>
             </div>
             {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-[#65f7ff]" /> : null}
@@ -196,12 +201,12 @@ export default function AdminClassesPage() {
               <table className="min-w-[980px] w-full border-collapse text-left text-sm">
                 <thead className="border-b border-white/10 bg-white/[0.035] text-[0.68rem] uppercase tracking-[0.18em] text-white/42">
                   <tr>
-                    <th className="px-4 py-3 font-semibold">Class</th>
-                    <th className="px-4 py-3 font-semibold">Camp</th>
-                    <th className="px-4 py-3 text-right font-semibold">Members</th>
-                    <th className="px-4 py-3 font-semibold">Window</th>
-                    <th className="px-4 py-3 font-semibold">Status</th>
-                    <th className="px-4 py-3 text-right font-semibold">Actions</th>
+                    <th className="px-4 py-3 font-semibold">{t("Class")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Camp")}</th>
+                    <th className="px-4 py-3 text-right font-semibold">{t("Members")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Window")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Status")}</th>
+                    <th className="px-4 py-3 text-right font-semibold">{t("Actions")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/8">
@@ -215,14 +220,14 @@ export default function AdminClassesPage() {
                       </td>
                       <td className="px-4 py-4 text-white/62">{classItem.camp_name}</td>
                       <td className="px-4 py-4 text-right text-white">
-                        {classItem.student_count} students / {classItem.coach_count} coaches
+                        {classItem.student_count} {t("students /")} {classItem.coach_count} {t("coaches")}
                       </td>
                       <td className="px-4 py-4 text-white/62">
-                        {formatDate(classItem.start_date)} to {formatDate(classItem.end_date)}
+                        {formatDate(classItem.start_date, undefined, language)} {t("to")} {formatDate(classItem.end_date, undefined, language)}
                       </td>
                       <td className="px-4 py-4">
                         <span className="rounded-full border border-[#d8ff5d]/24 bg-[#d8ff5d]/10 px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[#e8ff9a]">
-                          {classItem.status}
+                          {t(classItem.status)}
                         </span>
                       </td>
                       <td className="px-4 py-4">
@@ -232,7 +237,7 @@ export default function AdminClassesPage() {
                             className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[#65f7ff]/24 bg-[#65f7ff]/10 px-3 text-xs font-semibold text-[#dffbff] transition hover:bg-[#65f7ff]/16"
                           >
                             <UsersRound className="h-4 w-4" />
-                            Members
+                            {t("Members")}
                           </Link>
                           <button
                             type="button"
@@ -240,7 +245,7 @@ export default function AdminClassesPage() {
                             onClick={() => toggleClassStatus(classItem)}
                             className="inline-flex min-h-9 items-center justify-center rounded-lg border border-white/10 bg-white/[0.045] px-3 text-xs font-semibold text-white/72 transition hover:border-[#d8ff5d]/24 hover:bg-[#d8ff5d]/10 disabled:cursor-not-allowed disabled:opacity-50"
                           >
-                            {updatingClassId === classItem.public_id ? "Saving" : classItem.status === "active" ? "Pause" : "Activate"}
+                            {updatingClassId === classItem.public_id ? t("Saving") : classItem.status === "active" ? t("Pause") : t("Activate")}
                           </button>
                         </div>
                       </td>
@@ -249,7 +254,7 @@ export default function AdminClassesPage() {
                   {classes.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="px-4 py-8 text-center text-sm text-white/48">
-                        No classes yet.
+                        {t("No classes yet.")}
                       </td>
                     </tr>
                   ) : null}
@@ -260,15 +265,15 @@ export default function AdminClassesPage() {
         </section>
 
         <section className="rounded-lg border border-white/10 bg-white/[0.055] p-5 backdrop-blur-2xl">
-          <div className={labelClass}>Create class</div>
+          <div className={labelClass}>{t("Create class")}</div>
           <h2 className="mt-2 font-[var(--font-display)] text-xl font-bold text-white">
-            Add class
+            {t("Add class")}
           </h2>
           <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
             <label className="block space-y-2">
-              <span className={labelClass}>Camp</span>
+              <span className={labelClass}>{t("Camp")}</span>
               <select className={fieldClass} value={campPublicId} onChange={(event) => setCampPublicId(event.target.value)} required>
-                <option value="">Select camp</option>
+                <option value="">{t("Select camp")}</option>
                 {camps.map((camp) => (
                   <option key={camp.public_id} value={camp.public_id}>
                     {camp.name}
@@ -277,34 +282,34 @@ export default function AdminClassesPage() {
               </select>
             </label>
             <label className="block space-y-2">
-              <span className={labelClass}>Name</span>
+              <span className={labelClass}>{t("Name")}</span>
               <input className={fieldClass} value={name} onChange={(event) => setName(event.target.value)} required />
             </label>
             <label className="block space-y-2">
-              <span className={labelClass}>Code</span>
+              <span className={labelClass}>{t("Code")}</span>
               <input className={fieldClass} value={code} onChange={(event) => setCode(event.target.value)} required />
             </label>
             <label className="block space-y-2">
-              <span className={labelClass}>Description</span>
+              <span className={labelClass}>{t("Description")}</span>
               <textarea className={`${fieldClass} min-h-20 resize-none py-3`} value={description} onChange={(event) => setDescription(event.target.value)} />
             </label>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block space-y-2">
-                <span className={labelClass}>Age group</span>
+                <span className={labelClass}>{t("Age group")}</span>
                 <input className={fieldClass} value={ageGroup} onChange={(event) => setAgeGroup(event.target.value)} />
               </label>
               <label className="block space-y-2">
-                <span className={labelClass}>Max</span>
+                <span className={labelClass}>{t("Max")}</span>
                 <input className={fieldClass} type="number" min={1} value={maxStudents} onChange={(event) => setMaxStudents(event.target.value)} />
               </label>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block space-y-2">
-                <span className={labelClass}>Start</span>
+                <span className={labelClass}>{t("Start")}</span>
                 <input className={fieldClass} type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
               </label>
               <label className="block space-y-2">
-                <span className={labelClass}>End</span>
+                <span className={labelClass}>{t("End")}</span>
                 <input className={fieldClass} type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
               </label>
             </div>
@@ -314,7 +319,7 @@ export default function AdminClassesPage() {
               className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#65f7ff]/34 bg-[#65f7ff]/12 px-4 text-sm font-semibold text-[#dffbff] transition hover:bg-[#65f7ff]/18 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-              Create class
+              {t("Create class")}
             </button>
           </form>
         </section>

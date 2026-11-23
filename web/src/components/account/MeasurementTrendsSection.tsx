@@ -1,4 +1,5 @@
 "use client";
+import { usePlayerCopy } from "@/components/account/playerCopy";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -36,6 +37,7 @@ function errorMessage(error: unknown) {
 }
 
 export function MeasurementTrendsSection() {
+  const { t, locale, isChinese } = usePlayerCopy();
   const [metric, setMetric] = useState<Metric>("height");
   const [items, setItems] = useState<PlayerMeasurement[]>([]);
   const [hasMore, setHasMore] = useState(false);
@@ -93,16 +95,16 @@ export function MeasurementTrendsSection() {
       <header className="border-b border-[var(--ui-border)] px-4 pb-4 pt-5 sm:px-6 sm:pt-6">
         <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
           <div>
-            <h2 id="measurement-trends-title" className="text-xl font-semibold tracking-tight">Player measurements</h2>
+            <h2 id="measurement-trends-title" className="text-xl font-semibold tracking-tight">{t("Player measurements")}</h2>
             <p className="mt-1 max-w-prose text-sm leading-6 text-[var(--ui-muted)]">
-              See the latest saved measurement for each date.
+              {t("See the latest saved measurement for each date.")}
             </p>
           </div>
           <Link href={`${routes.user.profile}#player-measurements`} className="ui-link">
-            Add a measurement <ArrowRight size={15} aria-hidden="true" />
+            {t("Add a measurement")} <ArrowRight size={15} aria-hidden="true" />
           </Link>
         </div>
-        <div className="mt-4 inline-flex max-w-full flex-wrap items-center gap-1 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-subtle)] p-1" role="group" aria-label="Measurement type">
+        <div className="mt-4 inline-flex max-w-full flex-wrap items-center gap-1 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-subtle)] p-1" role="group" aria-label={t("Measurement type")}>
           {metrics.map((key) => (
             <button
               key={key}
@@ -111,7 +113,7 @@ export function MeasurementTrendsSection() {
               className="inline-flex min-h-11 items-center justify-center rounded-lg px-3 text-sm font-semibold text-[var(--ui-muted)] hover:text-[var(--ui-text)] aria-pressed:bg-[var(--ui-surface)] aria-pressed:text-[var(--ui-text)] aria-pressed:shadow-sm sm:px-3.5"
               onClick={() => setMetric(key)}
             >
-              {MEASURES[key].label}
+              {t(MEASURES[key].label)}
             </button>
           ))}
         </div>
@@ -120,7 +122,7 @@ export function MeasurementTrendsSection() {
       <div className="min-w-0 px-4 pb-2 pt-4 sm:px-6 sm:pt-5">
         {error && (
           <div role="alert" className="mb-3 flex flex-wrap items-center gap-x-3 text-sm text-[var(--ui-danger)]">
-            <p>{error}</p>
+            <p>{t(error)}</p>
             <button
               type="button"
               className="ui-link"
@@ -134,30 +136,30 @@ export function MeasurementTrendsSection() {
                 }
               }}
             >
-              Retry
+              {t("Retry")}
             </button>
           </div>
         )}
-        {loading && <p role="status" className="mb-3 text-sm text-[var(--ui-muted)]">Loading measurements…</p>}
+        {loading && <p role="status" className="mb-3 text-sm text-[var(--ui-muted)]">{t("Loading measurements…")}</p>}
         {latest && (
           <dl className="mb-4 flex flex-wrap items-end gap-x-6 gap-y-3 sm:gap-x-8">
             <div className="min-w-28 sm:mr-auto">
-              <dt className="text-sm font-semibold text-[var(--ui-muted)]">Latest {metric === "bmi" ? "BMI" : measure.label.toLowerCase()}</dt>
+              <dt className="text-sm font-semibold text-[var(--ui-muted)]">{isChinese ? `最新${t(measure.label)}` : `Latest ${metric === "bmi" ? "BMI" : measure.label.toLowerCase()}`}</dt>
               <dd className="mt-1">
                 <span className="text-4xl font-bold tabular-nums leading-none tracking-tight sm:text-5xl">{displayValue.format(latest.value)}</span>
                 <span className="ml-1.5 text-sm font-medium text-[var(--ui-muted)]">{measure.unit}</span>
                 <time className="mt-1.5 block text-xs text-[var(--ui-muted)]" dateTime={new Date(latest.time).toISOString().slice(0, 10)}>
-                  {formatTrendDate(latest.time)}
+                  {formatTrendDate(latest.time, locale)}
                 </time>
               </dd>
             </div>
             <div>
-              <dt className="text-xs font-medium text-[var(--ui-muted)]">Dates recorded</dt>
+              <dt className="text-xs font-medium text-[var(--ui-muted)]">{t("Dates recorded")}</dt>
               <dd className="mt-1 text-xl font-semibold tabular-nums">{points.length}</dd>
             </div>
             {first && points.length > 1 && (
               <div>
-                <dt className="text-xs font-medium text-[var(--ui-muted)]">Change from first shown date</dt>
+                <dt className="text-xs font-medium text-[var(--ui-muted)]">{t("Change from first shown date")}</dt>
                 <dd className="mt-1 text-xl font-semibold tabular-nums">
                   {signedValue.format(latest.value - first.value)}
                   <span className="ml-1 text-xs text-[var(--ui-muted)]">{measure.unit}</span>
@@ -169,17 +171,17 @@ export function MeasurementTrendsSection() {
         {((!loading && !error) || points.length > 0) && (
           <AccountTrendChart
             points={points}
-            title={measure.label}
+            title={t(measure.label)}
             unit={measure.unit}
             color="var(--ui-chart-teal)"
             timeRange={timeRange}
             valueRange={valueRange}
-            emptyMessage="No measurements recorded yet. Add a measurement to start tracking."
+            emptyMessage={t("No measurements recorded yet. Add a measurement to start tracking.")}
           />
         )}
         {hasMore && !error && (
           <button type="button" className="ui-button mb-2 mt-3" onClick={() => void loadOlder()} disabled={loading}>
-            Load older measurements
+            {t("Load older measurements")}
           </button>
         )}
       </div>

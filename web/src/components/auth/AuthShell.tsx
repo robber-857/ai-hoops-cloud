@@ -1,3 +1,6 @@
+"use client";
+
+import { useInterfaceText } from "@/hooks/useInterfaceText";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -28,6 +31,7 @@ export function AuthShell({
   footerAction,
   children,
 }: AuthShellProps) {
+  const t = useInterfaceText();
   return (
     <main className="theme-workspace workspace-auth-surface min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(255,143,77,0.18),_transparent_28%),radial-gradient(circle_at_85%_20%,_rgba(61,152,255,0.18),_transparent_26%),linear-gradient(145deg,_#07111f_0%,_#0d1b2e_42%,_#081423_100%)] text-white">
       <div className="min-h-screen bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] [background-size:96px_96px]">
@@ -47,7 +51,7 @@ export function AuthShell({
                 variant="ghost"
                 className="rounded-full border border-white/12 bg-white/6 px-4 text-white hover:bg-white/12"
               >
-                <Link href={routes.pose2d.main}>Back to Studio</Link>
+                <Link href={routes.pose2d.main}>{t("Back to Studio")}</Link>
               </Button>
               <ThemeToggle />
             </div>
@@ -74,7 +78,7 @@ export function AuthShell({
                 </p>
               </div>
               <div className="text-right text-sm leading-6 text-white/56">
-                <p>Secure auth</p>
+                <p>{t("Secure auth")}</p>
                 <p>FastAPI + PostgreSQL</p>
               </div>
             </div>
@@ -83,15 +87,15 @@ export function AuthShell({
           <div className="grid gap-4 text-sm text-white/68 sm:grid-cols-3">
             <div>
               <p className="mb-1 text-xs uppercase tracking-[0.24em] text-white/38">01</p>
-              <p>Username, phone, and email flows all route into the same backend.</p>
+              <p>{t("Username, phone, and email flows all route into the same backend.")}</p>
             </div>
             <div>
               <p className="mb-1 text-xs uppercase tracking-[0.24em] text-white/38">02</p>
-              <p>Verification-code actions are wired so you can test the real request path now.</p>
+              <p>{t("Verification-code actions are wired so you can test the real request path now.")}</p>
             </div>
             <div>
               <p className="mb-1 text-xs uppercase tracking-[0.24em] text-white/38">03</p>
-              <p>Session state persists locally so you can move into the analysis workspace after sign-in.</p>
+              <p>{t("Session state persists locally so you can move into the analysis workspace after sign-in.")}</p>
             </div>
           </div>
         </section>

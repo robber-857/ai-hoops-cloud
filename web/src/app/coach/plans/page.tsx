@@ -1,4 +1,9 @@
 "use client";
+
+import { useInterfaceText } from "@/hooks/useInterfaceText";
+
+import { useAppLanguage } from "@/components/account/LanguagePreferenceProvider";
+import { templateDisplayName } from "@/lib/templateLanguage";
 import { staffName, staffContact } from "@/lib/staffNames";
 import { isAdminRole } from "@/lib/authRedirect";
 import { useEffect, useRef, useState } from "react";
@@ -54,6 +59,8 @@ const content = (plan: CampPlan): PlanContent => ({
   }),
 });
 export default function CoachPlansPage() {
+  const t = useInterfaceText();
+  const language = useAppLanguage();
   const user = useAuthStore((s) => s.user);
   const [classes, setClasses] = useState<CoachClassRead[]>([]),
     [classId, setClassId] = useState(""),
@@ -149,7 +156,7 @@ export default function CoachPlansPage() {
     const click = (e: MouseEvent) => {
       if (
         (e.target as Element).closest?.("a[href]") &&
-        !window.confirm("Leave without saving this plan?")
+        !window.confirm(t("Leave without saving this plan?"))
       ) {
         e.preventDefault();
         e.stopPropagation();
@@ -177,7 +184,7 @@ export default function CoachPlansPage() {
     requestId.current = null;
   }
   function canLeave() {
-    return !dirty || window.confirm("Discard unsaved plan changes?");
+    return !dirty || window.confirm(t("Discard unsaved plan changes?"));
   }
   function edit(plan: CampPlan, revision = false) {
     if (!canLeave()) return;
@@ -210,10 +217,10 @@ export default function CoachPlansPage() {
       setEditing(saved);
       setDirty(false);
       requestId.current = null;
-      setNotice("Draft saved. Review it below before publishing.");
+      setNotice(t("Draft saved. Review it below before publishing."));
       setReload((v) => v + 1);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not save plan. Retry.");
+      setError(e instanceof Error ? e.message : t("Could not save plan. Retry."));
     } finally {
       inFlight.current = false;
       setBusy(false);
@@ -224,7 +231,7 @@ export default function CoachPlansPage() {
       inFlight.current ||
       !canLeave() ||
       !window.confirm(
-        `Publish “${plan.title}” to ${plan.student_name || "this class"}? Published content can only be corrected with a new revision.`,
+        t("Publish “{0}” to {1}? Published content can only be corrected with a new revision.", plan.title, plan.student_name || t("this class")),
       )
     )
       return;
@@ -234,10 +241,10 @@ export default function CoachPlansPage() {
     try {
       await campPlanService.publish(plan);
       reset();
-      setNotice("Plan published. Players can now view it.");
+      setNotice(t("Plan published. Players can now view it."));
       setReload((v) => v + 1);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not publish. Retry.");
+      setError(e instanceof Error ? e.message : t("Could not publish. Retry."));
     } finally {
       inFlight.current = false;
       setBusy(false);
@@ -250,28 +257,27 @@ export default function CoachPlansPage() {
       setPlans((p) => [...p, ...data.items]);
       setMore(data.has_more);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load more plans.");
+      setError(e instanceof Error ? e.message : t("Could not load more plans."));
     } finally {
       setBusy(false);
     }
   }
-  if (!user) return <p role="status">Loading account…</p>;
+  if (!user) return <p role="status">{t("Loading account…")}</p>;
   if (!allowed)
     return (
       <p role="alert" className="p-8">
-        Coach access is required.
+        {t("Coach access is required.")}
       </p>
     );
   return (
     <CoachShell
       user={user}
-      title="Training plans"
-      breadcrumb={["Training plans"]}
+      title={t("Training plans")}
+      breadcrumb={[t("Training plans")]}
     >
       <div className="min-w-0 max-w-5xl text-white">
         <p className="mt-3 max-w-prose text-white/75">
-          Build a class plan or tailor one for a player. Save a draft, review
-          the activities, then publish.
+          {t("Build a class plan or tailor one for a player. Save a draft, review the activities, then publish.")}
         </p>
         {error && (
           <div role="alert" className="mt-5 text-red-200">
@@ -280,7 +286,7 @@ export default function CoachPlansPage() {
               className="ml-3 min-h-11 underline"
               onClick={() => setReload((v) => v + 1)}
             >
-              Reload plans
+              {t("Reload plans")}
             </button>
           </div>
         )}
@@ -291,15 +297,15 @@ export default function CoachPlansPage() {
         )}
         {loading && (
           <p role="status" className="mt-5">
-            Loading plans…
+            {t("Loading plans…")}
           </p>
         )}
         <label className="mt-6 block max-w-lg text-sm">
-          Class
+          {t("Class")}
           <select
             className={field}
             value={classId}
-            aria-label="Class"
+            aria-label={t("Class")}
             disabled={busy || loading}
             onChange={(e) => {
               if (canLeave()) {
@@ -317,7 +323,7 @@ export default function CoachPlansPage() {
           </select>
         </label>
         {!loading && !classes.length && !error && (
-          <p className="mt-5">No active classes are assigned to you.</p>
+          <p className="mt-5">{t("No active classes are assigned to you.")}</p>
         )}
         {classId && (
           <>
@@ -331,10 +337,10 @@ export default function CoachPlansPage() {
             >
               <h2 className="text-xl font-semibold">
                 {editing
-                  ? "Edit draft"
+                  ? t("Edit draft")
                   : previous
-                    ? "New revision"
-                    : "New plan"}
+                    ? t("New revision")
+                    : t("New plan")}
               </h2>
               <fieldset
                 disabled={busy || loading}
@@ -342,7 +348,7 @@ export default function CoachPlansPage() {
               >
                 <div className="grid min-w-0 gap-5 sm:grid-cols-2">
                   <label className="min-w-0 text-sm">
-                    Plan title
+                    {t("Plan title")}
                     <input
                       className={field}
                       required
@@ -354,7 +360,7 @@ export default function CoachPlansPage() {
                     />
                   </label>
                   <label className="min-w-0 text-sm">
-                    Planned date
+                    {t("Planned date")}
                     <input
                       className={field}
                       required
@@ -366,19 +372,19 @@ export default function CoachPlansPage() {
                     />
                   </label>
                   <label className="min-w-0 text-sm">
-                    Recipient
+                    {t("Recipient")}
                     <select
                       className={field}
                       disabled={Boolean(editing || previous)}
                       value={studentId}
-                      aria-label="Recipient"
+                      aria-label={t("Recipient")}
                       onChange={(e) => {
                         setStudentId(e.target.value);
                         setDirty(true);
                         requestId.current = null;
                       }}
                     >
-                      <option value="">Whole class</option>
+                      <option value="">{t("Whole class")}</option>
                       {students.map((s) => (
                         <option key={s.public_id} value={s.public_id}>
                           {staffName(s)} · {staffContact(s)}
@@ -387,25 +393,25 @@ export default function CoachPlansPage() {
                     </select>
                   </label>
                   <label className="min-w-0 text-sm">
-                    Training focus
+                    {t("Training focus")}
                     <select
                       className={field}
                       value={form.focus}
-                      aria-label="Training focus"
+                      aria-label={t("Training focus")}
                       onChange={(e) =>
                         change({ ...form, focus: e.target.value })
                       }
                     >
                       {Object.entries(focusLabels).map(([k, v]) => (
                         <option key={k} value={k}>
-                          {v}
+                          {t(v)}
                         </option>
                       ))}
                     </select>
                   </label>
                 </div>
                 <label className="block text-sm">
-                  Plan notes
+                  {t("Plan notes")}
                   <textarea
                     className={field}
                     maxLength={2000}
@@ -431,7 +437,7 @@ export default function CoachPlansPage() {
                       <li key={index} className="min-w-0 py-6">
                         <div className="flex items-center justify-between gap-3">
                           <h3 className="font-semibold">
-                            Activity {index + 1}
+                            {t("Activity")} {index + 1}
                           </h3>
                           <button
                             type="button"
@@ -444,11 +450,11 @@ export default function CoachPlansPage() {
                               })
                             }
                           >
-                            Remove activity {index + 1}
+                            {t("Remove activity")} {index + 1}
                           </button>
                         </div>
                         <label className="mt-3 block text-sm">
-                          Activity name
+                          {t("Activity name")}
                           <input
                             className={field}
                             required
@@ -461,13 +467,11 @@ export default function CoachPlansPage() {
                           {(["sets", "reps", "duration_minutes"] as const).map(
                             (key) => (
                               <label key={key} className="text-sm">
-                                {
-                                  {
+                                {t({
                                     sets: "Sets",
                                     reps: "Repetitions",
                                     duration_minutes: "Planned minutes",
-                                  }[key]
-                                }
+                                  }[key])}
                                 <input
                                   type="number"
                                   className={field}
@@ -494,7 +498,7 @@ export default function CoachPlansPage() {
                           )}
                         </div>
                         <label className="mt-4 block text-sm">
-                          Instructions
+                          {t("Instructions")}
                           <textarea
                             className={field}
                             maxLength={1000}
@@ -505,22 +509,22 @@ export default function CoachPlansPage() {
                           />
                         </label>
                         <label className="mt-4 block text-sm">
-                          Optional assessment
+                          {t("Optional assessment")}
                           <select
                             className={field}
                             value={item.template_code || ""}
-                            aria-label={`Assessment for activity ${index + 1}`}
+                            aria-label={t("Assessment for activity {0}", index + 1)}
                             onChange={(e) =>
                               update({ template_code: e.target.value || null })
                             }
                           >
-                            <option value="">No video assessment</option>
+                            <option value="">{t("No video assessment")}</option>
                             {item.template_code &&
                               !templates.some(
                                 (t) => t.template_code === item.template_code,
                               ) && (
                                 <option value={item.template_code}>
-                                  {item.template_code} · unavailable
+                                  {templateDisplayName(item.template_code, null, language)} {t("· unavailable")}
                                 </option>
                               )}
                             {templates.map((t) => (
@@ -528,7 +532,7 @@ export default function CoachPlansPage() {
                                 key={t.template_code}
                                 value={t.template_code}
                               >
-                                {t.name}
+                                {templateDisplayName(t.template_code, t.name, language)}
                               </option>
                             ))}
                           </select>
@@ -546,13 +550,13 @@ export default function CoachPlansPage() {
                       change({ ...form, items: [...form.items, emptyItem()] })
                     }
                   >
-                    Add activity
+                    {t("Add activity")}
                   </button>
                   <button
                     className="min-h-11 rounded-lg bg-[#d8ff5d] px-5 font-semibold text-black disabled:opacity-50"
                     type="submit"
                   >
-                    {busy ? "Saving…" : "Save draft"}
+                    {busy ? t("Saving…") : t("Save draft")}
                   </button>
                   <button
                     type="button"
@@ -561,19 +565,18 @@ export default function CoachPlansPage() {
                       if (canLeave()) reset();
                     }}
                   >
-                    Start new plan
+                    {t("Start new plan")}
                   </button>
                 </div>
               </fieldset>
             </form>
             <section className="mt-12 border-t border-white/20 pt-6">
-              <h2 className="text-2xl font-semibold">Saved plans</h2>
+              <h2 className="text-2xl font-semibold">{t("Saved plans")}</h2>
               <p className="mt-2 text-sm text-white/75">
-                Newest planned dates first. Published revisions preserve earlier
-                versions. Personal plans are shown alongside class plans.
+                {t("Newest planned dates first. Published revisions preserve earlier versions. Personal plans are shown alongside class plans.")}
               </p>
               {!loading && !error && !plans.length && (
-                <p className="mt-6">No plans saved for this class yet.</p>
+                <p className="mt-6">{t("No plans saved for this class yet.")}</p>
               )}
               <div className="mt-4 divide-y divide-white/20">
                 {plans.map((plan) => (
@@ -585,7 +588,7 @@ export default function CoachPlansPage() {
                           className={button}
                           href={`/coach/lessons?classId=${plan.class_public_id}&planId=${plan.public_id}`}
                         >
-                          Record actual lesson
+                          {t("Record actual lesson")}
                         </Link>
                       )}
                       {plan.status === "draft" ? (
@@ -595,14 +598,14 @@ export default function CoachPlansPage() {
                             disabled={busy}
                             onClick={() => edit(plan)}
                           >
-                            Edit draft
+                            {t("Edit draft")}
                           </button>
                           <button
                             className={button}
                             disabled={busy}
                             onClick={() => publish(plan)}
                           >
-                            Publish plan
+                            {t("Publish plan")}
                           </button>
                         </>
                       ) : (
@@ -611,7 +614,7 @@ export default function CoachPlansPage() {
                           disabled={busy}
                           onClick={() => edit(plan, true)}
                         >
-                          Create revision
+                          {t("Create revision")}
                         </button>
                       )}
                     </div>
@@ -620,7 +623,7 @@ export default function CoachPlansPage() {
               </div>
               {more && (
                 <button className={button} disabled={busy} onClick={loadMore}>
-                  Load more plans
+                  {t("Load more plans")}
                 </button>
               )}
             </section>

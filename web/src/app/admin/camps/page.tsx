@@ -1,4 +1,7 @@
 "use client";
+import { useAppLanguage } from "@/components/account/LanguagePreferenceProvider";
+import { useAdminText } from "@/components/admin/adminCopy";
+
 
 import { useEffect, useState } from "react";
 import { isAdminRole } from "@/lib/authRedirect";
@@ -22,6 +25,8 @@ function toApiDate(value: string) {
 }
 
 export default function AdminCampsPage() {
+  const language = useAppLanguage();
+  const t = useAdminText();
   const user = useAuthStore((state) => state.user);
   const hasInitialized = useAuthStore((state) => state.hasInitialized);
   const isInitializing = useAuthStore((state) => state.isInitializing);
@@ -102,7 +107,7 @@ export default function AdminCampsPage() {
         start_date: toApiDate(startDate),
         end_date: toApiDate(endDate),
       });
-      setMessage(`Created camp ${camp.name}.`);
+      setMessage(t("Created camp {0}.", camp.name));
       setName("");
       setCode("");
       setSeasonName("");
@@ -150,7 +155,7 @@ export default function AdminCampsPage() {
         start_date: toApiDate(editStartDate),
         end_date: toApiDate(editEndDate),
       });
-      setMessage(`Updated camp ${camp.name}.`);
+      setMessage(t("Updated camp {0}.", camp.name));
       setEditCamp(camp);
       await loadCamps();
     } catch (submitError) {
@@ -169,11 +174,11 @@ export default function AdminCampsPage() {
   }
 
   return (
-    <AdminShell user={user} title="Training Camps" breadcrumb={["Camps"]}>
+    <AdminShell user={user} title={t("Training Camps")} breadcrumb={[t("Camps")]}>
       {error ? (
         <div className="flex items-start gap-3 rounded-lg border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-100">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{error}</span>
+          <span>{t(error)}</span>
         </div>
       ) : null}
       {message ? (
@@ -187,10 +192,10 @@ export default function AdminCampsPage() {
           <div className="flex items-center justify-between gap-4">
             <div>
               <div className="text-[0.68rem] uppercase tracking-[0.22em] text-white/42">
-                Camp registry
+                {t("Camp registry")}
               </div>
               <h1 className="mt-2 font-[var(--font-display)] text-2xl font-bold text-white">
-                Training camps
+                {t("Training camps")}
               </h1>
             </div>
             {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-[#65f7ff]" /> : null}
@@ -201,12 +206,12 @@ export default function AdminCampsPage() {
               <table className="min-w-[820px] w-full border-collapse text-left text-sm">
                 <thead className="border-b border-white/10 bg-white/[0.035] text-[0.68rem] uppercase tracking-[0.18em] text-white/42">
                   <tr>
-                    <th className="px-4 py-3 font-semibold">Camp</th>
-                    <th className="px-4 py-3 font-semibold">Season</th>
-                    <th className="px-4 py-3 text-right font-semibold">Classes</th>
-                    <th className="px-4 py-3 font-semibold">Window</th>
-                    <th className="px-4 py-3 font-semibold">Status</th>
-                    <th className="px-4 py-3 text-right font-semibold">Actions</th>
+                    <th className="px-4 py-3 font-semibold">{t("Camp")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Season")}</th>
+                    <th className="px-4 py-3 text-right font-semibold">{t("Classes")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Window")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Status")}</th>
+                    <th className="px-4 py-3 text-right font-semibold">{t("Actions")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/8">
@@ -223,11 +228,11 @@ export default function AdminCampsPage() {
                         {camp.class_count}
                       </td>
                       <td className="px-4 py-4 text-white/62">
-                        {formatDate(camp.start_date)} to {formatDate(camp.end_date)}
+                        {formatDate(camp.start_date, undefined, language)} {t("to")} {formatDate(camp.end_date, undefined, language)}
                       </td>
                       <td className="px-4 py-4">
                         <span className="rounded-full border border-[#d8ff5d]/24 bg-[#d8ff5d]/10 px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[#e8ff9a]">
-                          {camp.status}
+                          {t(camp.status)}
                         </span>
                       </td>
                       <td className="px-4 py-4 text-right">
@@ -237,7 +242,7 @@ export default function AdminCampsPage() {
                           className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[#65f7ff]/24 bg-[#65f7ff]/10 px-3 text-xs font-semibold text-[#dffbff] transition hover:bg-[#65f7ff]/16"
                         >
                           <Pencil className="h-4 w-4" />
-                          Edit
+                          {t("Edit")}
                         </button>
                       </td>
                     </tr>
@@ -245,7 +250,7 @@ export default function AdminCampsPage() {
                   {camps.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="px-4 py-8 text-center text-sm text-white/48">
-                        No camps yet.
+                        {t("No camps yet.")}
                       </td>
                     </tr>
                   ) : null}
@@ -254,42 +259,42 @@ export default function AdminCampsPage() {
             </div>
           </div>
           <div className="mt-3 text-xs text-white/36">
-            Latest update {formatDateTime(camps[0]?.created_at)}
+            {t("Latest update")} {formatDateTime(camps[0]?.created_at, language)}
           </div>
         </section>
 
         <aside className="space-y-5">
         <section className="rounded-lg border border-white/10 bg-white/[0.055] p-5 backdrop-blur-2xl">
-          <div className={labelClass}>Edit camp</div>
+          <div className={labelClass}>{t("Edit camp")}</div>
           <h2 className="mt-2 font-[var(--font-display)] text-xl font-bold text-white">
-            {editCamp ? editCamp.name : "Select a camp"}
+            {editCamp ? editCamp.name : t("Select a camp")}
           </h2>
           {editCamp ? (
             <form className="mt-5 space-y-4" onSubmit={handleEditSubmit}>
               <label className="block space-y-2">
-                <span className={labelClass}>Name</span>
+                <span className={labelClass}>{t("Name")}</span>
                 <input className={fieldClass} value={editName} onChange={(event) => setEditName(event.target.value)} required />
               </label>
               <label className="block space-y-2">
-                <span className={labelClass}>Code</span>
+                <span className={labelClass}>{t("Code")}</span>
                 <input className={fieldClass} value={editCode} onChange={(event) => setEditCode(event.target.value)} required />
               </label>
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="block space-y-2">
-                  <span className={labelClass}>Season</span>
+                  <span className={labelClass}>{t("Season")}</span>
                   <input className={fieldClass} value={editSeasonName} onChange={(event) => setEditSeasonName(event.target.value)} />
                 </label>
                 <label className="block space-y-2">
-                  <span className={labelClass}>Status</span>
+                  <span className={labelClass}>{t("Status")}</span>
                   <select className={fieldClass} value={editStatus} onChange={(event) => setEditStatus(event.target.value)}>
-                    <option value="active">active</option>
-                    <option value="paused">paused</option>
-                    <option value="archived">archived</option>
+                    <option value="active">{t("active")}</option>
+                    <option value="paused">{t("paused")}</option>
+                    <option value="archived">{t("archived")}</option>
                   </select>
                 </label>
               </div>
               <label className="block space-y-2">
-                <span className={labelClass}>Description</span>
+                <span className={labelClass}>{t("Description")}</span>
                 <textarea
                   className={`${fieldClass} min-h-24 resize-none py-3`}
                   value={editDescription}
@@ -298,11 +303,11 @@ export default function AdminCampsPage() {
               </label>
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="block space-y-2">
-                  <span className={labelClass}>Start</span>
+                  <span className={labelClass}>{t("Start")}</span>
                   <input className={fieldClass} type="date" value={editStartDate} onChange={(event) => setEditStartDate(event.target.value)} />
                 </label>
                 <label className="block space-y-2">
-                  <span className={labelClass}>End</span>
+                  <span className={labelClass}>{t("End")}</span>
                   <input className={fieldClass} type="date" value={editEndDate} onChange={(event) => setEditEndDate(event.target.value)} />
                 </label>
               </div>
@@ -312,36 +317,36 @@ export default function AdminCampsPage() {
                 className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#d8ff5d]/32 bg-[#d8ff5d]/10 px-4 text-sm font-semibold text-[#f1ffc1] transition hover:bg-[#d8ff5d]/16 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isSubmittingEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Save changes
+                {t("Save changes")}
               </button>
             </form>
           ) : (
             <p className="mt-4 text-sm leading-6 text-white/50">
-              Pick a camp from the registry to update its season, dates, status, or description.
+              {t("Pick a camp from the registry to update its season, dates, status, or description.")}
             </p>
           )}
         </section>
 
         <section className="rounded-lg border border-white/10 bg-white/[0.055] p-5 backdrop-blur-2xl">
-          <div className={labelClass}>Create camp</div>
+          <div className={labelClass}>{t("Create camp")}</div>
           <h2 className="mt-2 font-[var(--font-display)] text-xl font-bold text-white">
-            Add training camp
+            {t("Add training camp")}
           </h2>
           <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
             <label className="block space-y-2">
-              <span className={labelClass}>Name</span>
+              <span className={labelClass}>{t("Name")}</span>
               <input className={fieldClass} value={name} onChange={(event) => setName(event.target.value)} required />
             </label>
             <label className="block space-y-2">
-              <span className={labelClass}>Code</span>
+              <span className={labelClass}>{t("Code")}</span>
               <input className={fieldClass} value={code} onChange={(event) => setCode(event.target.value)} required />
             </label>
             <label className="block space-y-2">
-              <span className={labelClass}>Season</span>
+              <span className={labelClass}>{t("Season")}</span>
               <input className={fieldClass} value={seasonName} onChange={(event) => setSeasonName(event.target.value)} />
             </label>
             <label className="block space-y-2">
-              <span className={labelClass}>Description</span>
+              <span className={labelClass}>{t("Description")}</span>
               <textarea
                 className={`${fieldClass} min-h-24 resize-none py-3`}
                 value={description}
@@ -350,11 +355,11 @@ export default function AdminCampsPage() {
             </label>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block space-y-2">
-                <span className={labelClass}>Start</span>
+                <span className={labelClass}>{t("Start")}</span>
                 <input className={fieldClass} type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
               </label>
               <label className="block space-y-2">
-                <span className={labelClass}>End</span>
+                <span className={labelClass}>{t("End")}</span>
                 <input className={fieldClass} type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
               </label>
             </div>
@@ -364,7 +369,7 @@ export default function AdminCampsPage() {
               className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#65f7ff]/34 bg-[#65f7ff]/12 px-4 text-sm font-semibold text-[#dffbff] transition hover:bg-[#65f7ff]/18 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-              Create camp
+              {t("Create camp")}
             </button>
           </form>
         </section>

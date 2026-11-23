@@ -64,7 +64,7 @@ export async function login(page: Page, account: SeedAccount, next = "/me") {
 export async function logout(page: Page) {
   // The profile has a visible logout control on both desktop and mobile.
   await page.goto("/me/profile");
-  await page.getByRole("button", { name: "Log Out", exact: true }).click();
+  await page.getByRole("main").getByRole("button", { name: /^(Log Out|退出登录)$/ }).click();
   await expect(page).toHaveURL(/\/auth\/login/);
 }
 

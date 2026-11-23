@@ -1,5 +1,8 @@
 "use client";
 
+import { useInterfaceText } from "@/hooks/useInterfaceText";
+
+
 import { useEffect, useState } from "react";
 import { isAdminRole } from "@/lib/authRedirect";
 import { AlertTriangle, Loader2, ShieldAlert } from "lucide-react";
@@ -10,12 +13,13 @@ import { coachService, type CoachClassRead } from "@/services/coach";
 import { useAuthStore } from "@/store/authStore";
 
 function CoachRouteLoading() {
+  const t = useInterfaceText();
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#030712] text-white">
       <div className="rounded-lg border border-white/10 bg-white/[0.055] px-8 py-7 text-center shadow-[0_20px_70px_rgba(0,0,0,0.28)] backdrop-blur-2xl">
         <Loader2 className="mx-auto h-9 w-9 animate-spin text-[#65f7ff]" />
         <div className="mt-4 text-[0.72rem] uppercase tracking-[0.28em] text-white/48">
-          Loading classes
+          {t("Loading classes")}
         </div>
       </div>
     </main>
@@ -23,6 +27,7 @@ function CoachRouteLoading() {
 }
 
 export default function CoachClassesPage() {
+  const t = useInterfaceText();
   const user = useAuthStore((state) => state.user);
   const hasInitialized = useAuthStore((state) => state.hasInitialized);
   const isInitializing = useAuthStore((state) => state.isInitializing);
@@ -50,7 +55,7 @@ export default function CoachClassesPage() {
       })
       .catch((fetchError) => {
         if (isActive) {
-          setError(fetchError instanceof Error ? fetchError.message : "Unable to load classes.");
+          setError(fetchError instanceof Error ? fetchError.message : t("Unable to load classes."));
         }
       })
       .finally(() => {
@@ -70,11 +75,11 @@ export default function CoachClassesPage() {
 
   if (!canAccessCoach) {
     return (
-      <CoachShell user={user} title="Coach access required" breadcrumb={["Access"]}>
+      <CoachShell user={user} title={t("Coach access required")} breadcrumb={[t("Access")]}>
         <section className="rounded-lg border border-red-400/20 bg-red-500/10 p-8 text-center backdrop-blur-2xl">
           <ShieldAlert className="mx-auto h-10 w-10 text-red-200" />
           <h2 className="mt-5 font-[var(--font-display)] text-2xl font-bold text-white">
-            This workspace is available to coaches only.
+            {t("This workspace is available to coaches only.")}
           </h2>
         </section>
       </CoachShell>
@@ -82,21 +87,21 @@ export default function CoachClassesPage() {
   }
 
   return (
-    <CoachShell user={user} title="Assigned Classes" breadcrumb={["Classes"]}>
+    <CoachShell user={user} title={t("Assigned Classes")} breadcrumb={[t("Classes")]}>
       <section className="rounded-lg border border-white/10 bg-white/[0.055] p-5 backdrop-blur-2xl">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="text-[0.68rem] uppercase tracking-[0.22em] text-white/42">
-              Class registry
+              {t("Class registry")}
             </div>
             <h1 className="mt-2 font-[var(--font-display)] text-2xl font-bold text-white">
-              Assigned classes
+              {t("Assigned classes")}
             </h1>
           </div>
           {isLoading ? (
             <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/18 px-3 py-2 text-sm text-white/58">
               <Loader2 className="h-4 w-4 animate-spin text-[#65f7ff]" />
-              Loading
+              {t("Loading")}
             </span>
           ) : null}
         </div>

@@ -1,3 +1,6 @@
+"use client";
+
+import { useInterfaceText } from "@/hooks/useInterfaceText";
 import type { Recipe } from "@/services/recipes";
 export const field =
   "mt-2 min-h-11 w-full min-w-0 rounded-lg border border-white/30 bg-[#10141b] px-3 py-2 text-base text-white focus:outline-2 focus:outline-[#d8ff5d]";
@@ -21,15 +24,16 @@ export function ErrorNotice({
   error: string;
   retry?: () => void;
 }) {
+  const t = useInterfaceText();
   return (
     <div
       role="alert"
       className="my-4 break-words rounded-lg border border-red-300/40 p-4 text-red-100"
     >
-      {error}
+      {t(error)}
       {retry && (
         <button className={button + " ml-3"} onClick={retry} type="button">
-          Retry
+          {t("Retry")}
         </button>
       )}
     </div>
@@ -42,12 +46,13 @@ export function Nutrition({
   recipe: Recipe;
   portion?: boolean;
 }) {
+  const t = useInterfaceText();
   return (
     <section className="min-w-0 space-y-4">
       <h2 className="text-2xl font-semibold">
         {portion
-          ? `Nutrition for ${recipe.portion_preview?.servings_requested ?? "1"} serving(s)`
-          : "Nutrition per serving"}
+          ? t("Nutrition for {0} serving(s)", recipe.portion_preview?.servings_requested ?? "1")
+          : t("Nutrition per serving")}
       </h2>
       <dl className="grid grid-cols-2 gap-x-6 sm:grid-cols-4">
         {Object.keys(labels).map((key) => {
@@ -57,9 +62,9 @@ export function Nutrition({
           const unit = recipe.nutrition.nutrients[key]?.unit;
           return (
             <div key={key} className="border-b border-white/20 py-4">
-              <dt className="text-sm text-white/70">{labels[key]}</dt>
+              <dt className="text-sm text-white/70">{t(labels[key])}</dt>
               <dd className="mt-1 text-xl tabular-nums">
-                {value == null ? "Unknown" : `${value} ${unit}`}
+                {value == null ? t("Unknown") : `${value} ${unit}`}
               </dd>
             </div>
           );
@@ -69,21 +74,21 @@ export function Nutrition({
         .filter(([, value]) => value.total === null)
         .map(([key, value]) => (
           <p key={key} className="text-sm text-amber-100">
-            {labels[key]} is incomplete: missing data for{" "}
+            {t(labels[key])} {t("is incomplete: missing data for")}{" "}
             {value.missing_ingredient_indexes
-              .map((i) => recipe.ingredients[i]?.name?.trim() || `Ingredient ${i + 1} (name unavailable)`)
+              .map((i) => recipe.ingredients[i]?.name?.trim() || t("Ingredient {0} (name unavailable)", i + 1))
               .join(", ")}
-            . Known recipe subtotal: {value.known_subtotal} {value.unit}.
+            {t(". Known recipe subtotal:")} {value.known_subtotal} {value.unit}.
           </p>
         ))}
       <p className="text-sm text-white/70">
         {recipe.nutrition.serving_weight_grams
-          ? `One serving weighs approximately ${recipe.nutrition.serving_weight_grams} g.`
-          : "Finished weight was not recorded; weight per serving is unavailable."}
+          ? t("One serving weighs approximately {0} g.", recipe.nutrition.serving_weight_grams)
+          : t("Finished weight was not recorded; weight per serving is unavailable.")}
       </p>
       <details className="border-b border-white/20 py-3">
         <summary className="min-h-11 cursor-pointer py-2">
-          Whole recipe and finished weight values
+          {t("Whole recipe and finished weight values")}
         </summary>
         <dl>
           {Object.entries(recipe.nutrition.nutrients).map(([key, v]) => (
@@ -91,10 +96,10 @@ export function Nutrition({
               key={key}
               className="flex flex-wrap justify-between gap-2 py-2 text-sm"
             >
-              <dt>{labels[key]}</dt>
+              <dt>{t(labels[key])}</dt>
               <dd>
-                Total: {v.total ?? "Unknown"} {v.unit} · per 100g finished:{" "}
-                {v.per_100g_finished ?? "Unavailable"} {v.unit}
+                {t("Total:")} {v.total ?? t("Unknown")} {v.unit} {t("· per 100g finished:")}{" "}
+                {v.per_100g_finished ?? t("Unavailable")} {v.unit}
               </dd>
             </div>
           ))}
@@ -102,22 +107,22 @@ export function Nutrition({
       </details>
       <details className="border-b border-white/20 py-3">
         <summary className="min-h-11 cursor-pointer py-2">
-          Ingredient contributions to the full recipe
+          {t("Ingredient contributions to the full recipe")}
         </summary>
         {recipe.ingredients.map((ingredient, index) => (
           <div
             className="border-t border-white/10 py-4"
             key={`${ingredient.release_id}/${ingredient.food_key}`}
           >
-            <h3 className="break-words font-semibold">{ingredient.name?.trim() || "Food name unavailable — reload or contact the recipe administrator"}</h3>
+            <h3 className="break-words font-semibold">{ingredient.name?.trim() || t("Food name unavailable — reload or contact the recipe administrator")}</h3>
             <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {Object.entries(
                 recipe.nutrition.ingredient_contributions[index] || {},
               ).map(([key, value]) => (
                 <div key={key}>
-                  <dt className="text-sm text-white/70">{labels[key]}</dt>
+                  <dt className="text-sm text-white/70">{t(labels[key])}</dt>
                   <dd>
-                    {value ?? "Unknown"}{" "}
+                    {value ?? t("Unknown")}{" "}
                     {value === null
                       ? ""
                       : recipe.nutrition.nutrients[key]?.unit}
@@ -132,6 +137,7 @@ export function Nutrition({
   );
 }
 export function SourceNotice({ recipe }: { recipe: Recipe }) {
+  const t = useInterfaceText();
   const sources = [
     ...new Map(
       recipe.ingredients.map((i) => [i.source.release, i.source]),
@@ -140,14 +146,10 @@ export function SourceNotice({ recipe }: { recipe: Recipe }) {
   return (
     <aside className="mt-8 space-y-2 border-t border-white/20 pt-5 text-sm text-white/70">
       <p>
-        Estimated from matched-state edible food weights. Cooking losses,
-        retention and oil absorption are not inferred. This is not an
-        AFCD-certified recipe or an individual meal prescription.
+        {t("Estimated from matched-state edible food weights. Cooking losses, retention and oil absorption are not inferred. This is not an AFCD-certified recipe or an individual meal prescription.")}
       </p>
       <p>
-        Australian food composition data varies with samples, seasons,
-        processing and brands. It may not be appropriate for use in other
-        countries.
+        {t("Australian food composition data varies with samples, seasons, processing and brands. It may not be appropriate for use in other countries.")}
       </p>
       {sources.map((s) => (
         <p key={s.release}>
@@ -158,7 +160,7 @@ export function SourceNotice({ recipe }: { recipe: Recipe }) {
             target="_blank"
             rel="noreferrer"
           >
-            Source data
+            {t("Source data")}
           </a>{" "}
           ·{" "}
           <a
@@ -167,10 +169,9 @@ export function SourceNotice({ recipe }: { recipe: Recipe }) {
             target="_blank"
             rel="noreferrer"
           >
-            Data licence
+            {t("Data licence")}
           </a>
-          . Changes: ingredient amounts scaled and combined into recipe
-          estimates.
+          {t(". Changes: ingredient amounts scaled and combined into recipe estimates.")}
         </p>
       ))}
     </aside>

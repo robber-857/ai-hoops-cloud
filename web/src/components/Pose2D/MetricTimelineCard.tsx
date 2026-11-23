@@ -1,5 +1,6 @@
 "use client";
 
+import { usePoseCopy } from "@/components/Pose2D/poseCopy";
 import React, { useId, useMemo, useState } from "react";
 import {
   Area,
@@ -20,6 +21,7 @@ import {
 import { Activity, ChevronLeft, ChevronRight, Lightbulb } from "lucide-react";
 
 import { getTemplateById, type ActionTemplate, type Metric } from "@/config/templates";
+import { templateDisplayName } from "@/lib/templateLanguage";
 import type { AngleData, MetricScoreBand } from "@/lib/scoring";
 import { buildTrainingMetricChartModels } from "@/lib/trainingMetricPresentation";
 import type { FrameSample } from "@/store/analysisStore";
@@ -316,6 +318,7 @@ function SummaryRange({
   unit?: string;
   accent: string;
 }) {
+  const { t } = usePoseCopy();
   const markerPercent =
     value === null
       ? 0
@@ -345,17 +348,17 @@ function SummaryRange({
   return (
     <div className="flex h-full flex-col justify-center gap-5 rounded-lg border border-dashed border-[var(--ui-border)] bg-[var(--ui-subtle)] px-4 py-4">
       <div>
-        <div className="text-xs font-medium text-[var(--ui-muted)]">{label}</div>
+        <div className="text-xs font-medium text-[var(--ui-muted)]">{t(label)}</div>
         <div className="mt-2 text-3xl font-semibold tabular-nums text-[var(--ui-text)]">
           {formatMetric(value, 3)}
-          {unit ? <span className="ml-1 text-sm font-medium text-[var(--ui-muted)]">{unit}</span> : null}
+          {unit ? <span className="ml-1 text-sm font-medium text-[var(--ui-muted)]">{t(unit)}</span> : null}
         </div>
       </div>
 
       <div className="space-y-2">
         <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wide">
-          <span className="text-[var(--ui-muted)]">Full scale</span>
-          <span style={{ color: targetTextColor }}>Target zone</span>
+          <span className="text-[var(--ui-muted)]">{t("Full scale")}</span>
+          <span style={{ color: targetTextColor }}>{t("Target zone")}</span>
         </div>
 
         <div className="relative h-16">
@@ -384,9 +387,7 @@ function SummaryRange({
               className="absolute top-2 h-10 w-px bg-[var(--ui-muted)]"
               style={{ left: `${targetPercent}%` }}
             >
-              <span className="absolute -top-4 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium text-[var(--ui-muted)]">
-                Goal
-              </span>
+              <span className="absolute -top-4 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium text-[var(--ui-muted)]">{t("Goal")}</span>
             </div>
           ) : null}
 
@@ -402,8 +403,7 @@ function SummaryRange({
                   left: `${markerPercent}%`,
                   transform: markerLabelTransform,
                 }}
-              >
-                Now {formatMetric(value, 3)}
+              >{t("Now")} {formatMetric(value, 3)}
               </div>
             </>
           ) : null}
@@ -412,8 +412,7 @@ function SummaryRange({
         <div className="relative h-9 text-[11px] font-medium text-[var(--ui-muted)]">
           <span className="absolute left-0 top-0 tabular-nums">{range.domain[0]}</span>
           <span className="absolute right-0 top-0 tabular-nums">{range.domain[1]}</span>
-          <span className="absolute top-5 whitespace-nowrap tabular-nums" style={{ ...targetLabelStyle, color: targetTextColor }}>
-            Target {formatRangeText(range)}
+          <span className="absolute top-5 whitespace-nowrap tabular-nums" style={{ ...targetLabelStyle, color: targetTextColor }}>{t("Target")} {formatRangeText(range)}
           </span>
         </div>
       </div>
@@ -438,6 +437,7 @@ function MetricLineChart({
   accent: string;
   savedValue: number | null;
 }) {
+  const { t } = usePoseCopy();
   const gradientId = useId();
   const stroke = `color-mix(in oklab, ${accent} 73%, var(--ui-text))`;
 
@@ -471,7 +471,7 @@ function MetricLineChart({
           dataKey="time"
           type="number"
           domain={["dataMin", "dataMax"]}
-          tickFormatter={(value: number | string) => `${formatRangeNumber(Number(value), 1)}s`}
+          tickFormatter={(value: number | string) => `${formatRangeNumber(Number(value), 1)}${t("s")}`}
           stroke="var(--ui-muted)"
           fontSize={11}
           tickLine={false}
@@ -491,8 +491,8 @@ function MetricLineChart({
           cursor={{ stroke: "var(--ui-muted)", strokeDasharray: "3 4" }}
           contentStyle={tooltipStyle}
           labelStyle={tooltipLabelStyle}
-          labelFormatter={(value: number | string) => `${Number(value).toFixed(1)}s`}
-          formatter={(value: number | string) => [Number(value).toFixed(2), label]}
+          labelFormatter={(value: number | string) => `${Number(value).toFixed(1)}${t("s")}`}
+          formatter={(value: number | string) => [Number(value).toFixed(2), t(label)]}
         />
         <Area
           type="linear"
@@ -516,6 +516,7 @@ function ConsistencyChart({
   points: ChartPoint[];
   savedValue: number | null;
 }) {
+  const { t } = usePoseCopy();
   const accent = "#38bdf8";
   const range = { min: 0, max: 0.062, domain: [0, 0.12] as [number, number] };
 
@@ -541,7 +542,7 @@ function ConsistencyChart({
           dataKey="time"
           type="number"
           domain={["dataMin", "dataMax"]}
-          tickFormatter={(value: number | string) => `${Number(value).toFixed(0)}s`}
+          tickFormatter={(value: number | string) => `${Number(value).toFixed(0)}${t("s")}`}
           stroke="var(--ui-muted)"
           fontSize={11}
           tickLine={false}
@@ -559,8 +560,8 @@ function ConsistencyChart({
           cursor={{ fill: "rgba(148, 163, 184, 0.08)" }}
           contentStyle={tooltipStyle}
           labelStyle={tooltipLabelStyle}
-          labelFormatter={(value: number | string) => `${Number(value).toFixed(1)}s`}
-          formatter={(value: number | string) => [Number(value).toFixed(3), "Rolling variation"]}
+          labelFormatter={(value: number | string) => `${Number(value).toFixed(1)}${t("s")}`}
+          formatter={(value: number | string) => [Number(value).toFixed(3), t("Rolling variation")]}
         />
         <Bar dataKey="value" radius={[3, 3, 0, 0]} animationDuration={500}>
           {points.map((point, index) => (
@@ -583,6 +584,7 @@ function GuideHandChart({
   points: ChartPoint[];
   savedValue: number | null;
 }) {
+  const { t } = usePoseCopy();
   const accent = "#2f9e68";
 
   if (points.length < 2) {
@@ -606,7 +608,7 @@ function GuideHandChart({
           dataKey="time"
           type="number"
           domain={["dataMin", "dataMax"]}
-          tickFormatter={(value: number | string) => `${Number(value).toFixed(0)}s`}
+          tickFormatter={(value: number | string) => `${Number(value).toFixed(0)}${t("s")}`}
           stroke="var(--ui-muted)"
           fontSize={11}
           tickLine={false}
@@ -617,10 +619,10 @@ function GuideHandChart({
           cursor={{ fill: "rgba(148, 163, 184, 0.08)" }}
           contentStyle={tooltipStyle}
           labelStyle={tooltipLabelStyle}
-          labelFormatter={(value: number | string) => `${Number(value).toFixed(1)}s`}
+          labelFormatter={(value: number | string) => `${Number(value).toFixed(1)}${t("s")}`}
           formatter={(value: number | string) => [
-            Number(value) >= 0.5 ? "In chest box" : "Outside chest box",
-            "Guide hand",
+            t(Number(value) >= 0.5 ? "In chest box" : "Outside chest box"),
+            t("Guide hand"),
           ]}
         />
         <Bar dataKey="value" radius={[2, 2, 0, 0]} animationDuration={500}>
@@ -652,6 +654,7 @@ function VariationBarChart({
   label: string;
   accent: string;
 }) {
+  const { t } = usePoseCopy();
   if (points.length < 2) {
     return (
       <SummaryRange
@@ -674,7 +677,7 @@ function VariationBarChart({
           dataKey="time"
           type="number"
           domain={["dataMin", "dataMax"]}
-          tickFormatter={(value: number | string) => `${Number(value).toFixed(0)}s`}
+          tickFormatter={(value: number | string) => `${Number(value).toFixed(0)}${t("s")}`}
           stroke="var(--ui-muted)"
           fontSize={11}
           tickLine={false}
@@ -692,8 +695,8 @@ function VariationBarChart({
           cursor={{ fill: "rgba(148, 163, 184, 0.08)" }}
           contentStyle={tooltipStyle}
           labelStyle={tooltipLabelStyle}
-          labelFormatter={(value: number | string) => `${Number(value).toFixed(1)}s`}
-          formatter={(value: number | string) => [Number(value).toFixed(3), label]}
+          labelFormatter={(value: number | string) => `${Number(value).toFixed(1)}${t("s")}`}
+          formatter={(value: number | string) => [Number(value).toFixed(3), t(label)]}
         />
         <Bar dataKey="value" radius={[3, 3, 0, 0]} animationDuration={500}>
           {points.map((point, index) => (
@@ -718,6 +721,7 @@ function MidlineCrossingChart({
   savedValue: number | null;
   accent: string;
 }) {
+  const { t } = usePoseCopy();
   if (points.length < 2) {
     return (
       <SummaryRange
@@ -744,7 +748,7 @@ function MidlineCrossingChart({
           dataKey="time"
           type="number"
           domain={["dataMin", "dataMax"]}
-          tickFormatter={(value: number | string) => `${Number(value).toFixed(0)}s`}
+          tickFormatter={(value: number | string) => `${Number(value).toFixed(0)}${t("s")}`}
           stroke="var(--ui-muted)"
           fontSize={11}
           tickLine={false}
@@ -762,8 +766,8 @@ function MidlineCrossingChart({
           cursor={{ stroke: "var(--ui-muted)", strokeOpacity: 0.2 }}
           contentStyle={tooltipStyle}
           labelStyle={tooltipLabelStyle}
-          labelFormatter={(value: number | string) => `${Number(value).toFixed(1)}s`}
-          formatter={(value: number | string) => [Number(value).toFixed(3), "Wrist offset"]}
+          labelFormatter={(value: number | string) => `${Number(value).toFixed(1)}${t("s")}`}
+          formatter={(value: number | string) => [Number(value).toFixed(3), t("Wrist offset")]}
         />
         <Line
           type="monotone"
@@ -788,6 +792,7 @@ function TemplatePerformanceCard({
   subtitle: string;
   charts: readonly PerformanceChartItem[];
 }) {
+  const { t } = usePoseCopy();
   const id = useId();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const activeIndex = selectedIndex < charts.length ? selectedIndex : 0;
@@ -807,21 +812,21 @@ function TemplatePerformanceCard({
             <Activity className="size-4" aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            <h3 id={`${id}-heading`} className="text-base font-semibold">Performance Curves</h3>
+            <h3 id={`${id}-heading`} className="text-base font-semibold">{t("Performance Curves")}</h3>
             <p className="mt-0.5 text-xs text-[var(--ui-muted)]">
-              {subtitle}{timeline?.length ? ` · ${timeline.length} samples` : ""}
+              {t(subtitle)}{timeline?.length ? ` · ${t(`${timeline.length} samples`)}` : ""}
             </p>
           </div>
         </div>
         {charts.length > 1 && (
           <div className="flex items-center gap-2">
-            <button type="button" className="ui-icon-button" onClick={() => step(-1)} aria-label="Previous chart">
+            <button type="button" className="ui-icon-button" onClick={() => step(-1)} aria-label={t("Previous chart")}>
               <ChevronLeft className="size-4" aria-hidden="true" />
             </button>
             <span className="min-w-9 text-center text-xs tabular-nums text-[var(--ui-muted)]">
               {activeIndex + 1} / {charts.length}
             </span>
-            <button type="button" className="ui-icon-button" onClick={() => step(1)} aria-label="Next chart">
+            <button type="button" className="ui-icon-button" onClick={() => step(1)} aria-label={t("Next chart")}>
               <ChevronRight className="size-4" aria-hidden="true" />
             </button>
           </div>
@@ -830,7 +835,7 @@ function TemplatePerformanceCard({
 
       <div className="space-y-4 p-4 sm:p-6">
         {charts.length > 1 && (
-          <div role="group" aria-label="Performance metrics" className="flex flex-wrap gap-2">
+          <div role="group" aria-label={t("Performance metrics")} className="flex flex-wrap gap-2">
             {charts.map((chart, index) => (
               <button
                 key={chart.metricKey}
@@ -840,7 +845,7 @@ function TemplatePerformanceCard({
                 onClick={() => setSelectedIndex(index)}
                 className="rounded-lg border border-[var(--ui-border)] px-3 py-2 text-xs font-medium text-[var(--ui-muted)] transition-colors hover:bg-[var(--ui-subtle)] aria-pressed:border-[var(--ui-accent)] aria-pressed:bg-[var(--ui-accent-soft)] aria-pressed:text-[var(--ui-text)] sm:text-sm"
               >
-                {chart.title}
+                {t(chart.title)}
               </button>
             ))}
           </div>
@@ -851,13 +856,13 @@ function TemplatePerformanceCard({
             <div className="min-w-0">
               <h4 id={`${id}-metric`} className="flex items-center gap-2 text-lg font-semibold">
                 <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: activeChart.accent }} />
-                {activeChart.title}
+                {t(activeChart.title)}
               </h4>
-              {activeChart.helper && <p className="mt-1 text-xs leading-5 text-[var(--ui-muted)]">{activeChart.helper}</p>}
+              {activeChart.helper && <p className="mt-1 text-xs leading-5 text-[var(--ui-muted)]">{t(activeChart.helper)}</p>}
             </div>
             <div className="rounded-lg bg-[var(--ui-subtle)] px-3 py-2">
-              <p className="text-xs text-[var(--ui-muted)]">{activeChart.valueLabel}</p>
-              <p className="text-xl font-semibold tabular-nums">{activeChart.value}</p>
+              <p className="text-xs text-[var(--ui-muted)]">{t(activeChart.valueLabel)}</p>
+              <p className="text-xl font-semibold tabular-nums">{t(activeChart.value)}</p>
             </div>
           </div>
 
@@ -866,11 +871,11 @@ function TemplatePerformanceCard({
           </div>
 
           <figcaption className="grid gap-3 border-t border-[var(--ui-border)] bg-[var(--ui-subtle)] px-4 py-3 text-sm leading-6 text-[var(--ui-muted)] sm:px-5">
-            <p>{activeChart.explanation}</p>
+            <p>{t(activeChart.explanation)}</p>
             {activeChart.advice && (
               <p className="flex items-start gap-2 text-[var(--ui-text)]">
                 <Lightbulb className="mt-1 size-4 shrink-0 text-[var(--ui-accent)]" aria-hidden="true" />
-                <span>{activeChart.advice}</span>
+                <span>{t(activeChart.advice)}</span>
               </p>
             )}
           </figcaption>
@@ -1890,6 +1895,7 @@ function DataDrivenTrainingPerformanceCard({
   savedMetrics?: AngleData[] | null;
   scoringContext?: Record<string, unknown>;
 }) {
+  const { language, t } = usePoseCopy();
   if (template.mode !== "training") return null;
 
   const chartModels = buildTrainingMetricChartModels(
@@ -1933,7 +1939,7 @@ function DataDrivenTrainingPerformanceCard({
     <TemplatePerformanceCard
       key={`${template.templateId}:${template.version}`}
       timeline={timeline}
-      subtitle={`${template.displayName} - ${template.camera === "front" ? "Front view" : "Side view"}`}
+      subtitle={`${templateDisplayName(template.templateId, template.displayName, language)} - ${t(template.camera === "front" ? "Front view" : "Side view")}`}
       charts={charts}
     />
   );

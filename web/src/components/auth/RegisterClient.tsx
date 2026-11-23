@@ -1,5 +1,8 @@
 "use client";
 
+import { useInterfaceText } from "@/hooks/useInterfaceText";
+
+
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -47,6 +50,7 @@ function StatRow({
 }
 
 export function RegisterClient() {
+  const t = useInterfaceText();
   const router = useRouter();
   const searchParams = useSearchParams();
   const loginHref = withClassInvite(routes.auth.login, searchParams.get("next"));
@@ -77,11 +81,11 @@ export function RegisterClient() {
         });
         setStatusMessage(
           response.data.debug_code
-            ? `Email code sent. Development debug code: ${response.data.debug_code}`
-            : `Email verification code request accepted for ${response.data.target}.`,
+            ? t("Email code sent. Development debug code: {0}", response.data.debug_code)
+            : t("Email verification code request accepted for {0}.", response.data.target),
         );
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Unable to send email verification code.");
+        setError(err instanceof Error ? err.message : t("Unable to send email verification code."));
       }
     });
   };
@@ -91,7 +95,7 @@ export function RegisterClient() {
     setStatusMessage(null);
 
     if (!agreed) {
-      setError("Please accept the terms to continue.");
+      setError(t("Please accept the terms to continue."));
       return;
     }
 
@@ -108,7 +112,7 @@ export function RegisterClient() {
         setStatusMessage("Registration complete. Redirecting to sign in.");
         router.push(loginHref);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Unable to create account.");
+        setError(err instanceof Error ? err.message : t("Unable to create account."));
       }
     });
   };
@@ -136,9 +140,9 @@ export function RegisterClient() {
                 AI Hoops
               </span>
               <h1 className="text-5xl font-black uppercase leading-[0.88] tracking-[-0.08em] text-white sm:text-6xl lg:text-7xl">
-                Join the <br />
+                {t("Join the")} <br />
                 <span className="text-[#ff9f4a] [text-shadow:0_0_20px_rgba(255,159,74,0.4)]">
-                  Elite
+                  {t("Elite")}
                 </span>
               </h1>
             </div>
@@ -146,18 +150,18 @@ export function RegisterClient() {
             <div className="space-y-8">
               <StatRow
                 icon={<Activity className="h-5 w-5" />}
-                title="Pro-Grade Analysis"
-                description="Real-time biomechanical feedback on every shot you take."
+                title={t("Pro-Grade Analysis")}
+                description={t("Real-time biomechanical feedback on every shot you take.")}
               />
               <StatRow
                 icon={<Bolt className="h-5 w-5" />}
-                title="Kinetic Precision"
-                description="Optimize your release speed and arc with AI-driven insights."
+                title={t("Kinetic Precision")}
+                description={t("Optimize your release speed and arc with AI-driven insights.")}
               />
               <StatRow
                 icon={<Trophy className="h-5 w-5" />}
-                title="Global Leaderboards"
-                description="Compare your metrics with pro athletes and local legends."
+                title={t("Global Leaderboards")}
+                description={t("Compare your metrics with pro athletes and local legends.")}
               />
             </div>
           </div>
@@ -169,8 +173,8 @@ export function RegisterClient() {
           <div className="w-full max-w-md space-y-8">
             <div className="rounded-[1.35rem] border border-white/10 bg-[rgba(31,32,32,0.6)] p-8 shadow-2xl backdrop-blur-2xl md:p-10">
               <div className="mb-8">
-                <h2 className="text-3xl font-bold tracking-tight text-white">Create Account</h2>
-                <p className="mt-2 text-white/60">Register with your verified email. A phone number is optional.</p>
+                <h2 className="text-3xl font-bold tracking-tight text-white">{t("Create Account")}</h2>
+                <p className="mt-2 text-white/60">{t("Register with your verified email. A phone number is optional.")}</p>
               </div>
 
               <form
@@ -182,11 +186,11 @@ export function RegisterClient() {
               >
                 <div className="grid grid-cols-1 gap-4 @min-[20rem]:grid-cols-2">
                   <div className="grid min-w-0 grid-rows-[1fr_auto] gap-2">
-                    <FormLabel htmlFor="username">Username</FormLabel>
+                    <FormLabel htmlFor="username">{t("Username")}</FormLabel>
                     <input
                       id="username"
                       className="w-full rounded-xl border border-white/10 bg-[#000000] px-4 py-3 text-white placeholder:text-neutral-600 transition focus:border-[#ff9f4a] focus:outline-none focus:ring-1 focus:ring-[#ff9f4a]"
-                      placeholder="username"
+                      placeholder={t("username")}
                       value={form.username}
                       onChange={(event) =>
                         setForm((current) => ({ ...current, username: event.target.value }))
@@ -194,7 +198,7 @@ export function RegisterClient() {
                     />
                   </div>
                   <div className="grid min-w-0 grid-rows-[1fr_auto] gap-2">
-                    <FormLabel htmlFor="phone_number">Phone Number (optional)</FormLabel>
+                    <FormLabel htmlFor="phone_number">{t("Phone Number (optional)")}</FormLabel>
                     <input
                       id="phone_number"
                       className="w-full rounded-xl border border-white/10 bg-[#000000] px-4 py-3 text-white placeholder:text-neutral-600 transition focus:border-[#ff9f4a] focus:outline-none focus:ring-1 focus:ring-[#ff9f4a]"
@@ -208,7 +212,7 @@ export function RegisterClient() {
                 </div>
 
                 <div className="space-y-2">
-                  <FormLabel htmlFor="email">Email Address</FormLabel>
+                  <FormLabel htmlFor="email">{t("Email Address")}</FormLabel>
                   <input
                     id="email"
                     type="email"
@@ -223,13 +227,13 @@ export function RegisterClient() {
                 </div>
 
                 <div className="space-y-2">
-                  <FormLabel htmlFor="password">Create Password</FormLabel>
+                  <FormLabel htmlFor="password">{t("Create Password")}</FormLabel>
                   <div className="relative">
                     <input
                       id="password"
                       type={showPassword ? "text" : "password"}
                       className="w-full rounded-xl border border-white/10 bg-[#000000] px-4 py-3 pr-12 text-white placeholder:text-neutral-600 transition focus:border-[#ff9f4a] focus:outline-none focus:ring-1 focus:ring-[#ff9f4a]"
-                      placeholder="Enter a secure password"
+                      placeholder={t("Enter a secure password")}
                       value={form.password}
                       onChange={(event) =>
                         setForm((current) => ({ ...current, password: event.target.value }))
@@ -239,7 +243,7 @@ export function RegisterClient() {
                       type="button"
                       onClick={() => setShowPassword((current) => !current)}
                       className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 transition hover:text-white"
-                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      aria-label={showPassword ? t("Hide password") : t("Show password")}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -247,13 +251,13 @@ export function RegisterClient() {
                 </div>
 
                 <div className="space-y-2">
-                  <FormLabel htmlFor="confirm_password">Confirm Password</FormLabel>
+                  <FormLabel htmlFor="confirm_password">{t("Confirm Password")}</FormLabel>
                   <div className="relative">
                     <input
                       id="confirm_password"
                       type={showConfirmPassword ? "text" : "password"}
                       className="w-full rounded-xl border border-white/10 bg-[#000000] px-4 py-3 pr-12 text-white placeholder:text-neutral-600 transition focus:border-[#ff9f4a] focus:outline-none focus:ring-1 focus:ring-[#ff9f4a]"
-                      placeholder="Repeat your password"
+                      placeholder={t("Repeat your password")}
                       value={form.confirm_password}
                       onChange={(event) =>
                         setForm((current) => ({
@@ -266,7 +270,7 @@ export function RegisterClient() {
                       type="button"
                       onClick={() => setShowConfirmPassword((current) => !current)}
                       className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 transition hover:text-white"
-                      aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                      aria-label={showConfirmPassword ? t("Hide password") : t("Show password")}
                     >
                       {showConfirmPassword ? (
                         <EyeOff className="h-4 w-4" />
@@ -278,14 +282,14 @@ export function RegisterClient() {
                 </div>
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <FormLabel htmlFor="email_code">Email Verification Code</FormLabel>
+                    <FormLabel htmlFor="email_code">{t("Email Verification Code")}</FormLabel>
                     <button
                       type="button"
                       onClick={handleSendEmailCode}
                       disabled={isSendingEmailCode}
                       className="shrink-0 whitespace-nowrap rounded-full border border-[#ff9f4a]/30 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#ff9f4a] transition hover:border-[#ff9f4a] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {isSendingEmailCode ? "Sending" : "Send email"}
+                      {isSendingEmailCode ? t("Sending") : t("Send email")}
                     </button>
                   </div>
                   <div className="relative">
@@ -294,7 +298,7 @@ export function RegisterClient() {
                       id="email_code"
                       required
                       className="w-full rounded-xl border border-white/10 bg-[#000000] px-11 py-3 text-white placeholder:text-neutral-600 transition focus:border-[#ff9f4a] focus:outline-none focus:ring-1 focus:ring-[#ff9f4a]"
-                      placeholder="Enter the email verification code"
+                      placeholder={t("Enter the email verification code")}
                       value={form.email_code}
                       onChange={(event) =>
                         setForm((current) => ({ ...current, email_code: event.target.value }))
@@ -312,20 +316,20 @@ export function RegisterClient() {
                     className="mt-0.5 rounded border-white/20 bg-[#000000] text-[#ff9f4a] focus:ring-[#ff9f4a]"
                   />
                   <label htmlFor="terms" className="text-xs leading-tight text-white/58">
-                    I agree to the{" "}
-                    <span className="text-[#ff9f4a] hover:underline">Terms of Service</span> and{" "}
-                    <span className="text-[#ff9f4a] hover:underline">Privacy Policy</span>.
+                    {t("I agree to the")}{" "}
+                    <span className="text-[#ff9f4a] hover:underline">{t("Terms of Service")}</span> {t("and")}{" "}
+                    <span className="text-[#ff9f4a] hover:underline">{t("Privacy Policy")}</span>.
                   </label>
                 </div>
 
                 {error ? (
                   <p className="rounded-2xl border border-[#ff7351]/30 bg-[#b92902]/16 px-4 py-3 text-sm text-[#ffd2c8]">
-                    {error}
+                    {t(error)}
                   </p>
                 ) : null}
                 {statusMessage ? (
                   <p className="rounded-2xl border border-[#ff9f4a]/20 bg-[#ff9f4a]/10 px-4 py-3 text-sm text-[#ffe393]">
-                    {statusMessage}
+                    {t(statusMessage)}
                   </p>
                 ) : null}
 
@@ -334,7 +338,7 @@ export function RegisterClient() {
                   disabled={isSubmitting}
                   className="w-full rounded-xl bg-gradient-to-br from-[#ff9f4a] to-[#fd8b00] py-4 text-sm font-black uppercase tracking-[0.22em] text-[#442100] transition hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(255,159,74,0.3)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isSubmitting ? "Initializing..." : "Initialize Training"}
+                  {isSubmitting ? t("Initializing...") : t("Initialize Training")}
                 </button>
               </form>
 
@@ -343,7 +347,7 @@ export function RegisterClient() {
                   <div className="w-full border-t border-white/10" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase tracking-[0.2em] text-neutral-600">
-                  <span className="bg-[rgba(31,32,32,0.9)] px-3">Sync With Pro ID</span>
+                  <span className="bg-[rgba(31,32,32,0.9)] px-3">{t("Sync With Pro ID")}</span>
                 </div>
               </div>
 
@@ -368,9 +372,9 @@ export function RegisterClient() {
             </div>
 
             <div className="text-center text-sm text-white/58">
-              Already in the program?
+              {t("Already in the program?")}
               <Link href={loginHref} className="ml-1 font-bold text-[#ff9f4a] hover:underline">
-                Back to login
+                {t("Back to login")}
               </Link>
             </div>
           </div>
@@ -381,12 +385,12 @@ export function RegisterClient() {
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-5 md:flex-row">
           <div className="text-lg font-bold uppercase italic text-neutral-100">AI HOOPS</div>
           <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-neutral-500">
-            <span className="transition-colors hover:text-[#ff9f4a]">Privacy Policy</span>
-            <span className="transition-colors hover:text-[#ff9f4a]">Terms of Service</span>
-            <span className="transition-colors hover:text-[#ff9f4a]">Support</span>
+            <span className="transition-colors hover:text-[#ff9f4a]">{t("Privacy Policy")}</span>
+            <span className="transition-colors hover:text-[#ff9f4a]">{t("Terms of Service")}</span>
+            <span className="transition-colors hover:text-[#ff9f4a]">{t("Support")}</span>
           </div>
           <div className="text-center text-xs uppercase tracking-[0.14em] text-neutral-500 md:text-right">
-            2024 AI HOOPS PERFORMANCE LAB
+            {t("2024 AI HOOPS PERFORMANCE LAB")}
           </div>
         </div>
       </footer>

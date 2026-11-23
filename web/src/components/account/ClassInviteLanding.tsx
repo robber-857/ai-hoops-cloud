@@ -1,4 +1,5 @@
 "use client";
+import { usePlayerCopy } from "@/components/account/playerCopy";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -16,6 +17,7 @@ const outcomeCopy = {
 };
 
 export function ClassInviteLanding({ token }: { token: string }) {
+  const { t } = usePlayerCopy();
   const user = useAuthStore((state) => state.user);
   const hasInitialized = useAuthStore((state) => state.hasInitialized);
   const [invitation, setInvitation] = useState<{ class_name: string; course_name: string }>();
@@ -53,7 +55,7 @@ export function ClassInviteLanding({ token }: { token: string }) {
   if (!validInvite) {
     return (
       <main className="grid min-h-[100svh] place-items-center bg-[var(--ui-bg)] p-6 text-[var(--ui-text)]">
-        <p>This invitation is invalid. Ask your coach for another link.</p>
+        <p>{t("This invitation is invalid. Ask your coach for another link.")}</p>
       </main>
     );
   }
@@ -64,32 +66,32 @@ export function ClassInviteLanding({ token }: { token: string }) {
         <Link href={routes.home} className="text-sm font-semibold">AI Hoops</Link>
         <div className="flex items-center gap-3">
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--ui-accent-soft)]"><UsersRound className="size-5" /></span>
-          <h1 className="text-2xl font-semibold tracking-tight">{invitation?.class_name ?? "Class invitation"}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{invitation?.class_name ?? t("Class invitation")}</h1>
         </div>
         {invitation && <p className="text-sm text-[var(--ui-muted)]">{invitation.course_name}</p>}
-        {(loading || !hasInitialized) && !error && <p role="status" className="text-sm text-[var(--ui-muted)]">Checking invitation…</p>}
-        {error && <p role="alert" className="text-sm text-[var(--ui-danger)]">{error}</p>}
+        {(loading || !hasInitialized) && !error && <p role="status" className="text-sm text-[var(--ui-muted)]">{t("Checking invitation…")}</p>}
+        {error && <p role="alert" className="text-sm text-[var(--ui-danger)]">{t(error)}</p>}
         {result ? (
           <div className="space-y-3">
-            <p role="status">{outcomeCopy[result.status]}</p>
+            <p role="status">{t(outcomeCopy[result.status])}</p>
             <Link className="inline-flex items-center gap-2 text-sm font-semibold underline-offset-4 hover:underline"
               href={result.status === "approved" ? routes.user.classVideos : routes.user.messages}>
-              {result.status === "approved" ? "Go to class videos" : "Go to Notifications"} <ArrowRight className="size-4" />
+              {result.status === "approved" ? t("Go to class videos") : t("Go to Notifications")} <ArrowRight className="size-4" />
             </Link>
           </div>
         ) : invitation && hasInitialized ? (
           <>
-            <p className="text-sm leading-relaxed text-[var(--ui-muted)]">Your coach will review your request before you join the class.</p>
+            <p className="text-sm leading-relaxed text-[var(--ui-muted)]">{t("Your coach will review your request before you join the class.")}</p>
             {user?.role === "student" ? (
               <button type="button" onClick={() => void apply()} disabled={submitting}
                 className="min-h-11 w-full rounded-xl bg-[var(--ui-action)] px-4 text-sm font-semibold text-[var(--ui-action-text)] disabled:opacity-60">
-                {submitting ? "Sending request…" : "Request to join"}
+                {submitting ? t("Sending request…") : t("Request to join")}
               </button>
             ) : (
               <div className="grid gap-2">
-                {!user && <Link className="rounded-xl bg-[var(--ui-action)] p-3 text-center text-sm font-semibold text-[var(--ui-action-text)]" href={withClassInvite(routes.auth.register, path)}>Create student account</Link>}
+                {!user && <Link className="rounded-xl bg-[var(--ui-action)] p-3 text-center text-sm font-semibold text-[var(--ui-action-text)]" href={withClassInvite(routes.auth.register, path)}>{t("Create student account")}</Link>}
                 <Link className="rounded-xl border border-[var(--ui-border)] p-3 text-center text-sm font-semibold" href={withClassInvite(routes.auth.login, path)}>
-                  {user ? "Sign in with a student account" : "Sign in to apply"}
+                  {user ? t("Sign in with a student account") : t("Sign in to apply")}
                 </Link>
               </div>
             )}

@@ -2,6 +2,7 @@ type DateInputLimits = {
   required?: boolean;
   minDate?: string | null;
   maxDate?: string | null;
+  language?: "en" | "zh-CN";
 };
 
 type DateInputValidation = {
@@ -37,23 +38,23 @@ export function formatDateInput(value: string | null | undefined): string {
 
 export function validateDateInput(
   value: string | null | undefined,
-  { required = false, minDate, maxDate }: DateInputLimits = {},
+  { required = false, minDate, maxDate, language = "en" }: DateInputLimits = {},
 ): DateInputValidation {
   if (value == null || value === "") {
-    return { iso: null, error: required ? "Enter a date in yyyy/mm/dd format." : null };
+    return { iso: null, error: required ? (language === "zh-CN" ? "请输入日期，格式为 yyyy/mm/dd。" : "Enter a date in yyyy/mm/dd format.") : null };
   }
   const iso = parseDateInput(value);
-  if (!iso) return { iso: null, error: "Enter a valid date in yyyy/mm/dd format." };
+  if (!iso) return { iso: null, error: language === "zh-CN" ? "请输入有效日期，格式为 yyyy/mm/dd。" : "Enter a valid date in yyyy/mm/dd format." };
   const min = parseDateInput(minDate);
   const max = parseDateInput(maxDate);
   if ((minDate && !min) || (maxDate && !max) || (min && max && min > max)) {
-    return { iso: null, error: "Date limits are unavailable. Please reload." };
+    return { iso: null, error: language === "zh-CN" ? "无法确定可选日期范围，请重新加载。" : "Date limits are unavailable. Please reload." };
   }
   if (min && iso < min) {
-    return { iso: null, error: `Enter a date on or after ${formatDateInput(min)}.` };
+    return { iso: null, error: language === "zh-CN" ? `请输入 ${formatDateInput(min)} 或之后的日期。` : `Enter a date on or after ${formatDateInput(min)}.` };
   }
   if (max && iso > max) {
-    return { iso: null, error: `Enter a date on or before ${formatDateInput(max)}.` };
+    return { iso: null, error: language === "zh-CN" ? `请输入 ${formatDateInput(max)} 或之前的日期。` : `Enter a date on or before ${formatDateInput(max)}.` };
   }
   return { iso, error: null };
 }

@@ -1,5 +1,10 @@
 "use client";
 
+import { useInterfaceText } from "@/hooks/useInterfaceText";
+
+import { useAppLanguage } from "@/components/account/LanguagePreferenceProvider";
+import { templateDisplayName } from "@/lib/templateLanguage";
+
 import { useMemo, useState } from "react";
 import { CheckCircle2, Loader2, Send } from "lucide-react";
 
@@ -51,6 +56,8 @@ export function CreateTaskPanel({
   onCreated,
   isCompact = false,
 }: CreateTaskPanelProps) {
+  const t = useInterfaceText();
+  const language = useAppLanguage();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [analysisType, setAnalysisType] = useState<ReportAnalysisType>("shooting");
@@ -106,12 +113,12 @@ export function CreateTaskPanel({
         due_at: toApiDate(dueAt),
       });
 
-      setMessage(`Assigned to ${task.assignment_count} students.`);
+      setMessage(t("Assigned to {0} students.", task.assignment_count));
       setTitle("");
       setDescription("");
       onCreated?.(task);
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Unable to publish.");
+      setError(submitError instanceof Error ? submitError.message : t("Unable to publish."));
     } finally {
       setIsSubmitting(false);
     }
@@ -126,42 +133,42 @@ export function CreateTaskPanel({
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <div className={labelClass}>Task uplink</div>
+          <div className={labelClass}>{t("Task uplink")}</div>
           <h2 className="mt-2 font-[var(--font-display)] text-xl font-bold text-white">
-            Publish training task
+            {t("Publish training task")}
           </h2>
         </div>
         <span className="rounded-full border border-[#d8ff5d]/24 bg-[#d8ff5d]/10 px-3 py-1 text-xs font-semibold text-[#e8ff9a]">
-          {studentCount} targets
+          {studentCount} {t("targets")}
         </span>
       </div>
 
       <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
         <label className="block space-y-2">
-          <span className={labelClass}>Title</span>
+          <span className={labelClass}>{t("Title")}</span>
           <input
             className={fieldClass}
             value={title}
             onChange={(event) => setTitle(event.target.value)}
-            placeholder="Weekly shooting control"
+            placeholder={t("Weekly shooting control")}
             maxLength={100}
             required
           />
         </label>
 
         <label className="block space-y-2">
-          <span className={labelClass}>Description</span>
+          <span className={labelClass}>{t("Description")}</span>
           <textarea
             className={`${fieldClass} min-h-24 resize-none py-3`}
             value={description}
             onChange={(event) => setDescription(event.target.value)}
-            placeholder="Complete the assigned motion template before the deadline."
+            placeholder={t("Complete the assigned motion template before the deadline.")}
           />
         </label>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block space-y-2">
-            <span className={labelClass}>Motion</span>
+            <span className={labelClass}>{t("Motion")}</span>
             <select
               className={fieldClass}
               value={analysisType}
@@ -169,24 +176,24 @@ export function CreateTaskPanel({
             >
               {analysisTypes.map((type) => (
                 <option key={type} value={type}>
-                  {analysisTypeLabels[type]}
+                  {t(analysisTypeLabels[type])}
                 </option>
               ))}
             </select>
           </label>
 
           <label className="block space-y-2">
-            <span className={labelClass}>Template</span>
+            <span className={labelClass}>{t("Template")}</span>
             <select
               className={fieldClass}
               value={selectedTemplateCode}
               onChange={(event) => setTemplateCode(event.target.value)}
               disabled={templates.length === 0}
             >
-              {templates.length === 0 ? <option value="">No template</option> : null}
+              {templates.length === 0 ? <option value="">{t("No template")}</option> : null}
               {templates.map((template) => (
                 <option key={template.templateId} value={template.templateId}>
-                  {template.displayName}
+                  {templateDisplayName(template.templateId, template.displayName, language)}
                 </option>
               ))}
             </select>
@@ -195,7 +202,7 @@ export function CreateTaskPanel({
 
         <div className="grid gap-3 sm:grid-cols-3">
           <label className="block space-y-2">
-            <span className={labelClass}>Sessions</span>
+            <span className={labelClass}>{t("Sessions")}</span>
             <input
               className={fieldClass}
               type="number"
@@ -205,7 +212,7 @@ export function CreateTaskPanel({
             />
           </label>
           <label className="block space-y-2">
-            <span className={labelClass}>Score</span>
+            <span className={labelClass}>{t("Score")}</span>
             <input
               className={fieldClass}
               type="number"
@@ -216,7 +223,7 @@ export function CreateTaskPanel({
             />
           </label>
           <label className="block space-y-2">
-            <span className={labelClass}>Due</span>
+            <span className={labelClass}>{t("Due")}</span>
             <input
               className={fieldClass}
               type="datetime-local"
@@ -245,7 +252,7 @@ export function CreateTaskPanel({
           className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#65f7ff]/34 bg-[#65f7ff]/12 px-4 text-sm font-semibold text-[#dffbff] transition hover:bg-[#65f7ff]/18 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-          Publish task
+          {t("Publish task")}
         </button>
       </form>
     </section>

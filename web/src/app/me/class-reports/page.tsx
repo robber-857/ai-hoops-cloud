@@ -1,4 +1,5 @@
 "use client";
+import { usePlayerCopy } from "@/components/account/playerCopy";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -15,6 +16,7 @@ const attendanceLabels: Record<ClassReport["attendance"], string> = {
 };
 
 export default function MyClassReports() {
+  const { t, isChinese } = usePlayerCopy();
   const [items, setItems] = useState<ClassReport[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -55,25 +57,25 @@ export default function MyClassReports() {
     <section className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Class reports</h1>
+          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{t("Class reports")}</h1>
           <p className="mt-2 max-w-prose text-sm leading-6 text-[var(--ui-muted)]">
-            See what you did in class, how long you trained and your attendance.
+            {t("See what you did in class, how long you trained and your attendance.")}
           </p>
         </div>
         <Link className="ui-button" href={`${routes.user.classReports}/daily`}>
-          <CalendarDays size={17} aria-hidden="true" /> Daily summary
+          <CalendarDays size={17} aria-hidden="true" /> {t("Daily summary")}
         </Link>
       </div>
       {error && (
-        <ErrorNotice error={error} retry={() => {
+        <ErrorNotice error={t(error)} retry={() => {
           setLoading(true);
           setError("");
           setRetry((value) => value + 1);
         }} />
       )}
-      {loading && <p role="status">Loading class reports…</p>}
+      {loading && <p role="status">{t("Loading class reports…")}</p>}
       {!loading && !error && !items.length && (
-        <p className="ui-panel p-5 text-sm text-[var(--ui-muted)]">Your coach has not published any class reports yet.</p>
+        <p className="ui-panel p-5 text-sm text-[var(--ui-muted)]">{t("Your coach has not published any class reports yet.")}</p>
       )}
       <ul className="grid gap-3">
         {items.map((report) => (
@@ -91,22 +93,22 @@ export default function MyClassReports() {
                     <time dateTime={report.held_on}>{report.held_on}</time>
                   </span>
                   <span className="inline-flex items-center gap-1.5">
-                    <Clock3 size={15} className="shrink-0" aria-hidden="true" /> {report.total_minutes} min
+                    <Clock3 size={15} className="shrink-0" aria-hidden="true" /> {report.total_minutes} {isChinese ? "分钟" : "min"}
                   </span>
-                  <span>Lesson v{report.lesson_version}</span>
+                  <span>{t("Lesson v")}{report.lesson_version}</span>
                 </div>
               </div>
             </div>
             <div className="flex shrink-0 flex-wrap items-center gap-2 sm:gap-3">
               <span className="rounded-full bg-[var(--ui-subtle)] px-2.5 py-1 text-xs font-semibold text-[var(--ui-muted)]">
-                {attendanceLabels[report.attendance] ?? "Training record"}
+                {t(attendanceLabels[report.attendance] ?? "Training record")}
               </span>
               <Link
                 href={`${routes.user.classReports}/${encodeURIComponent(report.public_id)}`}
-                aria-label={`View report for ${report.title}`}
+                aria-label={isChinese ? `查看报告：${report.title}` : `View report for ${report.title}`}
                 className="ui-button"
               >
-                View report <ArrowRight size={16} aria-hidden="true" />
+                {t("View report")} <ArrowRight size={16} aria-hidden="true" />
               </Link>
             </div>
           </li>
@@ -114,7 +116,7 @@ export default function MyClassReports() {
       </ul>
       {hasMore && (
         <button type="button" className="ui-button" disabled={loading} onClick={() => void loadMore()}>
-          Load more class reports
+          {t("Load more class reports")}
         </button>
       )}
     </section>

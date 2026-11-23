@@ -1,5 +1,9 @@
 "use client";
 
+import { useAppLanguage } from "@/components/account/LanguagePreferenceProvider";
+import { useInterfaceText } from "@/hooks/useInterfaceText";
+
+
 import { useEffect, useMemo, useState } from "react";
 import { isAdminRole } from "@/lib/authRedirect";
 import {
@@ -23,12 +27,13 @@ const fieldClass =
   "min-h-11 rounded-lg border border-white/10 bg-black/24 px-3 text-sm text-white outline-none transition focus:border-[#65f7ff]/46 focus:ring-2 focus:ring-[#65f7ff]/12";
 
 function CoachRouteLoading() {
+  const t = useInterfaceText();
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#030712] text-white">
       <div className="rounded-lg border border-white/10 bg-white/[0.055] px-8 py-7 text-center shadow-[0_20px_70px_rgba(0,0,0,0.28)] backdrop-blur-2xl">
         <Loader2 className="mx-auto h-9 w-9 animate-spin text-[#65f7ff]" />
         <div className="mt-4 text-[0.72rem] uppercase tracking-[0.28em] text-white/48">
-          Loading notifications
+          {t("Loading notifications")}
         </div>
       </div>
     </main>
@@ -56,6 +61,8 @@ function typeTone(type: string) {
 }
 
 export default function CoachNotificationsPage() {
+  const language = useAppLanguage();
+  const t = useInterfaceText();
   const user = useAuthStore((state) => state.user);
   const hasInitialized = useAuthStore((state) => state.hasInitialized);
   const isInitializing = useAuthStore((state) => state.isInitializing);
@@ -87,7 +94,7 @@ export default function CoachNotificationsPage() {
       })
       .catch((fetchError) => {
         if (isActive) {
-          setError(fetchError instanceof Error ? fetchError.message : "Unable to load notifications.");
+          setError(fetchError instanceof Error ? fetchError.message : t("Unable to load notifications."));
         }
       })
       .finally(() => {
@@ -140,7 +147,7 @@ export default function CoachNotificationsPage() {
       const updated = await meService.markNotificationRead(item.public_id);
       setSelectedNotification(updated);
     } catch (readError) {
-      setError(readError instanceof Error ? readError.message : "Unable to mark notification read.");
+      setError(readError instanceof Error ? readError.message : t("Unable to mark notification read."));
     }
   };
 
@@ -150,11 +157,11 @@ export default function CoachNotificationsPage() {
 
   if (!canAccessCoach) {
     return (
-      <CoachShell user={user} title="Coach access required" breadcrumb={["Access"]}>
+      <CoachShell user={user} title={t("Coach access required")} breadcrumb={[t("Access")]}>
         <section className="rounded-lg border border-red-400/20 bg-red-500/10 p-8 text-center backdrop-blur-2xl">
           <ShieldAlert className="mx-auto h-10 w-10 text-red-200" />
           <h2 className="mt-5 font-[var(--font-display)] text-2xl font-bold text-white">
-            This workspace is available to coaches only.
+            {t("This workspace is available to coaches only.")}
           </h2>
         </section>
       </CoachShell>
@@ -162,7 +169,7 @@ export default function CoachNotificationsPage() {
   }
 
   return (
-    <CoachShell user={user} title="Notifications" breadcrumb={["Notifications"]}>
+    <CoachShell user={user} title={t("Notifications")} breadcrumb={[t("Notifications")]}>
       {error ? (
         <div className="flex items-start gap-3 rounded-lg border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-100">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -175,13 +182,13 @@ export default function CoachNotificationsPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <div className="text-[0.68rem] uppercase tracking-[0.22em] text-white/42">
-                Event inbox
+                {t("Event inbox")}
               </div>
               <h1 className="mt-2 font-[var(--font-display)] text-2xl font-bold text-white">
-                Your notification stream
+                {t("Your notification stream")}
               </h1>
               <p className="mt-2 text-sm text-white/52">
-                {unreadCount} unread / {notifications.length} total
+                {unreadCount} {t("unread /")} {notifications.length} {t("total")}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -190,10 +197,10 @@ export default function CoachNotificationsPage() {
                 value={typeFilter}
                 onChange={(event) => setTypeFilter(event.target.value)}
               >
-                <option value="">All types</option>
+                <option value="">{t("All types")}</option>
                 {notificationTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
+                  <option key={t(type)} value={t(type)}>
+                    {t(type)}
                   </option>
                 ))}
               </select>
@@ -202,14 +209,14 @@ export default function CoachNotificationsPage() {
                 value={readFilter}
                 onChange={(event) => setReadFilter(event.target.value)}
               >
-                <option value="">All read states</option>
-                <option value="unread">unread</option>
-                <option value="read">read</option>
+                <option value="">{t("All read states")}</option>
+                <option value="unread">{t("unread")}</option>
+                <option value="read">{t("read")}</option>
               </select>
               {isLoading ? (
                 <span className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/10 bg-black/18 px-3 text-sm text-white/58">
                   <Loader2 className="h-4 w-4 animate-spin text-[#65f7ff]" />
-                  Loading
+                  {t("Loading")}
                 </span>
               ) : null}
             </div>
@@ -220,12 +227,12 @@ export default function CoachNotificationsPage() {
               <table className="min-w-[860px] w-full border-collapse text-left text-sm">
                 <thead className="border-b border-white/10 bg-white/[0.035] text-[0.68rem] uppercase tracking-[0.18em] text-white/42">
                   <tr>
-                    <th className="px-4 py-3 font-semibold">Notification</th>
-                    <th className="px-4 py-3 font-semibold">Type</th>
-                    <th className="px-4 py-3 font-semibold">Business</th>
-                    <th className="px-4 py-3 font-semibold">Created</th>
-                    <th className="px-4 py-3 font-semibold">Read</th>
-                    <th className="px-4 py-3 text-right font-semibold">Open</th>
+                    <th className="px-4 py-3 font-semibold">{t("Notification")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Type")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Business")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Created")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Read")}</th>
+                    <th className="px-4 py-3 text-right font-semibold">{t("Open")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/8">
@@ -237,24 +244,24 @@ export default function CoachNotificationsPage() {
                           {item.title}
                         </div>
                         <div className="mt-1 max-w-[24rem] truncate text-xs text-white/42">
-                          {item.content || "No content"}
+                          {item.content || t("No content")}
                         </div>
                       </td>
                       <td className="px-4 py-4">
                         <span className={cn("rounded-full border px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.12em]", typeTone(item.type))}>
-                          {item.type}
+                          {t(item.type)}
                         </span>
                       </td>
                       <td className="px-4 py-4 text-white/58">
-                        <div>{item.business_type || "--"}</div>
+                        <div>{t(item.business_type || "--")}</div>
                         <div className="mt-1 font-mono text-xs text-white/34">
                           {item.business_id ?? "--"}
                         </div>
                       </td>
-                      <td className="px-4 py-4 text-white/62">{formatDateTime(item.created_at)}</td>
+                      <td className="px-4 py-4 text-white/62">{formatDateTime(item.created_at, language)}</td>
                       <td className="px-4 py-4">
                         <span className={cn("rounded-full border px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.12em]", readTone(item.is_read))}>
-                          {item.is_read ? "read" : "unread"}
+                          {item.is_read ? t("read") : t("unread")}
                         </span>
                       </td>
                       <td className="px-4 py-4 text-right">
@@ -264,7 +271,7 @@ export default function CoachNotificationsPage() {
                           className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[#65f7ff]/24 bg-[#65f7ff]/10 px-3 text-xs font-semibold text-[#dffbff] transition hover:bg-[#65f7ff]/16"
                         >
                           <Eye className="h-4 w-4" />
-                          Detail
+                          {t("Detail")}
                         </button>
                       </td>
                     </tr>
@@ -272,7 +279,7 @@ export default function CoachNotificationsPage() {
                   {filteredNotifications.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="px-4 py-10 text-center text-sm text-white/48">
-                        {isLoading ? "Loading notifications." : "No notifications match the current filters."}
+                        {isLoading ? t("Loading notifications.") : t("No notifications match the current filters.")}
                       </td>
                     </tr>
                   ) : null}
@@ -284,7 +291,7 @@ export default function CoachNotificationsPage() {
 
         <aside className="rounded-lg border border-white/10 bg-white/[0.055] p-5 backdrop-blur-2xl">
           <div className="text-[0.68rem] uppercase tracking-[0.22em] text-white/42">
-            Notification detail
+            {t("Notification detail")}
           </div>
           {selectedNotification ? (
             <div className="mt-4 space-y-4">
@@ -293,34 +300,34 @@ export default function CoachNotificationsPage() {
                   {selectedNotification.title}
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-white/54">
-                  {selectedNotification.content || "No notification content."}
+                  {selectedNotification.content || t("No notification content.")}
                 </p>
               </div>
               <div className="grid gap-3">
                 <div className="rounded-lg border border-white/10 bg-black/18 p-3">
                   <div className="text-[0.68rem] uppercase tracking-[0.18em] text-white/42">
-                    Created
+                    {t("Created")}
                   </div>
                   <div className="mt-2 text-sm font-semibold text-white">
-                    {formatDateTime(selectedNotification.created_at)}
+                    {formatDateTime(selectedNotification.created_at, language)}
                   </div>
                 </div>
                 <div className="rounded-lg border border-white/10 bg-black/18 p-3">
                   <div className="text-[0.68rem] uppercase tracking-[0.18em] text-white/42">
-                    Business reference
+                    {t("Business reference")}
                   </div>
                   <div className="mt-2 break-all font-mono text-xs text-white/64">
-                    {selectedNotification.business_type || "--"} / {selectedNotification.business_id ?? "--"}
+                    {t(selectedNotification.business_type || "--")} / {selectedNotification.business_id ?? "--"}
                   </div>
                 </div>
               </div>
               <span className={cn("inline-flex rounded-full border px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.12em]", readTone(selectedNotification.is_read))}>
-                {selectedNotification.is_read ? "read" : "unread"}
+                {selectedNotification.is_read ? t("read") : t("unread")}
               </span>
             </div>
           ) : (
             <p className="mt-3 text-sm leading-6 text-white/50">
-              Select a notification to inspect its content and linked business object.
+              {t("Select a notification to inspect its content and linked business object.")}
             </p>
           )}
         </aside>

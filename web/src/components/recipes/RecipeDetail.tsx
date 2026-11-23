@@ -1,4 +1,7 @@
 "use client";
+
+import { useInterfaceText } from "@/hooks/useInterfaceText";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -11,6 +14,7 @@ import {
   SourceNotice,
 } from "./RecipeShared";
 export function RecipeDetail({ id }: { id: string }) {
+  const t = useInterfaceText();
   const [recipe, setRecipe] = useState<Recipe | null>(null),
     [version, setVersion] = useState<number | undefined>(),
     [servings, setServings] = useState("1"),
@@ -64,13 +68,13 @@ export function RecipeDetail({ id }: { id: string }) {
   return (
     <div className="max-w-5xl space-y-7">
       <Link href="/recipes" className="underline">
-        Recipe library
+        {t("Recipe library")}
       </Link>
       {error && (
         <ErrorNotice error={error} retry={() => setRetry((v) => v + 1)} />
       )}{" "}
       {loading ? (
-        <p role="status">Loading recipe…</p>
+        <p role="status">{t("Loading recipe…")}</p>
       ) : (
         !error &&
         recipe && (
@@ -80,8 +84,8 @@ export function RecipeDetail({ id }: { id: string }) {
                 {recipe.content.title}
               </h1>
               <p className="mt-2 text-white/70">
-                Published version {recipe.version} · Makes{" "}
-                {recipe.content.servings} serving(s)
+                {t("Published version")} {recipe.version} {t("· Makes")}{" "}
+                {recipe.content.servings} {t("serving(s)")}
               </p>
             </header>
             {recipe.content.image_url && (
@@ -106,7 +110,7 @@ export function RecipeDetail({ id }: { id: string }) {
               }}
             >
               <label className="min-w-0 flex-1">
-                Servings to preview
+                {t("Servings to preview")}
                 <input
                   required
                   type="number"
@@ -119,19 +123,19 @@ export function RecipeDetail({ id }: { id: string }) {
                 />
               </label>
               <button className={button} type="submit">
-                Update portions
+                {t("Update portions")}
               </button>
             </form>
             <Nutrition recipe={recipe} portion />
             <section>
               <h2 className="text-2xl font-semibold">
-                Ingredients for the full recipe
+                {t("Ingredients for the full recipe")}
               </h2>
               <ul className="mt-3 divide-y divide-white/20">
                 {recipe.ingredients.map((i, n) => (
                   <li key={n} className="py-4">
                     <div className="flex justify-between gap-4">
-                      <span className="min-w-0 break-words font-medium">{i.name?.trim() || "Food name unavailable — reload or contact the recipe administrator"}</span>
+                      <span className="min-w-0 break-words font-medium">{i.name?.trim() || t("Food name unavailable — reload or contact the recipe administrator")}</span>
                       <span className="shrink-0 tabular-nums">
                         {i.edible_grams} g
                       </span>
@@ -141,29 +145,29 @@ export function RecipeDetail({ id }: { id: string }) {
                     )}
                     <p className="mt-1 text-sm text-white/60">
                       {i.source.release} ·{" "}
-                      {i.details["Analysed Portion"] ?? "Edible portion"}
+                      {i.details["Analysed Portion"] ?? t("Edible portion")}
                     </p>
                   </li>
                 ))}
               </ul>
             </section>
             <section>
-              <h2 className="text-2xl font-semibold">Method</h2>
+              <h2 className="text-2xl font-semibold">{t("Method")}</h2>
               <p className="mt-3 whitespace-pre-wrap break-words leading-7">
                 {recipe.content.instructions}
               </p>
             </section>
             <section>
               <h2 className="text-2xl font-semibold">
-                Allergens & dietary notes
+                {t("Allergens & dietary notes")}
               </h2>
               <p className="mt-3">
                 {recipe.content.allergens.length
                   ? recipe.content.allergens.join(", ")
-                  : "No allergens listed."}{" "}
+                  : t("No allergens listed.")}{" "}
                 {recipe.content.allergens_reviewed
-                  ? "Information reviewed by the recipe author."
-                  : "Allergen information has not been reviewed; an empty list does not mean allergen-free."}
+                  ? t("Information reviewed by the recipe author.")
+                  : t("Allergen information has not been reviewed; an empty list does not mean allergen-free.")}
               </p>
               {recipe.content.dietary_notes && (
                 <p className="mt-2 whitespace-pre-wrap">
@@ -176,7 +180,7 @@ export function RecipeDetail({ id }: { id: string }) {
         )
       )}
       <section className="border-t border-white/20 pt-5">
-        <h2 className="text-xl font-semibold">Published versions</h2>
+        <h2 className="text-xl font-semibold">{t("Published versions")}</h2>
         {historyError && (
           <ErrorNotice
             error={historyError}
@@ -185,7 +189,7 @@ export function RecipeDetail({ id }: { id: string }) {
         )}
         <div className="mt-4 flex flex-wrap gap-3">
           <button className={button} onClick={() => setVersion(undefined)}>
-            Latest
+            {t("Latest")}
           </button>
           {versions.map((v) => (
             <button
@@ -194,7 +198,7 @@ export function RecipeDetail({ id }: { id: string }) {
               aria-pressed={recipe?.version === v.version}
               onClick={() => setVersion(v.version)}
             >
-              Version {v.version}
+              {t("Version")} {v.version}
             </button>
           ))}
         </div>
@@ -204,14 +208,14 @@ export function RecipeDetail({ id }: { id: string }) {
             disabled={!offset}
             onClick={() => setOffset((v) => Math.max(0, v - 20))}
           >
-            Previous versions
+            {t("Previous versions")}
           </button>
           <button
             className={button}
             disabled={!more}
             onClick={() => setOffset((v) => v + 20)}
           >
-            Older versions
+            {t("Older versions")}
           </button>
         </div>
       </section>

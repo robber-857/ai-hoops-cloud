@@ -1,4 +1,8 @@
 "use client";
+import { useAdminText } from "@/components/admin/adminCopy";
+
+import { useAppLanguage } from "@/components/account/LanguagePreferenceProvider";
+import { templateDisplayName } from "@/lib/templateLanguage";
 
 import { useEffect, useMemo, useState } from "react";
 import { isAdminRole } from "@/lib/authRedirect";
@@ -44,7 +48,12 @@ function parseJsonField(value: string, fallback: Record<string, unknown> | null 
     return fallback;
   }
 
-  const parsed = JSON.parse(value) as unknown;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    throw new Error("Enter a valid JSON object.");
+  }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new Error("JSON field must be an object.");
   }
@@ -70,6 +79,8 @@ function statusTone(status: string) {
 }
 
 export default function AdminTemplatesPage() {
+  const t = useAdminText();
+  const language = useAppLanguage();
   const user = useAuthStore((state) => state.user);
   const hasInitialized = useAuthStore((state) => state.hasInitialized);
   const isInitializing = useAuthStore((state) => state.isInitializing);
@@ -256,7 +267,7 @@ export default function AdminTemplatesPage() {
         difficulty_level: difficultyLevel.trim() || null,
         status: "draft",
       });
-      setMessage(`Created template ${template.name}.`);
+      setMessage(t("Created template {0}.", templateDisplayName(template.template_code, template.name, language)));
       setTemplateCode("");
       setName("");
       setDescription("");
@@ -289,7 +300,7 @@ export default function AdminTemplatesPage() {
         status: editStatus,
         current_version: editCurrentVersion.trim() || null,
       });
-      setMessage(`Updated template ${template.name}.`);
+      setMessage(t("Updated template {0}.", templateDisplayName(template.template_code, template.name, language)));
       await loadTemplates();
       setSelectedTemplateId(template.public_id);
     } catch (submitError) {
@@ -315,7 +326,7 @@ export default function AdminTemplatesPage() {
         status: "active",
         is_default: isDefault,
       });
-      setMessage(`Created version ${createdVersion.version}.`);
+      setMessage(t("Created version {0}.", createdVersion.version));
       setVersion("v1");
       setScoringRules("{\n  \"target_score\": 85\n}");
       await loadTemplates();
@@ -342,7 +353,7 @@ export default function AdminTemplatesPage() {
         versionItem.public_id,
         patch,
       );
-      setMessage(`Updated version ${updatedVersion.version}.`);
+      setMessage(t("Updated version {0}.", updatedVersion.version));
       await loadTemplates();
       await loadSelectedDetails(selectedTemplateId);
     } catch (submitError) {
@@ -378,7 +389,7 @@ export default function AdminTemplatesPage() {
       const savedVideo = editingVideoId
         ? await adminService.updateTemplateExampleVideo(selectedTemplateId, editingVideoId, payload)
         : await adminService.createTemplateExampleVideo(selectedTemplateId, payload);
-      setMessage(`Saved example video ${savedVideo.title}.`);
+      setMessage(t("Saved example video {0}.", savedVideo.title));
       resetExampleForm();
       await loadSelectedDetails(selectedTemplateId);
     } catch (submitError) {
@@ -396,7 +407,7 @@ export default function AdminTemplatesPage() {
     setMessage(null);
     try {
       await adminService.deleteTemplateExampleVideo(selectedTemplateId, videoItem.public_id);
-      setMessage(`Deleted example video ${videoItem.title}.`);
+      setMessage(t("Deleted example video {0}.", videoItem.title));
       if (editingVideoId === videoItem.public_id) {
         resetExampleForm();
       }
@@ -421,7 +432,7 @@ export default function AdminTemplatesPage() {
         videoItem.public_id,
         { status },
       );
-      setMessage(`${updatedVideo.title} is now ${updatedVideo.status}.`);
+      setMessage(t("{0} is now {1}.", updatedVideo.title, t(updatedVideo.status)));
       if (editingVideoId === videoItem.public_id) {
         setVideoStatus(updatedVideo.status);
       }
@@ -447,8 +458,8 @@ export default function AdminTemplatesPage() {
       setSyncResult(result);
       setMessage(
         dryRun
-          ? `Preview: ${result.created} create, ${result.new_versions} new versions, ${result.updated - result.new_versions} other updates, ${result.skipped} skip, ${result.blocked} blocked.`
-          : `Synced ${result.analysis_type}: ${result.created} created, ${result.new_versions} new versions, ${result.updated - result.new_versions} other updates.`,
+          ? t("Preview: {0} create, {1} new versions, {2} other updates, {3} skip, {4} blocked.", result.created, result.new_versions, result.updated - result.new_versions, result.skipped, result.blocked)
+          : t("Synced {0}: {1} created, {2} new versions, {3} other updates.", t(result.analysis_type), result.created, result.new_versions, result.updated - result.new_versions),
       );
       if (!dryRun) {
         await loadTemplates();
@@ -469,11 +480,11 @@ export default function AdminTemplatesPage() {
   }
 
   return (
-    <AdminShell user={user} title="Training Templates" breadcrumb={["Templates"]}>
+    <AdminShell user={user} title={t("Training Templates")} breadcrumb={[t("Templates")]}>
       {error ? (
         <div className="flex items-start gap-3 rounded-lg border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-100">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{error}</span>
+          <span>{t(error)}</span>
         </div>
       ) : null}
       {message ? (
@@ -488,10 +499,10 @@ export default function AdminTemplatesPage() {
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
             <div>
               <div className="text-[0.68rem] uppercase tracking-[0.22em] text-white/42">
-                Template registry
+                {t("Template registry")}
               </div>
               <h1 className="mt-2 font-[var(--font-display)] text-2xl font-bold text-white">
-                Training templates
+                {t("Training templates")}
               </h1>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2">
@@ -502,7 +513,7 @@ export default function AdminTemplatesPage() {
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.045] px-3 text-xs font-semibold text-white/72 transition hover:border-[#65f7ff]/32 hover:bg-[#65f7ff]/10 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isSyncingLocalTemplates ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                Dry run
+                {t("Dry run")}
               </button>
               <button
                 type="button"
@@ -511,7 +522,7 @@ export default function AdminTemplatesPage() {
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[#d8ff5d]/24 bg-[#d8ff5d]/10 px-3 text-xs font-semibold text-[#f1ffc1] transition hover:bg-[#d8ff5d]/16 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isSyncingLocalTemplates ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                Sync local
+                {t("Sync local")}
               </button>
               {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-[#65f7ff]" /> : null}
             </div>
@@ -519,26 +530,26 @@ export default function AdminTemplatesPage() {
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <label className="grid min-w-0 gap-2">
-              <span className={labelClass}>Sync motion</span>
+              <span className={labelClass}>{t("Sync motion")}</span>
               <select className={fieldClass} value={syncAnalysisType} onChange={(event) => {
                 setSyncAnalysisType(event.target.value as typeof syncAnalysisType);
                 setSyncTemplateCode("");
                 setSyncResult(null);
               }} disabled={isSyncingLocalTemplates}>
                 {(["training", "dribbling", "shooting"] as const).map((type) => (
-                  <option key={type} value={type}>{analysisTypeLabels[type]}</option>
+                  <option key={type} value={type}>{t(analysisTypeLabels[type])}</option>
                 ))}
               </select>
             </label>
             <label className="grid min-w-0 gap-2">
-              <span className={labelClass}>Sync template</span>
+              <span className={labelClass}>{t("Sync template")}</span>
               <select className={fieldClass} value={syncTemplateCode} onChange={(event) => {
                 setSyncTemplateCode(event.target.value);
                 setSyncResult(null);
               }} disabled={isSyncingLocalTemplates}>
-                <option value="">All {analysisTypeLabels[syncAnalysisType]}</option>
+                <option value="">{t("All")} {t(analysisTypeLabels[syncAnalysisType])}</option>
                 {getAllTemplates(syncAnalysisType).map((template) => (
-                  <option key={template.templateId} value={template.templateId}>{template.displayName}</option>
+                  <option key={template.templateId} value={template.templateId}>{templateDisplayName(template.templateId, template.displayName, language)}</option>
                 ))}
               </select>
             </label>
@@ -547,20 +558,20 @@ export default function AdminTemplatesPage() {
           {syncResult ? (
             <div className="mt-4 border-y border-white/10 py-3 text-sm text-white/60">
               <div className="font-semibold text-white">
-                {analysisTypeLabels[syncResult.analysis_type]} {syncResult.dry_run ? "preview" : "result"}: {syncResult.created} create / {syncResult.new_versions} new versions / {syncResult.blocked} blocked
+                {t(analysisTypeLabels[syncResult.analysis_type])} {syncResult.dry_run ? t("preview") : t("result")}: {syncResult.created} {t("create /")} {syncResult.new_versions} {t("new versions /")} {syncResult.blocked} {t("blocked")}
               </div>
               <div className="mt-2 overflow-x-auto">
                 <table className="w-full min-w-[580px] text-left text-xs">
                   <thead className="text-white/50"><tr>
-                    <th className="py-2 pr-3">Template / Version</th>
-                    <th className="py-2 pr-3">Action</th>
-                    <th className="py-2">Reason</th>
+                    <th className="py-2 pr-3">{t("Template / Version")}</th>
+                    <th className="py-2 pr-3">{t("Action")}</th>
+                    <th className="py-2">{t("Reason")}</th>
                   </tr></thead>
                   <tbody>{syncResult.items.map((item) => (
                     <tr key={item.template_code} className="border-t border-white/10 align-top">
                       <td className="py-2 pr-3 break-words">{item.template_code}<br />{item.version}</td>
-                      <td className={cn("py-2 pr-3", item.action === "blocked" ? "text-red-300" : "text-white/80")}>{item.action}</td>
-                      <td className="py-2">{item.reason || "Create and publish this template."}</td>
+                      <td className={cn("py-2 pr-3", item.action === "blocked" ? "text-red-300" : "text-white/80")}>{t(item.action)}</td>
+                      <td className="py-2">{item.reason ? t(item.reason) : t("Create and publish this template.")}</td>
                     </tr>
                   ))}</tbody>
                 </table>
@@ -573,11 +584,11 @@ export default function AdminTemplatesPage() {
               <table className="min-w-[920px] w-full border-collapse text-left text-sm">
                 <thead className="border-b border-white/10 bg-white/[0.035] text-[0.68rem] uppercase tracking-[0.18em] text-white/42">
                   <tr>
-                    <th className="px-4 py-3 font-semibold">Template</th>
-                    <th className="px-4 py-3 font-semibold">Motion</th>
-                    <th className="px-4 py-3 text-right font-semibold">Versions</th>
-                    <th className="px-4 py-3 font-semibold">Current</th>
-                    <th className="px-4 py-3 font-semibold">Status</th>
+                    <th className="px-4 py-3 font-semibold">{t("Template")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Motion")}</th>
+                    <th className="px-4 py-3 text-right font-semibold">{t("Versions")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Current")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Status")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/8">
@@ -593,13 +604,13 @@ export default function AdminTemplatesPage() {
                         onClick={() => setSelectedTemplateId(template.public_id)}
                       >
                         <td className="px-4 py-4">
-                          <div className="font-semibold text-white">{template.name}</div>
+                          <div className="font-semibold text-white">{templateDisplayName(template.template_code, template.name, language)}</div>
                           <div className="mt-1 text-xs uppercase tracking-[0.16em] text-white/38">
                             {template.template_code}
                           </div>
                         </td>
                         <td className="px-4 py-4 text-white/62">
-                          {analysisTypeLabels[template.analysis_type]}
+                          {t(analysisTypeLabels[template.analysis_type])}
                         </td>
                         <td className="px-4 py-4 text-right font-semibold text-white">
                           {template.version_count}
@@ -612,7 +623,7 @@ export default function AdminTemplatesPage() {
                               statusTone(template.status),
                             )}
                           >
-                            {template.status}
+                            {t(template.status)}
                           </span>
                         </td>
                       </tr>
@@ -621,7 +632,7 @@ export default function AdminTemplatesPage() {
                   {templates.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="px-4 py-8 text-center text-sm text-white/48">
-                        No templates yet.
+                        {t("No templates yet.")}
                       </td>
                     </tr>
                   ) : null}
@@ -632,52 +643,52 @@ export default function AdminTemplatesPage() {
 
           <div className="mt-6 grid gap-6 2xl:grid-cols-2">
             <section className="rounded-lg border border-white/10 bg-black/16 p-4">
-              <div className={labelClass}>Template editor</div>
+              <div className={labelClass}>{t("Template editor")}</div>
               <h2 className="mt-2 font-[var(--font-display)] text-xl font-bold text-white">
-                {selectedTemplate ? selectedTemplate.name : "Select a template"}
+                {selectedTemplate ? templateDisplayName(selectedTemplate.template_code, selectedTemplate.name, language) : t("Select a template")}
               </h2>
               {selectedTemplate ? (
                 <form className="mt-5 space-y-4" onSubmit={saveTemplate}>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <label className="block space-y-2">
-                      <span className={labelClass}>Code</span>
+                      <span className={labelClass}>{t("Code")}</span>
                       <input className={fieldClass} value={editTemplateCode} onChange={(event) => setEditTemplateCode(event.target.value)} required />
                     </label>
                     <label className="block space-y-2">
-                      <span className={labelClass}>Name</span>
+                      <span className={labelClass}>{t("Name")}</span>
                       <input className={fieldClass} value={editName} onChange={(event) => setEditName(event.target.value)} required />
                     </label>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-3">
                     <label className="block space-y-2">
-                      <span className={labelClass}>Motion</span>
+                      <span className={labelClass}>{t("Motion")}</span>
                       <select className={fieldClass} value={editAnalysisType} onChange={(event) => setEditAnalysisType(event.target.value as ReportAnalysisType)}>
                         {analysisTypes.map((type) => (
                           <option key={type} value={type}>
-                            {analysisTypeLabels[type]}
+                            {t(analysisTypeLabels[type])}
                           </option>
                         ))}
                       </select>
                     </label>
                     <label className="block space-y-2">
-                      <span className={labelClass}>Status</span>
+                      <span className={labelClass}>{t("Status")}</span>
                       <select className={fieldClass} value={editStatus} onChange={(event) => setEditStatus(event.target.value)}>
-                        <option value="draft">draft</option>
-                        <option value="active">active</option>
-                        <option value="archived">archived</option>
+                        <option value="draft">{t("draft")}</option>
+                        <option value="active">{t("active")}</option>
+                        <option value="archived">{t("archived")}</option>
                       </select>
                     </label>
                     <label className="block space-y-2">
-                      <span className={labelClass}>Current</span>
+                      <span className={labelClass}>{t("Current")}</span>
                       <input className={fieldClass} value={editCurrentVersion} onChange={(event) => setEditCurrentVersion(event.target.value)} />
                     </label>
                   </div>
                   <label className="block space-y-2">
-                    <span className={labelClass}>Difficulty</span>
+                    <span className={labelClass}>{t("Difficulty")}</span>
                     <input className={fieldClass} value={editDifficultyLevel} onChange={(event) => setEditDifficultyLevel(event.target.value)} />
                   </label>
                   <label className="block space-y-2">
-                    <span className={labelClass}>Description</span>
+                    <span className={labelClass}>{t("Description")}</span>
                     <textarea className={`${fieldClass} min-h-20 resize-none py-3`} value={editDescription} onChange={(event) => setEditDescription(event.target.value)} />
                   </label>
                   <button
@@ -686,12 +697,12 @@ export default function AdminTemplatesPage() {
                     className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#d8ff5d]/32 bg-[#d8ff5d]/10 px-4 text-sm font-semibold text-[#f1ffc1] transition hover:bg-[#d8ff5d]/16 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {isSavingTemplate ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    Save template
+                    {t("Save template")}
                   </button>
                 </form>
               ) : (
                 <p className="mt-4 text-sm leading-6 text-white/50">
-                  Pick a template to edit its metadata, versions, and example videos.
+                  {t("Pick a template to edit its metadata, versions, and example videos.")}
                 </p>
               )}
             </section>
@@ -699,9 +710,9 @@ export default function AdminTemplatesPage() {
             <section className="rounded-lg border border-white/10 bg-black/16 p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className={labelClass}>Versions</div>
+                  <div className={labelClass}>{t("Versions")}</div>
                   <h2 className="mt-2 font-[var(--font-display)] text-xl font-bold text-white">
-                    Status maintenance
+                    {t("Status maintenance")}
                   </h2>
                 </div>
                 {isLoadingDetails ? <Loader2 className="h-5 w-5 animate-spin text-[#65f7ff]" /> : null}
@@ -713,11 +724,11 @@ export default function AdminTemplatesPage() {
                       <div>
                         <div className="font-semibold text-white">{versionItem.version}</div>
                         <div className="mt-1 text-xs text-white/42">
-                          {formatDateTime(versionItem.published_at || versionItem.created_at)}
+                          {formatDateTime(versionItem.published_at || versionItem.created_at, language)}
                         </div>
                       </div>
                       <span className={cn("rounded-full border px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em]", statusTone(versionItem.status))}>
-                        {versionItem.is_default ? "default" : versionItem.status}
+                        {versionItem.is_default ? t("default") : t(versionItem.status)}
                       </span>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
@@ -726,7 +737,7 @@ export default function AdminTemplatesPage() {
                         onClick={() => updateVersionStatus(versionItem, { status: versionItem.status === "active" ? "draft" : "active" })}
                         className="inline-flex min-h-9 items-center justify-center rounded-lg border border-[#65f7ff]/24 bg-[#65f7ff]/10 px-3 text-xs font-semibold text-[#dffbff] transition hover:bg-[#65f7ff]/16"
                       >
-                        {versionItem.status === "active" ? "Move to draft" : "Activate"}
+                        {versionItem.status === "active" ? t("Move to draft") : t("Activate")}
                       </button>
                       <button
                         type="button"
@@ -734,14 +745,14 @@ export default function AdminTemplatesPage() {
                         disabled={versionItem.is_default}
                         className="inline-flex min-h-9 items-center justify-center rounded-lg border border-[#d8ff5d]/24 bg-[#d8ff5d]/10 px-3 text-xs font-semibold text-[#f1ffc1] transition hover:bg-[#d8ff5d]/16 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        Set default
+                        {t("Set default")}
                       </button>
                     </div>
                   </div>
                 ))}
                 {versions.length === 0 ? (
                   <div className="rounded-lg border border-white/10 bg-black/18 p-5 text-center text-sm text-white/48">
-                    No versions for this template.
+                    {t("No versions for this template.")}
                   </div>
                 ) : null}
               </div>
@@ -751,9 +762,9 @@ export default function AdminTemplatesPage() {
           <section className="mt-6 rounded-lg border border-white/10 bg-black/16 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <div className={labelClass}>Example videos</div>
+                <div className={labelClass}>{t("Example videos")}</div>
                 <h2 className="mt-2 font-[var(--font-display)] text-xl font-bold text-white">
-                  Metadata maintenance
+                  {t("Metadata maintenance")}
                 </h2>
               </div>
               <button
@@ -762,7 +773,7 @@ export default function AdminTemplatesPage() {
                 className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.045] px-3 text-xs font-semibold text-white/72 transition hover:border-[#65f7ff]/32 hover:bg-[#65f7ff]/10"
               >
                 <Plus className="h-4 w-4" />
-                New example
+                {t("New example")}
               </button>
             </div>
             <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
@@ -771,10 +782,10 @@ export default function AdminTemplatesPage() {
                   <table className="min-w-[820px] w-full border-collapse text-left text-sm">
                     <thead className="border-b border-white/10 bg-white/[0.035] text-[0.68rem] uppercase tracking-[0.18em] text-white/42">
                       <tr>
-                        <th className="px-4 py-3 font-semibold">Video</th>
-                        <th className="px-4 py-3 font-semibold">Object</th>
-                        <th className="px-4 py-3 font-semibold">Status</th>
-                        <th className="px-4 py-3 text-right font-semibold">Actions</th>
+                        <th className="px-4 py-3 font-semibold">{t("Video")}</th>
+                        <th className="px-4 py-3 font-semibold">{t("Object")}</th>
+                        <th className="px-4 py-3 font-semibold">{t("Status")}</th>
+                        <th className="px-4 py-3 text-right font-semibold">{t("Actions")}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/8">
@@ -786,7 +797,7 @@ export default function AdminTemplatesPage() {
                               {videoItem.title}
                             </div>
                             <div className="mt-1 text-xs text-white/42">
-                              {videoItem.template_version || "any version"} / order {videoItem.sort_order}
+                              {videoItem.template_version || t("any version")} {t("/ order")} {videoItem.sort_order}
                             </div>
                           </td>
                           <td className="px-4 py-4 text-white/58">
@@ -797,7 +808,7 @@ export default function AdminTemplatesPage() {
                           </td>
                           <td className="px-4 py-4">
                             <span className={cn("rounded-full border px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em]", statusTone(videoItem.status))}>
-                              {videoItem.status}
+                              {t(videoItem.status)}
                             </span>
                           </td>
                           <td className="px-4 py-4">
@@ -817,7 +828,7 @@ export default function AdminTemplatesPage() {
                                 ) : (
                                   <Eye className="h-4 w-4" />
                                 )}
-                                {videoItem.status === "active" ? "Hide" : "Show"}
+                                {videoItem.status === "active" ? t("Hide") : t("Show")}
                               </button>
                               <button
                                 type="button"
@@ -825,7 +836,7 @@ export default function AdminTemplatesPage() {
                                 className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[#65f7ff]/24 bg-[#65f7ff]/10 px-3 text-xs font-semibold text-[#dffbff] transition hover:bg-[#65f7ff]/16"
                               >
                                 <Pencil className="h-4 w-4" />
-                                Edit
+                                {t("Edit")}
                               </button>
                               <button
                                 type="button"
@@ -833,7 +844,7 @@ export default function AdminTemplatesPage() {
                                 className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-red-300/24 bg-red-400/10 px-3 text-xs font-semibold text-red-100 transition hover:bg-red-400/16"
                               >
                                 <Trash2 className="h-4 w-4" />
-                                Delete
+                                {t("Delete")}
                               </button>
                             </div>
                           </td>
@@ -842,7 +853,7 @@ export default function AdminTemplatesPage() {
                       {exampleVideos.length === 0 ? (
                         <tr>
                           <td colSpan={4} className="px-4 py-8 text-center text-sm text-white/48">
-                            No example videos yet.
+                            {t("No example videos yet.")}
                           </td>
                         </tr>
                       ) : null}
@@ -852,61 +863,61 @@ export default function AdminTemplatesPage() {
               </div>
 
               <form className="rounded-lg border border-white/10 bg-white/[0.035] p-4" onSubmit={saveExampleVideo}>
-                <div className={labelClass}>{editingVideoId ? "Edit example" : "Add example"}</div>
+                <div className={labelClass}>{editingVideoId ? t("Edit example") : t("Add example")}</div>
                 <div className="mt-4 space-y-3">
                   <label className="block space-y-2">
-                    <span className={labelClass}>Title</span>
+                    <span className={labelClass}>{t("Title")}</span>
                     <input className={fieldClass} value={videoTitle} onChange={(event) => setVideoTitle(event.target.value)} required />
                   </label>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <label className="block space-y-2">
-                      <span className={labelClass}>Version</span>
+                      <span className={labelClass}>{t("Version")}</span>
                       <input className={fieldClass} value={videoVersion} onChange={(event) => setVideoVersion(event.target.value)} />
                     </label>
                     <label className="block space-y-2">
-                      <span className={labelClass}>Status</span>
+                      <span className={labelClass}>{t("Status")}</span>
                       <select className={fieldClass} value={videoStatus} onChange={(event) => setVideoStatus(event.target.value)}>
-                        <option value="active">active</option>
-                        <option value="hidden">hidden</option>
-                        <option value="draft">draft</option>
-                        <option value="archived">archived</option>
+                        <option value="active">{t("active")}</option>
+                        <option value="hidden">{t("hidden")}</option>
+                        <option value="draft">{t("draft")}</option>
+                        <option value="archived">{t("archived")}</option>
                       </select>
                     </label>
                   </div>
                   <label className="block space-y-2">
-                    <span className={labelClass}>Description</span>
+                    <span className={labelClass}>{t("Description")}</span>
                     <textarea className={`${fieldClass} min-h-20 resize-none py-3`} value={videoDescription} onChange={(event) => setVideoDescription(event.target.value)} />
                   </label>
                   <label className="block space-y-2">
-                    <span className={labelClass}>Bucket</span>
+                    <span className={labelClass}>{t("Bucket")}</span>
                     <input className={fieldClass} value={videoBucket} onChange={(event) => setVideoBucket(event.target.value)} required />
                   </label>
                   <label className="block space-y-2">
-                    <span className={labelClass}>Object key</span>
+                    <span className={labelClass}>{t("Object key")}</span>
                     <input className={fieldClass} value={videoObjectKey} onChange={(event) => setVideoObjectKey(event.target.value)} required />
                   </label>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <label className="block space-y-2">
-                      <span className={labelClass}>File</span>
+                      <span className={labelClass}>{t("File")}</span>
                       <input className={fieldClass} value={videoFileName} onChange={(event) => setVideoFileName(event.target.value)} required />
                     </label>
                     <label className="block space-y-2">
-                      <span className={labelClass}>Content type</span>
+                      <span className={labelClass}>{t("Content type")}</span>
                       <input className={fieldClass} value={videoContentType} onChange={(event) => setVideoContentType(event.target.value)} required />
                     </label>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <label className="block space-y-2">
-                      <span className={labelClass}>Duration</span>
+                      <span className={labelClass}>{t("Duration")}</span>
                       <input className={fieldClass} value={videoDuration} onChange={(event) => setVideoDuration(event.target.value)} inputMode="decimal" />
                     </label>
                     <label className="block space-y-2">
-                      <span className={labelClass}>Sort</span>
+                      <span className={labelClass}>{t("Sort")}</span>
                       <input className={fieldClass} value={videoSortOrder} onChange={(event) => setVideoSortOrder(event.target.value)} inputMode="numeric" />
                     </label>
                   </div>
                   <label className="block space-y-2">
-                    <span className={labelClass}>Cover URL</span>
+                    <span className={labelClass}>{t("Cover URL")}</span>
                     <input className={fieldClass} value={videoCoverUrl} onChange={(event) => setVideoCoverUrl(event.target.value)} />
                   </label>
                   <button
@@ -915,7 +926,7 @@ export default function AdminTemplatesPage() {
                     className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#d8ff5d]/32 bg-[#d8ff5d]/10 px-4 text-sm font-semibold text-[#f1ffc1] transition hover:bg-[#d8ff5d]/16 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {isSavingVideo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    Save example
+                    {t("Save example")}
                   </button>
                 </div>
               </form>
@@ -925,35 +936,35 @@ export default function AdminTemplatesPage() {
 
         <aside className="space-y-5">
           <section className="rounded-lg border border-white/10 bg-white/[0.055] p-5 backdrop-blur-2xl">
-            <div className={labelClass}>Create template</div>
+            <div className={labelClass}>{t("Create template")}</div>
             <h2 className="mt-2 font-[var(--font-display)] text-xl font-bold text-white">
-              Add template
+              {t("Add template")}
             </h2>
             <form className="mt-5 space-y-4" onSubmit={createTemplate}>
               <label className="block space-y-2">
-                <span className={labelClass}>Code</span>
+                <span className={labelClass}>{t("Code")}</span>
                 <input className={fieldClass} value={templateCode} onChange={(event) => setTemplateCode(event.target.value)} required />
               </label>
               <label className="block space-y-2">
-                <span className={labelClass}>Name</span>
+                <span className={labelClass}>{t("Name")}</span>
                 <input className={fieldClass} value={name} onChange={(event) => setName(event.target.value)} required />
               </label>
               <label className="block space-y-2">
-                <span className={labelClass}>Motion</span>
+                <span className={labelClass}>{t("Motion")}</span>
                 <select className={fieldClass} value={analysisType} onChange={(event) => setAnalysisType(event.target.value as ReportAnalysisType)}>
                   {analysisTypes.map((type) => (
                     <option key={type} value={type}>
-                      {analysisTypeLabels[type]}
+                      {t(analysisTypeLabels[type])}
                     </option>
                   ))}
                 </select>
               </label>
               <label className="block space-y-2">
-                <span className={labelClass}>Difficulty</span>
+                <span className={labelClass}>{t("Difficulty")}</span>
                 <input className={fieldClass} value={difficultyLevel} onChange={(event) => setDifficultyLevel(event.target.value)} />
               </label>
               <label className="block space-y-2">
-                <span className={labelClass}>Description</span>
+                <span className={labelClass}>{t("Description")}</span>
                 <textarea className={`${fieldClass} min-h-20 resize-none py-3`} value={description} onChange={(event) => setDescription(event.target.value)} />
               </label>
               <button
@@ -962,34 +973,34 @@ export default function AdminTemplatesPage() {
                 className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#65f7ff]/34 bg-[#65f7ff]/12 px-4 text-sm font-semibold text-[#dffbff] transition hover:bg-[#65f7ff]/18 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isSubmittingTemplate ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                Create template
+                {t("Create template")}
               </button>
             </form>
           </section>
 
           <section className="rounded-lg border border-white/10 bg-white/[0.055] p-5 backdrop-blur-2xl">
-            <div className={labelClass}>Create version</div>
+            <div className={labelClass}>{t("Create version")}</div>
             <h2 className="mt-2 font-[var(--font-display)] text-xl font-bold text-white">
-              Add version
+              {t("Add version")}
             </h2>
             <form className="mt-5 space-y-4" onSubmit={createVersion}>
               <label className="block space-y-2">
-                <span className={labelClass}>Template</span>
+                <span className={labelClass}>{t("Template")}</span>
                 <select className={fieldClass} value={selectedTemplateId} onChange={(event) => setSelectedTemplateId(event.target.value)} required>
-                  <option value="">Select template</option>
+                  <option value="">{t("Select template")}</option>
                   {templates.map((template) => (
                     <option key={template.public_id} value={template.public_id}>
-                      {template.name}
+                      {templateDisplayName(template.template_code, template.name, language)}
                     </option>
                   ))}
                 </select>
               </label>
               <label className="block space-y-2">
-                <span className={labelClass}>Version</span>
+                <span className={labelClass}>{t("Version")}</span>
                 <input className={fieldClass} value={version} onChange={(event) => setVersion(event.target.value)} required />
               </label>
               <label className="block space-y-2">
-                <span className={labelClass}>Scoring rules JSON</span>
+                <span className={labelClass}>{t("Scoring rules JSON")}</span>
                 <textarea
                   className={`${fieldClass} min-h-36 resize-y py-3 font-mono text-xs`}
                   value={scoringRules}
@@ -998,7 +1009,7 @@ export default function AdminTemplatesPage() {
                 />
               </label>
               <label className="flex min-h-11 items-center justify-between gap-4 rounded-lg border border-white/10 bg-black/20 px-3">
-                <span className="text-sm font-semibold text-white/72">Set as default</span>
+                <span className="text-sm font-semibold text-white/72">{t("Set as default")}</span>
                 <input
                   type="checkbox"
                   checked={isDefault}
@@ -1012,7 +1023,7 @@ export default function AdminTemplatesPage() {
                 className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#d8ff5d]/32 bg-[#d8ff5d]/10 px-4 text-sm font-semibold text-[#f1ffc1] transition hover:bg-[#d8ff5d]/16 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isSubmittingVersion ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                Create version
+                {t("Create version")}
               </button>
             </form>
           </section>

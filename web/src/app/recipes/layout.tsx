@@ -1,4 +1,7 @@
 "use client";
+
+import { useInterfaceText } from "@/hooks/useInterfaceText";
+
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { isAdminRole } from "@/lib/authRedirect";
 import { AccountCenterShell } from "@/components/account/AccountCenterShell";
@@ -10,15 +13,16 @@ export default function RecipeLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const t = useInterfaceText();
   const user = useAuthStore((s) => s.user);
   return (
     <ProtectedRoute>
       {user && isAdminRole(user.role) ? (
-        <AdminShell user={user} title="Recipe library" breadcrumb={["Recipes"]}>
+        <AdminShell user={user} title={t("Recipe library")} breadcrumb={[t("Recipes")]}>
           {children}
         </AdminShell>
       ) : user?.role === "coach" ? (
-        <CoachShell user={user} title="Recipe library" breadcrumb={["Recipes"]}>
+        <CoachShell user={user} title={t("Recipe library")} breadcrumb={[t("Recipes")]}>
           {children}
         </CoachShell>
       ) : (

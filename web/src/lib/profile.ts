@@ -1,3 +1,5 @@
+import type { AppLanguage } from "./language";
+
 type DateParts = { year: number; month: number; day: number };
 
 export function sydneyDateKey(now = new Date()): string {
@@ -66,9 +68,15 @@ export function trainingDuration(
 export function trainingDurationLabel(
   startedOn: string | null | undefined,
   at = sydneyDateKey(),
+  language: AppLanguage = "en",
 ): string {
   const duration = trainingDuration(startedOn, at);
-  if (!duration) return "Not recorded";
+  if (!duration) return language === "zh-CN" ? "未记录" : "Not recorded";
+  if (language === "zh-CN") {
+    const years = duration.years ? `${duration.years} 年` : "";
+    const months = duration.months ? `${duration.months} 个月` : "";
+    return [years, months].filter(Boolean).join(" ") || "不足 1 个月";
+  }
   const parts: string[] = [];
   if (duration.years) {
     parts.push(`${duration.years} ${duration.years === 1 ? "year" : "years"}`);

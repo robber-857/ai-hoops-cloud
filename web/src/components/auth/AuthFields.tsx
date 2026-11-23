@@ -1,3 +1,6 @@
+"use client";
+
+import { useInterfaceText } from "@/hooks/useInterfaceText";
 import type { InputHTMLAttributes, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
@@ -38,6 +41,7 @@ export function AuthSegmentTabs<T extends string>({
   onChange: (value: T) => void;
   options: Array<{ value: T; label: string }>;
 }) {
+  const t = useInterfaceText();
   return (
     <div className="grid grid-cols-3 gap-2 rounded-full border border-white/10 bg-white/5 p-1">
       {options.map((option) => {
@@ -54,7 +58,7 @@ export function AuthSegmentTabs<T extends string>({
                 : "text-white/58 hover:bg-white/8 hover:text-white",
             )}
           >
-            {option.label}
+            {t(option.label)}
           </button>
         );
       })}

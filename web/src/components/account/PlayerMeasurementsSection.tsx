@@ -1,4 +1,5 @@
 "use client";
+import { usePlayerCopy } from "@/components/account/playerCopy";
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -20,6 +21,7 @@ const fieldClass =
   "mt-2 block min-h-11 w-full rounded-lg border border-white/25 bg-[#10141b] px-3 text-base text-white focus-visible:outline-2 focus-visible:outline-[#d8ff5d]";
 
 export function PlayerMeasurementsSection() {
+  const { t, isChinese, language } = usePlayerCopy();
   const { measurementDraft, setMeasurementDraft } = useAccountCenter();
   const initialDraft = useRef(measurementDraft);
   const [form, setForm] = useState<Form>(
@@ -91,7 +93,7 @@ export function PlayerMeasurementsSection() {
       if (
         (event.target as Element).closest?.("a[href]") &&
         !window.confirm(
-          "Your measurements have not been saved. Leave this page?",
+          t("Your measurements have not been saved. Leave this page?"),
         )
       ) {
         event.preventDefault();
@@ -104,7 +106,7 @@ export function PlayerMeasurementsSection() {
       window.removeEventListener("beforeunload", unload);
       document.removeEventListener("click", navigate, true);
     };
-  }, [dirty]);
+  }, [dirty, t]);
 
   const update = (field: keyof Form, value: string) => {
     const next = { ...form, [field]: value };
@@ -120,13 +122,15 @@ export function PlayerMeasurementsSection() {
     const measurementDate = validateDateInput(form.measured_on, {
       required: true,
       maxDate: sydneyDateKey(),
+      language,
     });
     const birthDate = validateDateInput(form.date_of_birth, {
       required: true,
       maxDate: measurementDate.iso,
+      language,
     });
     if (measurementDate.error || birthDate.error || !measurementDate.iso || !birthDate.iso) {
-      setSaveError(measurementDate.error || birthDate.error || "Enter valid birth and measurement dates.");
+      setSaveError(measurementDate.error || birthDate.error || t("Enter valid birth and measurement dates."));
       return;
     }
     saveInFlight.current = true;
@@ -155,7 +159,7 @@ export function PlayerMeasurementsSection() {
       setSaveError(
         error instanceof Error
           ? error.message
-          : "Could not save. Please retry.",
+          : t("Could not save. Please retry."),
       );
     } finally {
       saveInFlight.current = false;
@@ -173,7 +177,7 @@ export function PlayerMeasurementsSection() {
       setLoadError(
         error instanceof Error
           ? error.message
-          : "Could not load more measurements.",
+          : t("Could not load more measurements."),
       );
     } finally {
       setLoading(false);
@@ -186,27 +190,25 @@ export function PlayerMeasurementsSection() {
 
   return (
     <section id="player-measurements" className="min-w-0 scroll-mt-20 border-t border-white/15 pt-6">
-      <h2 className="text-xl font-semibold">Player measurements</h2>
+      <h2 className="text-xl font-semibold">{t("Player measurements")}</h2>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-white/70">
-        For players of all ages. A parent can enter these details on the player’s
-        behalf. Each save adds a dated record; previous measurements and
-        analysis reports stay unchanged.
+        {t("For players of all ages. A parent can enter these details on the player’s behalf. Each save adds a dated record; previous measurements and analysis reports stay unchanged.")}
       </p>
       {loadError && (
         <div role="alert" className="mt-4 text-sm text-red-200">
-          {loadError}
+          {t(loadError)}
           <button
             type="button"
             className="ml-3 min-h-11 underline"
             onClick={() => setVersion((value) => value + 1)}
           >
-            Reload measurements
+            {t("Reload measurements")}
           </button>
         </div>
       )}
       {loading && (
         <p role="status" className="mt-4 text-white/70">
-          Loading measurements…
+          {t("Loading measurements…")}
         </p>
       )}
       <form
@@ -221,7 +223,7 @@ export function PlayerMeasurementsSection() {
           className="grid min-w-0 gap-5 sm:grid-cols-2"
         >
           <label className="min-w-0 text-sm">
-            Date of birth
+            {t("Date of birth")}
             <ProfileDateInput
               required
               maxDate={parseDateInput(form.measured_on) ?? sydneyDateKey()}
@@ -231,7 +233,7 @@ export function PlayerMeasurementsSection() {
             />
           </label>
           <label className="min-w-0 text-sm">
-            Measurement date
+            {t("Measurement date")}
             <ProfileDateInput
               required
               maxDate={sydneyDateKey()}
@@ -241,7 +243,7 @@ export function PlayerMeasurementsSection() {
             />
           </label>
           <label className="min-w-0 text-sm">
-            Height (cm)
+            {t("Height (cm)")}
             <input
               type="number"
               inputMode="decimal"
@@ -255,7 +257,7 @@ export function PlayerMeasurementsSection() {
             />
           </label>
           <label className="min-w-0 text-sm">
-            Weight (kg)
+            {t("Weight (kg)")}
             <input
               type="number"
               inputMode="decimal"
@@ -269,39 +271,38 @@ export function PlayerMeasurementsSection() {
             />
           </label>
           <label className="min-w-0 text-sm">
-            Sex (optional)
+            {t("Sex (optional)")}
             <select
               className={fieldClass}
               value={form.sex}
               onChange={(e) => update("sex", e.target.value)}
             >
-              <option value="">Not specified</option>
-              <option value="female">Female</option>
-              <option value="male">Male</option>
+              <option value="">{t("Not specified")}</option>
+              <option value="female">{t("Female")}</option>
+              <option value="male">{t("Male")}</option>
             </select>
           </label>
           <div className="grid gap-3 text-sm sm:col-span-2 sm:grid-cols-2">
             <div className="rounded-lg border border-white/15 p-4 sm:col-span-2">
-              <p className="text-white/65">Current age · Australia/Sydney</p>
+              <p className="text-white/65">{t("Current age · Australia/Sydney")}</p>
               <output className="mt-2 block text-lg font-semibold" aria-live="polite">
-                {currentAge === null ? "Enter date of birth" : `${currentAge} years`}
+                {currentAge === null ? t("Enter date of birth") : `${currentAge} ${isChinese ? "岁" : "years"}`}
               </output>
             </div>
             <div className="rounded-lg border border-white/15 p-4">
-              <p className="text-white/65">Age on measurement date</p>
+              <p className="text-white/65">{t("Age on measurement date")}</p>
               <output className="mt-2 block text-lg font-semibold" aria-live="polite">
-                {age === null ? "Enter birth and measurement dates" : `${age} years`}
+                {age === null ? t("Enter birth and measurement dates") : `${age} ${isChinese ? "岁" : "years"}`}
               </output>
             </div>
             <div className="rounded-lg border border-white/15 p-4">
-              <p className="text-white/65">BMI · calculated</p>
+              <p className="text-white/65">{t("BMI · calculated")}</p>
               <output className="mt-2 block text-lg font-semibold" aria-live="polite">
-                {bmi === null ? "Enter height and weight" : `${bmi} kg/m²`}
+                {bmi === null ? t("Enter height and weight") : `${bmi} kg/m²`}
               </output>
             </div>
             <p className="leading-6 text-white/65 sm:col-span-2">
-              BMI is a calculated number, without an adult weight category for
-              children. It is not used to calculate video analysis scores.
+              {t("BMI is a calculated number, without an adult weight category for children. It is not used to calculate video analysis scores.")}
             </p>
           </div>
           <button
@@ -309,47 +310,46 @@ export function PlayerMeasurementsSection() {
             disabled={!dirty || saving}
             className="min-h-11 rounded-lg bg-[#d8ff5d] px-5 font-semibold text-[#10140a] disabled:opacity-50 sm:col-span-2"
           >
-            {saving ? "Saving…" : "Save new measurement"}
+            {saving ? t("Saving…") : t("Save new measurement")}
           </button>
         </fieldset>
       </form>
       {saveError && (
         <p role="alert" className="mt-4 text-sm text-red-200">
-          {saveError}
+          {t(saveError)}
         </p>
       )}
       {saved && (
         <p role="status" className="mt-4 text-sm text-[#d8ff5d]">
-          Measurement saved. Previous records are unchanged.
+          {t("Measurement saved. Previous records are unchanged.")}
         </p>
       )}
-      <h3 className="mt-8 text-lg font-semibold">Measurement history</h3>
+      <h3 className="mt-8 text-lg font-semibold">{t("Measurement history")}</h3>
       <p className="mt-2 text-sm text-white/65">
-        Newest measurement date first. Correct a record by saving a new version
-        with the same date.
+        {t("Newest measurement date first. Correct a record by saving a new version with the same date.")}
       </p>
       <Link href={`${routes.user.trends}#measurement-trends`} className="ui-link">
-        View measurement trends
+        {t("View measurement trends")}
       </Link>
       {!loading && !loadError && !items.length && (
-        <p className="mt-4 text-white/70">No measurements saved yet.</p>
+        <p className="mt-4 text-white/70">{t("No measurements saved yet.")}</p>
       )}
       <ol className="mt-4 divide-y divide-white/10">
         {items.map((item) => (
           <li key={item.public_id} className="py-4 text-sm">
             <p className="font-semibold">
-              {formatDateInput(item.measured_on)} · {item.height_cm} cm · {item.weight_kg} kg
+              {formatDateInput(item.measured_on)} · {item.height_cm} {t("cm ·")} {item.weight_kg} kg
             </p>
             <p className="mt-2 text-white/65">
-              Born {formatDateInput(item.date_of_birth)} · {item.sex ?? "Sex not specified"}
+              {t("Born")} {formatDateInput(item.date_of_birth)} · {item.sex ? t(item.sex) : t("Sex not specified")}
               {ageYears(item.date_of_birth, item.measured_on) !== null &&
-                ` · Age ${ageYears(item.date_of_birth, item.measured_on)} at measurement`}
+                (isChinese ? ` · 测量时 ${ageYears(item.date_of_birth, item.measured_on)} 岁` : ` · Age ${ageYears(item.date_of_birth, item.measured_on)} at measurement`)}
             </p>
             <p className="mt-2 text-white/65">
-              BMI {measurementBmi(item) ?? "not available"}
+              {t("BMI")} {measurementBmi(item) ?? t("not available")}
             </p>
             <p className="mt-1 text-xs text-white/60">
-              Saved {formatProfileDateTime(item.created_at)}
+              {t("Saved")} {formatProfileDateTime(item.created_at)}
             </p>
           </li>
         ))}
@@ -361,7 +361,7 @@ export function PlayerMeasurementsSection() {
           className="mt-4 min-h-11 rounded-lg border border-white/25 px-4"
           onClick={() => void loadMore()}
         >
-          Load older measurements
+          {t("Load older measurements")}
         </button>
       )}
     </section>

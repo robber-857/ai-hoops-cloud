@@ -1,3 +1,5 @@
+import { templateDisplayName } from "@/lib/templateLanguage";
+import type { AppLanguage } from "@/lib/language";
 import type { ActionTemplate } from "@/config/templates";
 
 export type MovementPose = {
@@ -178,41 +180,34 @@ const examplePoses: Record<string, MovementPose[]> = {
   }],
 };
 
-const basketballPresentation: Record<string, { title: string; filming: string }> = {
+const basketballPresentation: Record<string, { filming: string }> = {
   shoot_front_form_close: {
-    title: "Front Form Shot",
     filming: "Film from the front. Keep your feet, shooting elbow, hands, and ball release in frame.",
   },
   shoot_side_form_close: {
-    title: "Side Form Shot",
     filming: "Film from the side of your shooting arm. Keep your feet, hip, elbow, and ball release in frame.",
   },
   dribble_front_narrow_crossover: {
-    title: "Front Narrow Crossover",
     filming: "Film from the front with both hands, both feet, and the ball visible. Keep the crossover close to your stance.",
   },
   dribble_front_onehand_oneside_height: {
-    title: "Front Hip-High Dribble",
     filming: "Film from the front with both feet and the ball visible. Keep the bounce on one side and meet the ball near your hip.",
   },
   dribble_front_onehand_v: {
-    title: "Front One-Hand V Dribble",
     filming: "Film from the front so the floor and ball are visible as you move the ball in and out with the same hand.",
   },
   dribble_side_narrow_crossover: {
-    title: "Side Narrow Crossover",
     filming: "Film from the side with your whole body and the ball in frame. Keep the crossover low and close to your feet.",
   },
   dribble_side_onehand_oneside: {
-    title: "Side One-Hand Dribble",
     filming: "Film from the side of your dribbling hand. Keep your feet and the ball in frame as it lands just ahead of your toes.",
   },
 };
 
-export function getMovementPresentation(template: ActionTemplate) {
+export function getMovementPresentation(template: ActionTemplate, language: AppLanguage = "en") {
   const basketball = basketballPresentation[template.templateId];
   return {
-    title: basketball?.title ?? template.displayName,
+    title: templateDisplayName(template.templateId, template.displayName, language),
     filming: basketball?.filming ?? template.cameraInstructions,
     poses: examplePoses[template.templateId] ?? [],
   };

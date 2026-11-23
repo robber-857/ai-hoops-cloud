@@ -1,14 +1,16 @@
 "use client";
+import { usePlayerCopy } from "@/components/account/playerCopy";
 
 import { useEffect, useState } from "react";
 import { meService } from "@/services/me";
-import { normalizeReport } from "./AccountDataProvider";
+import { localizeAccountReport, normalizeReport } from "./AccountDataProvider";
 import type { AccountReport } from "./types";
 import { RecentReportsSection } from "./RecentReportsSection";
 import { ReportPagination } from "@/components/ReportPagination";
 import { useAuthStore } from "@/store/authStore";
 
 export function PaginatedAnalysisReports() {
+  const { t, language } = usePlayerCopy();
   const userId = useAuthStore(state => state.user?.public_id);
   const [type, setType] = useState("all");
   const [page, setPage] = useState(1);
@@ -30,15 +32,15 @@ export function PaginatedAnalysisReports() {
     return () => { active = false; };
   }, [page, type, userId, retry]);
   return <>
-    <h1 className="text-2xl font-semibold sm:text-3xl">Analysis reports</h1>
-    <p className="text-sm text-white/65">All saved reports, 10 per page.</p>
-    <label className="flex flex-wrap items-center gap-3 text-sm">Analysis type
-      <select aria-label="Analysis type" value={type} onChange={e => { setType(e.target.value); setPage(1); }} className="min-h-11 rounded-lg border border-white/20 bg-[#10141b] px-3">
-        <option value="all">All types</option><option value="shooting">Shooting</option><option value="dribbling">Dribbling</option><option value="training">Training</option>
+    <h1 className="text-2xl font-semibold sm:text-3xl">{t("Analysis reports")}</h1>
+    <p className="text-sm text-white/65">{t("All saved reports, 10 per page.")}</p>
+    <label className="flex flex-wrap items-center gap-3 text-sm">{t("Analysis type")}
+      <select aria-label={t("Analysis type")} value={type} onChange={e => { setType(e.target.value); setPage(1); }} className="min-h-11 rounded-lg border border-white/20 bg-[#10141b] px-3">
+        <option value="all">{t("All types")}</option><option value="shooting">{t("Shooting")}</option><option value="dribbling">{t("Dribbling")}</option><option value="training">{t("Training")}</option>
       </select>
     </label>
-    {loading ? <p role="status">Loading reports…</p> : error ? <div role="alert">{error} <button onClick={() => setRetry(n => n + 1)}>Retry</button></div> : <>
-      {data.items.length ? <RecentReportsSection reports={data.items} source="live" /> : <p>No saved reports match this filter.</p>}
+    {loading ? <p role="status">{t("Loading reports…")}</p> : error ? <div role="alert">{t(error)} <button onClick={() => setRetry(n => n + 1)}>{t("Retry")}</button></div> : <>
+      {data.items.length ? <RecentReportsSection reports={data.items.map(report => localizeAccountReport(report, language))} source="live" /> : <p>{t("No saved reports match this filter.")}</p>}
       <ReportPagination key={`${type}-${page}`} page={page} total={data.total} onChange={setPage} />
     </>}
   </>;

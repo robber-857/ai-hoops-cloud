@@ -1,5 +1,9 @@
 "use client";
 
+import { useAppLanguage } from "@/components/account/LanguagePreferenceProvider";
+import { useInterfaceText } from "@/hooks/useInterfaceText";
+
+
 import { useEffect, useMemo, useState } from "react";
 import { isAdminRole } from "@/lib/authRedirect";
 import {
@@ -25,29 +29,30 @@ const fieldClass =
   "min-h-11 rounded-lg border border-white/10 bg-black/24 px-3 text-sm text-white outline-none transition focus:border-[#65f7ff]/46 focus:ring-2 focus:ring-[#65f7ff]/12";
 
 function CoachRouteLoading() {
+  const t = useInterfaceText();
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#030712] text-white">
       <div className="rounded-lg border border-white/10 bg-white/[0.055] px-8 py-7 text-center shadow-[0_20px_70px_rgba(0,0,0,0.28)] backdrop-blur-2xl">
         <Loader2 className="mx-auto h-9 w-9 animate-spin text-[#65f7ff]" />
         <div className="mt-4 text-[0.72rem] uppercase tracking-[0.28em] text-white/48">
-          Loading announcements
+          {t("Loading announcements")}
         </div>
       </div>
     </main>
   );
 }
 
-function scopeLabel(item: AnnouncementSummaryRead) {
+function scopeLabel(item: AnnouncementSummaryRead, t: (text: string) => string) {
   if (item.scope_type === "class") {
-    return item.class_name ?? "Class";
+    return item.class_name ?? t("Class");
   }
   if (item.scope_type === "camp") {
-    return item.camp_name ?? "Camp";
+    return item.camp_name ?? t("Camp");
   }
   if (item.scope_type === "role") {
-    return item.target_role ? `${item.target_role} role` : "Role";
+    return item.target_role ? t(item.target_role) : t("Role");
   }
-  return "Global";
+  return t("Global");
 }
 
 function scopeTone(scopeType: string) {
@@ -64,6 +69,8 @@ function scopeTone(scopeType: string) {
 }
 
 export default function CoachAnnouncementsPage() {
+  const language = useAppLanguage();
+  const t = useInterfaceText();
   const user = useAuthStore((state) => state.user);
   const hasInitialized = useAuthStore((state) => state.hasInitialized);
   const isInitializing = useAuthStore((state) => state.isInitializing);
@@ -94,7 +101,7 @@ export default function CoachAnnouncementsPage() {
       })
       .catch((fetchError) => {
         if (isActive) {
-          setError(fetchError instanceof Error ? fetchError.message : "Unable to load announcements.");
+          setError(fetchError instanceof Error ? fetchError.message : t("Unable to load announcements."));
         }
       })
       .finally(() => {
@@ -145,7 +152,7 @@ export default function CoachAnnouncementsPage() {
     try {
       await meService.markAnnouncementRead(item.public_id);
     } catch (readError) {
-      setError(readError instanceof Error ? readError.message : "Unable to mark announcement read.");
+      setError(readError instanceof Error ? readError.message : t("Unable to mark announcement read."));
     }
   };
 
@@ -155,11 +162,11 @@ export default function CoachAnnouncementsPage() {
 
   if (!canAccessCoach) {
     return (
-      <CoachShell user={user} title="Coach access required" breadcrumb={["Access"]}>
+      <CoachShell user={user} title={t("Coach access required")} breadcrumb={[t("Access")]}>
         <section className="rounded-lg border border-red-400/20 bg-red-500/10 p-8 text-center backdrop-blur-2xl">
           <ShieldAlert className="mx-auto h-10 w-10 text-red-200" />
           <h2 className="mt-5 font-[var(--font-display)] text-2xl font-bold text-white">
-            This workspace is available to coaches only.
+            {t("This workspace is available to coaches only.")}
           </h2>
         </section>
       </CoachShell>
@@ -167,18 +174,18 @@ export default function CoachAnnouncementsPage() {
   }
 
   return (
-    <CoachShell user={user} title="Announcements" breadcrumb={["Announcements"]}>
+    <CoachShell user={user} title={t("Announcements")} breadcrumb={[t("Announcements")]}>
       <section className="rounded-lg border border-white/10 bg-white/[0.055] p-5 backdrop-blur-2xl">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="text-[0.68rem] uppercase tracking-[0.22em] text-white/42">
-              Broadcast inbox
+              {t("Broadcast inbox")}
             </div>
             <h1 className="mt-2 font-[var(--font-display)] text-2xl font-bold text-white">
-              Admin and class announcements
+              {t("Admin and class announcements")}
             </h1>
             <p className="mt-2 text-sm text-white/52">
-              {unreadCount} unread / {announcements.length} total
+              {unreadCount} {t("unread /")} {announcements.length} {t("total")}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -187,25 +194,25 @@ export default function CoachAnnouncementsPage() {
               value={scopeFilter}
               onChange={(event) => setScopeFilter(event.target.value)}
             >
-              <option value="">All scopes</option>
-              <option value="global">global</option>
-              <option value="camp">camp</option>
-              <option value="class">class</option>
-              <option value="role">role</option>
+              <option value="">{t("All scopes")}</option>
+              <option value="global">{t("global")}</option>
+              <option value="camp">{t("camp")}</option>
+              <option value="class">{t("class")}</option>
+              <option value="role">{t("role")}</option>
             </select>
             <select
               className={fieldClass}
               value={readFilter}
               onChange={(event) => setReadFilter(event.target.value)}
             >
-              <option value="">All read states</option>
-              <option value="unread">unread</option>
-              <option value="read">read</option>
+              <option value="">{t("All read states")}</option>
+              <option value="unread">{t("unread")}</option>
+              <option value="read">{t("read")}</option>
             </select>
             {isLoading ? (
               <span className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/10 bg-black/18 px-3 text-sm text-white/58">
                 <Loader2 className="h-4 w-4 animate-spin text-[#65f7ff]" />
-                Loading
+                {t("Loading")}
               </span>
             ) : null}
           </div>
@@ -242,12 +249,12 @@ export default function CoachAnnouncementsPage() {
                         )}
                       </div>
                       <div className="mt-2 text-xs uppercase tracking-[0.16em] text-white/38">
-                        {scopeLabel(item)} / {formatDateTime(item.publish_at ?? item.created_at)}
+                        {scopeLabel(item, t)} / {formatDateTime(item.publish_at ?? item.created_at, language)}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={cn("rounded-full border px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.12em]", scopeTone(item.scope_type))}>
-                        {item.scope_type}
+                        {t(item.scope_type)}
                       </span>
                       <ChevronDown
                         className={cn(
@@ -269,7 +276,7 @@ export default function CoachAnnouncementsPage() {
 
           {filteredAnnouncements.length === 0 ? (
             <div className="px-4 py-10 text-center text-sm text-white/48">
-              {isLoading ? "Loading announcements." : "No announcements match the current filters."}
+              {isLoading ? t("Loading announcements.") : t("No announcements match the current filters.")}
             </div>
           ) : null}
         </div>

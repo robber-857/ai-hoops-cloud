@@ -1,3 +1,5 @@
+"use client";
+import { usePlayerCopy } from "@/components/account/playerCopy";
 import Link from "next/link";
 import { ArrowUpRight, Dot } from "lucide-react";
 
@@ -25,8 +27,8 @@ const badgeMap: Record<AccountAnalysisType, string> = {
   training: "border-emerald-300/20 bg-emerald-400/12 text-emerald-100",
 };
 
-function formatDateLabel(createdAt: string): string {
-  return new Intl.DateTimeFormat("en-AU", {
+function formatDateLabel(createdAt: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -38,22 +40,23 @@ export function RecentReportsSection({
   source,
   isLoading = false,
 }: RecentReportsSectionProps) {
+  const { t, locale } = usePlayerCopy();
   return (
     <section className="analysis-surface min-w-0 rounded-[28px] border border-white/10 p-4 sm:rounded-[32px] sm:p-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="text-[0.72rem] uppercase tracking-[0.28em] text-white/42">
-            Recent reports
+            {t("Recent reports")}
           </div>
           <h2 className="mt-2 text-xl font-semibold text-white sm:text-2xl">
-            Your latest analysis snapshots
+            {t("Your latest analysis snapshots")}
           </h2>
         </div>
         <Badge
           variant="outline"
           className="border-white/12 bg-white/[0.03] text-white/62"
         >
-          {source === "live" ? "Report history" : "Preview table"}
+          {source === "live" ? t("Report history") : t("Preview table")}
         </Badge>
       </div>
 
@@ -72,12 +75,12 @@ export function RecentReportsSection({
             <table className="min-w-full divide-y divide-white/8">
               <thead className="bg-white/[0.03]">
                 <tr className="text-left text-[0.72rem] uppercase tracking-[0.24em] text-white/42">
-                  <th className="px-5 py-4 font-medium">Analysis type</th>
-                  <th className="px-5 py-4 font-medium">Template</th>
-                  <th className="px-5 py-4 font-medium">Score</th>
-                  <th className="px-5 py-4 font-medium">Grade</th>
-                  <th className="px-5 py-4 font-medium">Date</th>
-                  <th className="px-5 py-4 font-medium text-right">Action</th>
+                  <th className="px-5 py-4 font-medium">{t("Analysis type")}</th>
+                  <th className="px-5 py-4 font-medium">{t("Template")}</th>
+                  <th className="px-5 py-4 font-medium">{t("Score")}</th>
+                  <th className="px-5 py-4 font-medium">{t("Grade")}</th>
+                  <th className="px-5 py-4 font-medium">{t("Date")}</th>
+                  <th className="px-5 py-4 font-medium text-right">{t("Action")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/6">
@@ -86,7 +89,7 @@ export function RecentReportsSection({
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-2">
                         <Dot className={cn("h-5 w-5", toneMap[report.analysisType])} />
-                        <span className="capitalize">{report.analysisType}</span>
+                        <span className="capitalize">{t(report.analysisType)}</span>
                       </div>
                     </td>
                     <td className="px-5 py-4 text-white/56">{report.templateName}</td>
@@ -98,18 +101,18 @@ export function RecentReportsSection({
                         {report.grade}
                       </Badge>
                     </td>
-                    <td className="px-5 py-4 text-white/48">{formatDateLabel(report.createdAt)}</td>
+                    <td className="px-5 py-4 text-white/48">{formatDateLabel(report.createdAt, locale)}</td>
                     <td className="px-5 py-4 text-right">
                       {report.linkable ? (
                         <Link
                           href={`${routes.pose2d.report}?id=${report.id}`}
                           className="inline-flex items-center gap-1 text-sm font-medium text-[#d8ff5d] hover:text-[#eeffaf]"
                         >
-                          Open
+                          {t("Open")}
                           <ArrowUpRight className="h-4 w-4" />
                         </Link>
                       ) : (
-                        <span className="text-white/34">Preview only</span>
+                        <span className="text-white/34">{t("Preview only")}</span>
                       )}
                     </td>
                   </tr>
@@ -128,7 +131,7 @@ export function RecentReportsSection({
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <Dot className={cn("h-5 w-5 shrink-0", toneMap[report.analysisType])} />
-                      <span className="capitalize text-white">{report.analysisType}</span>
+                      <span className="capitalize text-white">{t(report.analysisType)}</span>
                     </div>
                     <div className="mt-2 break-words text-sm leading-5 text-white/52">
                       {report.templateName}
@@ -145,7 +148,7 @@ export function RecentReportsSection({
                       {Math.round(report.score)}
                     </div>
                     <div className="mt-1 text-xs uppercase tracking-[0.16em] text-white/36 sm:tracking-[0.22em]">
-                      {formatDateLabel(report.createdAt)}
+                      {formatDateLabel(report.createdAt, locale)}
                     </div>
                   </div>
 
@@ -154,11 +157,11 @@ export function RecentReportsSection({
                       href={`${routes.pose2d.report}?id=${report.id}`}
                       className="inline-flex min-h-9 w-fit items-center gap-1 rounded-full border border-[#d8ff5d]/20 bg-[#d8ff5d]/10 px-3 text-sm font-medium text-[#d8ff5d]"
                     >
-                      Open
+                      {t("Open")}
                       <ArrowUpRight className="h-4 w-4" />
                     </Link>
                   ) : (
-                    <span className="text-sm text-white/34">Preview only</span>
+                    <span className="text-sm text-white/34">{t("Preview only")}</span>
                   )}
                 </div>
               </article>

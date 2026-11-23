@@ -1,4 +1,7 @@
 "use client";
+import { useAppLanguage } from "@/components/account/LanguagePreferenceProvider";
+import { useAdminText } from "@/components/admin/adminCopy";
+
 
 import { useEffect, useMemo, useState } from "react";
 import { isAdminRole } from "@/lib/authRedirect";
@@ -21,6 +24,8 @@ import {
 import { useAuthStore } from "@/store/authStore";
 
 export default function AdminClassMembersPage() {
+  const language = useAppLanguage();
+  const t = useAdminText();
   const params = useParams<{ classPublicId: string }>();
   const classPublicId = params.classPublicId;
   const user = useAuthStore((state) => state.user);
@@ -89,7 +94,7 @@ export default function AdminClassMembersPage() {
 
     try {
       await adminService.removeClassMember(classPublicId, member.public_id);
-      setMessage(`Removed ${staffName(member)} from class membership.`);
+      setMessage(t("Removed {0} from class membership.", staffName(member)));
       await loadData();
     } catch (removeError) {
       setError(removeError instanceof Error ? removeError.message : "Unable to remove member.");
@@ -109,13 +114,13 @@ export default function AdminClassMembersPage() {
   return (
     <AdminShell
       user={user}
-      title={classItem?.name ?? "Class Members"}
-      breadcrumb={["Classes", classItem?.name ?? "Members"]}
+      title={classItem?.name ?? t("Class Members")}
+      breadcrumb={[t("Classes"), classItem?.name ?? t("Members")]}
     >
       {error ? (
         <div className="flex items-start gap-3 rounded-lg border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-100">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{error}</span>
+          <span>{t(error)}</span>
         </div>
       ) : null}
       {message ? (
@@ -129,10 +134,10 @@ export default function AdminClassMembersPage() {
           <div className="flex items-center justify-between gap-4">
             <div>
               <div className="text-[0.68rem] uppercase tracking-[0.22em] text-white/42">
-                Member registry
+                {t("Member registry")}
               </div>
               <h1 className="mt-2 font-[var(--font-display)] text-2xl font-bold text-white">
-                {classItem?.name ?? "Class members"}
+                {classItem?.name ?? t("Class members")}
               </h1>
             </div>
             {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-[#65f7ff]" /> : null}
@@ -143,11 +148,11 @@ export default function AdminClassMembersPage() {
               <table className="min-w-[920px] w-full border-collapse text-left text-sm">
                 <thead className="border-b border-white/10 bg-white/[0.035] text-[0.68rem] uppercase tracking-[0.18em] text-white/42">
                   <tr>
-                    <th className="px-4 py-3 font-semibold">User</th>
-                    <th className="px-4 py-3 font-semibold">Role</th>
-                    <th className="px-4 py-3 font-semibold">Joined</th>
-                    <th className="px-4 py-3 font-semibold">Status</th>
-                    <th className="px-4 py-3 text-right font-semibold">Actions</th>
+                    <th className="px-4 py-3 font-semibold">{t("User")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Role")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Joined")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("Status")}</th>
+                    <th className="px-4 py-3 text-right font-semibold">{t("Actions")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/8">
@@ -158,18 +163,18 @@ export default function AdminClassMembersPage() {
                           {staffName(member)}
                         </div>
                         <div className="mt-1 text-xs text-white/38">
-                          {member.email || member.phone_number || "Contact not added"}
+                          {member.email || member.phone_number || t("Contact not added")}
                         </div>
                       </td>
                       <td className="px-4 py-4 text-white/62">
-                        {member.member_role} / {member.user_role}
+                        {t(member.member_role)} / {t(member.user_role)}
                       </td>
                       <td className="px-4 py-4 text-white/62">
-                        {formatDateTime(member.joined_at)}
+                        {formatDateTime(member.joined_at, language)}
                       </td>
                       <td className="px-4 py-4">
                         <span className="rounded-full border border-[#d8ff5d]/24 bg-[#d8ff5d]/10 px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[#e8ff9a]">
-                          {member.status}
+                          {t(member.status)}
                         </span>
                       </td>
                       <td className="px-4 py-4 text-right">
@@ -184,7 +189,7 @@ export default function AdminClassMembersPage() {
                           ) : (
                             <UserMinus className="h-4 w-4" />
                           )}
-                          Remove
+                          {t("Remove")}
                         </button>
                       </td>
                     </tr>
@@ -192,7 +197,7 @@ export default function AdminClassMembersPage() {
                   {members.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="px-4 py-8 text-center text-sm text-white/48">
-                        No members yet.
+                        {t("No members yet.")}
                       </td>
                     </tr>
                   ) : null}
