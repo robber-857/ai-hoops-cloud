@@ -92,15 +92,15 @@ export function AccountOverviewPage() {
         <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(17rem,1fr)] xl:[reading-flow:grid-rows]">
           <div className="grid min-w-0 gap-4 sm:grid-cols-2 xl:col-start-2 xl:row-start-1 xl:grid-cols-1">
             <section className="ui-panel overflow-hidden" aria-labelledby="overview-up-next">
-              <div className="relative isolate flex min-h-20 items-end bg-[#202721] px-4 py-3 sm:px-5">
+              <div className="relative isolate flex aspect-[5/2] min-h-32 items-end bg-[#202721] p-4 sm:p-5">
                 <Image
                   src="/academy/basketball-court.jpg"
                   alt=""
                   fill
-                  sizes="(min-width: 1280px) 28vw, (min-width: 640px) 50vw, 100vw"
-                  className="-z-20 object-cover object-[65%_54%] opacity-75"
+                  sizes="(min-width: 1440px) 504px, (min-width: 1280px) 36vw, (min-width: 640px) 50vw, 100vw"
+                  className="-z-20 object-cover object-[center_60%]"
                 />
-                <div aria-hidden="true" className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,#202721_0%,rgba(32,39,33,0.83)_42%,rgba(32,39,33,0.23)_100%)]" />
+                <div aria-hidden="true" className="absolute inset-0 -z-10 bg-[linear-gradient(35deg,rgba(15,24,18,0.9),rgba(15,24,18,0.65)_20%,transparent_56%)]" />
                 <h2 id="overview-up-next" className="flex items-center gap-2 text-lg font-bold text-[#f7faf0]">
                   <ClipboardList size={19} aria-hidden="true" /> {t("Up next")}
                 </h2>
