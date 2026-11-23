@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
 from sqlalchemy import create_engine, event, func, select
@@ -298,6 +298,22 @@ class CampOperationsServiceTests(unittest.TestCase):
         self.assertTrue(read_item.is_read)
         self.assertIsNotNone(read_item.read_at)
         self.assertEqual(service.get_notifications(self.coach, limit=10).unread_count, 0)
+
+    def test_historical_upload_confirmations_do_not_fill_the_inbox_or_unread_badge(self) -> None:
+        self.db.add_all([
+            Notification(user_id=self.student.id, type="report_ready", business_type="analysis_report",
+                         title="Your training report is ready", created_at=self.now + timedelta(hours=1)),
+            Notification(user_id=self.student.id, type="class_report", business_type="class_report",
+                         title="Your class record is available", created_at=self.now),
+            Notification(user_id=self.student.id, type="report", business_type="report_feedback",
+                         title="New coach feedback", created_at=self.now),
+        ])
+        self.db.commit()
+        service = MeService(self.db)
+        inbox = service.get_notifications(self.student, limit=2)
+        self.assertEqual({item.type for item in inbox.items}, {"class_report", "report"})
+        self.assertEqual(inbox.unread_count, 2)
+        self.assertEqual(service._build_stats(self.student.id).unread_notifications, 2)
 
     def test_student_task_submit_endpoint_returns_submission_history(self) -> None:
         assignment, session, report = self._seed_student_task_with_report(base_id=40)

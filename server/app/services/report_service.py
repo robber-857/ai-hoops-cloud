@@ -301,8 +301,6 @@ class ReportService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail="An existing report is already locked to another template version.",
             )
-        is_new_report = existing_report is None
-
         template_snapshot = _template_snapshot_from_version(
             resolved_template_version,
             template_code=normalized_template_code,
@@ -367,18 +365,6 @@ class ReportService:
         self._upsert_daily_growth_snapshot(current_user.id, report)
         unlocked = self._unlock_achievements_if_needed(current_user.id, report)
 
-        if is_new_report:
-            self.db.add(
-                Notification(
-                    user_id=current_user.id,
-                    type="report_ready",
-                    title="Your training report is ready",
-                    content=f"{normalized_template_code} report has been saved.",
-                    business_type="analysis_report",
-                    business_id=report.id,
-                    is_read=False,
-                )
-            )
         for achievement in unlocked:
             self.db.add(
                 Notification(

@@ -1,0 +1,348 @@
+.record {
+  container-type: inline-size;
+  display: grid;
+  gap: 1rem;
+  color: var(--ui-text);
+}
+
+.overview, .panel {
+  min-width: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: 1rem;
+  background: var(--ui-surface);
+}
+
+.overview {
+  display: grid;
+  align-items: center;
+  gap: 1.35rem;
+  padding: clamp(1.1rem, 3.2%, 2rem);
+  background: linear-gradient(110deg, var(--ui-surface) 25%, color-mix(in srgb, var(--ui-accent-soft) 52%, var(--ui-surface)));
+}
+
+.className, .metadata, .metadata > span, .attendance, .sectionTitle, .rowTitle, .participation {
+  display: flex;
+  align-items: center;
+}
+
+.className {
+  gap: .5rem;
+  color: var(--ui-accent);
+  font-size: .85rem;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.lessonTitle {
+  margin: .45rem 0 .7rem;
+  overflow-wrap: anywhere;
+  font-size: clamp(1.5rem, 3.6cqi, 2.35rem);
+  font-weight: 700;
+  letter-spacing: -.04em;
+  line-height: 1.15;
+}
+
+.metadata {
+  flex-wrap: wrap;
+  gap: .35rem 1rem;
+  color: var(--ui-muted);
+  font-size: .8125rem;
+}
+
+.metadata > span {
+  gap: .35rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.metadata svg, .sectionTitle svg, .className svg, .sources svg {
+  flex-shrink: 0;
+}
+
+.metadata svg {
+  width: .95rem;
+  height: .95rem;
+}
+
+.participation {
+  gap: 1rem;
+  border-top: 1px solid var(--ui-border);
+  padding-top: 1rem;
+}
+
+.ring {
+  display: grid;
+  width: 4.5rem;
+  height: 4.5rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 100%;
+}
+
+.ring > span {
+  display: grid;
+  width: 77%;
+  height: 77%;
+  place-items: center;
+  border-radius: inherit;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font-size: .875rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.duration {
+  color: var(--ui-muted);
+  font-size: .875rem;
+}
+
+.duration strong {
+  margin-right: .12rem;
+  color: var(--ui-text);
+  font-size: 2rem;
+  line-height: 1.1;
+  letter-spacing: -.05em;
+  font-variant-numeric: tabular-nums;
+}
+
+.attendance {
+  gap: .3rem;
+  margin-top: .35rem;
+  font-size: .85rem;
+  font-weight: 600;
+}
+
+.ringCaption {
+  margin-top: .2rem;
+  color: var(--ui-muted);
+  font-size: .75rem;
+}
+
+.columns, .stack {
+  display: grid;
+  gap: 1rem;
+  align-items: start;
+}
+
+.panel {
+  padding: clamp(1rem, 2vw, 1.5rem);
+  color: var(--ui-text);
+  overflow-wrap: anywhere;
+}
+
+.sectionTitle {
+  gap: .65rem;
+  margin-bottom: .9rem;
+  font-size: 1.06rem;
+  font-weight: 650;
+  letter-spacing: -.015em;
+  line-height: 1.35;
+}
+
+.sectionTitle svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  color: var(--ui-accent);
+}
+
+.muted, .itemNote {
+  color: var(--ui-muted);
+  font-size: .88rem;
+  line-height: 1.6;
+}
+
+.activityList > li + li, .sources li + li {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--ui-border);
+}
+
+.rowTitle {
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: .4rem .75rem;
+  font-weight: 600;
+}
+
+.tag, .methodList li {
+  display: inline-block;
+  border-radius: .4rem;
+  background: var(--ui-subtle);
+  color: var(--ui-muted);
+  padding: .2rem .55rem;
+  font-size: .75rem;
+  font-weight: 600;
+}
+
+.tag {
+  text-transform: capitalize;
+}
+
+.activityMinutes {
+  margin-top: .45rem;
+  font-size: .875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.activityMinutes span {
+  color: var(--ui-muted);
+}
+
+.track {
+  height: .375rem;
+  margin-top: .6rem;
+  overflow: hidden;
+  border-radius: 100px;
+  background: var(--ui-subtle);
+}
+
+.track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ui-chart-green);
+}
+
+.itemNote {
+  margin-top: .6rem;
+  white-space: pre-wrap;
+}
+
+.notes {
+  display: grid;
+  gap: .8rem;
+}
+
+.notes > div {
+  border-inline-start: 2px solid var(--ui-chart-teal);
+  padding-inline-start: .8rem;
+}
+
+.notes dt, .measurements dt {
+  color: var(--ui-muted);
+  font-size: .78rem;
+  font-weight: 600;
+}
+
+.notes dd {
+  margin-top: .2rem;
+  white-space: pre-wrap;
+  font-size: .92rem;
+}
+
+.measurements, .dailyMetrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 7.5rem), 1fr));
+  gap: .6rem;
+  margin-top: .85rem;
+}
+
+.measurements > div, .dailyMetrics > div {
+  border-radius: .6rem;
+  background: var(--ui-subtle);
+  padding: .75rem;
+}
+
+.measurements dd, .dailyMetrics dd {
+  margin-top: .2rem;
+  font-size: 1.32rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.025em;
+}
+
+.measurements small {
+  color: var(--ui-muted);
+  font-size: .75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.energyValue {
+  color: var(--ui-chart-orange);
+  font-size: 1.9rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.045em;
+  line-height: 1.15;
+}
+
+.methodList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+}
+
+.notice {
+  border-radius: .6rem;
+  background: color-mix(in srgb, var(--ui-chart-orange) 10%, var(--ui-surface));
+  color: var(--ui-text);
+  padding: .7rem .85rem;
+  font-size: .875rem;
+}
+
+.sources {
+  margin-top: 1rem;
+  border-top: 1px solid var(--ui-border);
+}
+
+.sources summary {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: .5rem;
+  cursor: pointer;
+  color: var(--ui-accent);
+  font-size: .875rem;
+  font-weight: 650;
+}
+
+.sources summary::-webkit-details-marker {
+  display: none;
+}
+
+.sources summary svg:last-child {
+  margin-left: auto;
+}
+
+.sources[open] summary svg:last-child {
+  transform: rotate(180deg);
+}
+
+.sources li {
+  line-height: 1.5;
+}
+
+.sources li p {
+  margin-top: .25rem;
+  color: var(--ui-muted);
+  font-size: .82rem;
+}
+
+.reference .sectionTitle {
+  margin-bottom: .45rem;
+}
+
+.reference a {
+  margin-top: .45rem;
+}
+
+@container (min-width: 40rem) {
+  .overview {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .participation {
+    border-top: 0;
+    border-inline-start: 1px solid var(--ui-border);
+    padding-top: 0;
+    padding-inline-start: 1.25rem;
+  }
+}
+
+@container (min-width: 48rem) {
+  .columns {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  }
+}

@@ -227,30 +227,6 @@
   display: none;
 }
 
-:root[data-theme="light"] .theme-workspace .report-shell {
-  background: var(--ui-bg);
-  color: var(--ui-text);
-}
-
-:root[data-theme="light"] .theme-workspace .report-shell > .pointer-events-none {
-  display: none;
-}
-
-:root[data-theme="light"] .theme-workspace .report-shell header,
-:root[data-theme="light"] .theme-workspace .report-module,
-:root[data-theme="light"] .theme-workspace .report-select,
-:root[data-theme="light"] .theme-workspace .report-findings-note {
-  border-color: var(--ui-border);
-  background: var(--ui-surface);
-  box-shadow: var(--ui-shadow);
-  color: var(--ui-text);
-}
-
-:root[data-theme="light"] .theme-workspace .report-module-header {
-  border-color: var(--ui-border);
-  background: var(--ui-subtle);
-}
-
 @media print {
   .ui-icon-button {
     display: none;

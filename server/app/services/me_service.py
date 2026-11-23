@@ -149,6 +149,14 @@ def _notification_summary(
     )
 
 
+def _inbox_filter(user_id: int):
+    # Self-upload confirmations from earlier releases are still in the audit history.
+    return and_(
+        Notification.user_id == user_id,
+        or_(Notification.type != "report_ready", Notification.business_type.is_distinct_from("analysis_report")),
+    )
+
+
 class MeService:
     def __init__(self, db: Session) -> None:
         self.db = db
@@ -297,16 +305,11 @@ class MeService:
     def get_notifications(self, current_user: User, limit: int = 20) -> MeNotificationsResponse:
         notifications = self.db.scalars(
             select(Notification)
-            .where(Notification.user_id == current_user.id)
+            .where(_inbox_filter(current_user.id))
             .order_by(Notification.is_read.asc(), Notification.created_at.desc())
             .limit(min(max(limit, 1), 100))
         ).all()
-        unread_count = self.db.scalar(
-            select(func.count(Notification.id)).where(
-                Notification.user_id == current_user.id,
-                Notification.is_read.is_(False),
-            )
-        ) or 0
+        unread_count = self._unread_notification_count(current_user.id)
 
         reports = self._feedback_report_links(current_user.id, notifications)
         return MeNotificationsResponse(
@@ -446,6 +449,11 @@ class MeService:
         ]
         return MeTrendsResponse(range=range_value, analysis_type=analysis_type, points=points)
 
+    def _unread_notification_count(self, user_id: int) -> int:
+        return self.db.scalar(
+            select(func.count(Notification.id)).where(_inbox_filter(user_id), Notification.is_read.is_(False))
+        ) or 0
+
     def _build_stats(self, user_id: int) -> DashboardStatsRead:
         now = datetime.now(timezone.utc)
         weekly_since = now - timedelta(days=7)
@@ -475,10 +483,6 @@ class MeService:
                 TrainingTask.status == "published",
             )
         ) or 0
-        unread_notifications = self.db.scalar(
-            select(func.count(Notification.id)).where(Notification.user_id == user_id, Notification.is_read.is_(False))
-        ) or 0
-
         return DashboardStatsRead(
             total_reports=int(total_reports),
             total_sessions=int(total_sessions),
@@ -487,7 +491,7 @@ class MeService:
             best_score=_numeric_to_float(best_score),
             average_score=round(float(average_score), 2) if average_score is not None else None,
             active_tasks=int(active_tasks),
-            unread_notifications=int(unread_notifications),
+            unread_notifications=self._unread_notification_count(user_id),
         )
 
     def _get_recent_reports(self, user_id: int, limit: int) -> list[ReportListItem]:

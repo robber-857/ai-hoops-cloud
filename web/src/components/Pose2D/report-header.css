@@ -1,0 +1,163 @@
+.pose-report-header {
+  --report-header-ink: #f7f8fb;
+  --report-header-muted: #bcc4d1;
+  --report-control-bg: #202733;
+  --report-control-border: #48515e;
+  --report-control-hover: #303846;
+  --report-share-bg: #fff;
+  --report-share-ink: #a41945;
+  --report-share-hover: #fbeef2;
+  background: linear-gradient(120deg, #24121e, #101622 50%, #182538);
+  border-color: rgb(255 255 255 / 0.12);
+  color: var(--report-header-ink);
+}
+
+:root[data-theme="light"] .pose-report-header {
+  --report-header-ink: var(--ui-text);
+  --report-header-muted: var(--ui-muted);
+  --report-control-bg: var(--ui-surface);
+  --report-control-border: var(--ui-border);
+  --report-control-hover: var(--ui-subtle);
+  --report-share-bg: #a81c45;
+  --report-share-ink: #fff;
+  --report-share-hover: #861233;
+  background: var(--ui-surface);
+  border-color: var(--ui-border);
+}
+
+.pose-report-id {
+  color: var(--report-header-muted);
+}
+
+.pose-report-brand-light,
+:root[data-theme="light"] .pose-report-brand-dark {
+  display: none;
+}
+
+:root[data-theme="light"] .pose-report-brand-light {
+  display: block;
+}
+
+.pose-report-header .pose-report-control {
+  display: inline-flex;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.375rem;
+  border: 1px solid var(--report-control-border);
+  border-radius: 0.65rem;
+  background: var(--report-control-bg);
+  color: var(--report-header-ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.pose-report-header .pose-report-control:hover {
+  background: var(--report-control-hover);
+}
+
+.pose-report-header .pose-report-share {
+  border-color: var(--report-share-bg);
+  background: var(--report-share-bg);
+  color: var(--report-share-ink);
+}
+
+.pose-report-header .pose-report-share:hover {
+  background: var(--report-share-hover);
+}
+
+.pose-report-share:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* At narrow phone widths, use the emblem at the start of the brand image. */
+@media screen and (max-width: 22.5rem) {
+  .pose-report-brand .pose-report-brand-dark {
+    display: none;
+  }
+
+  .pose-report-brand .pose-report-brand-light {
+    display: block;
+    width: 2.5rem;
+    height: 1.7rem;
+    object-fit: cover;
+    object-position: left;
+  }
+}
+
+@media (min-width: 40rem) {
+  .pose-report-actions button:not(.ui-icon-button),
+  .pose-report-account {
+    padding-inline: 0.75rem;
+  }
+}
+
+@media print {
+  .pose-report-header {
+    position: static;
+  }
+
+  .pose-report-header > div {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .pose-report-heading {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+  }
+
+  .pose-report-header .pose-report-control,
+  .pose-report-actions,
+  .report-shell > .pointer-events-none,
+  .report-shell [aria-labelledby="report-replay-title"],
+  .report-shell a[href="#coach-feedback"],
+  .report-shell #coach-feedback form,
+  .report-shell main button {
+    display: none;
+  }
+
+  .report-shell {
+    overflow: visible;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .report-shell .report-detail-grid {
+    display: block;
+  }
+
+  .report-shell [aria-label="Score summary"] {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    break-inside: avoid;
+  }
+
+  .report-shell .report-findings-panel {
+    display: block;
+    position: static;
+    margin-top: 1rem;
+    overflow: visible;
+  }
+
+  .report-shell .report-findings-scroll,
+  .report-shell #coach-feedback ol {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .report-shell .report-finding,
+  .report-shell #coach-feedback li {
+    break-inside: avoid;
+  }
+
+  .report-shell :is(#coach-feedback, .report-module-header) > :first-child {
+    break-after: avoid;
+  }
+}

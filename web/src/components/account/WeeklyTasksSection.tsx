@@ -84,7 +84,9 @@ export function WeeklyTasksSection({
   const selectedReportByTask = selectedReports ?? localSelectedReports;
   const setSelectedReportByTask =
     onSelectedReportsChange ?? setLocalSelectedReports;
-  const detailPanelRef = useRef<HTMLDivElement>(null);
+  const detailDialogRef = useRef<HTMLDialogElement>(null);
+  const submitErrorRef = useRef<HTMLDivElement>(null);
+  const detailTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [changedSelections, setChangedSelections] = useState<
     Record<string, string>
   >({});
@@ -119,43 +121,25 @@ export function WeeklyTasksSection({
     };
   }, [hasUnsubmittedSelection]);
 
-  useEffect(() => {
-    if (!selectedTaskId) return;
-    const previousFocus = document.activeElement as HTMLElement | null;
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const panel = detailPanelRef.current;
-    panel?.querySelector<HTMLElement>("button")?.focus();
-    const keydown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setSelectedTaskId(null);
-      if (event.key !== "Tab") return;
-      const elements = Array.from(
-        panel?.querySelectorAll<HTMLElement>(
-          "a[href], button:not([disabled]), select:not([disabled])",
-        ) ?? [],
-      );
-      const first = elements[0];
-      const last = elements[elements.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last?.focus();
-      }
-      if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first?.focus();
-      }
-    };
-    document.addEventListener("keydown", keydown);
-    return () => {
-      document.body.style.overflow = overflow;
-      document.removeEventListener("keydown", keydown);
-      previousFocus?.focus();
-    };
-  }, [selectedTaskId]);
   const selectedTask = useMemo(
     () => tasks.find((task) => task.id === selectedTaskId) ?? null,
     [selectedTaskId, tasks],
   );
+  const openTaskId = selectedTask?.id;
+
+  useEffect(() => {
+    const dialog = detailDialogRef.current;
+    if (!openTaskId || !dialog) return;
+    const trigger = detailTriggerRef.current;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    dialog.showModal();
+    return () => {
+      dialog.close();
+      document.body.style.overflow = overflow;
+      if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+    };
+  }, [openTaskId]);
   useEffect(() => {
     const targetId = window.location.hash.slice(1);
     if (targetId.startsWith("task-")) {
@@ -177,6 +161,10 @@ export function WeeklyTasksSection({
     : undefined;
 
   useEffect(() => {
+    if (selectedSubmitError) submitErrorRef.current?.scrollIntoView({ block: "nearest" });
+  }, [selectedSubmitError]);
+
+  useEffect(() => {
     setSelectedReportByTask((current) => {
       const next = { ...current };
       for (const task of tasks) {
@@ -191,7 +179,8 @@ export function WeeklyTasksSection({
   const getSelectedReportId = (task: WeeklyTask) =>
     selectedReportByTask[task.id] ?? task.reportOptions[0]?.id ?? "";
 
-  const handleOpenDetail = (task: WeeklyTask) => {
+  const handleOpenDetail = (task: WeeklyTask, trigger: HTMLButtonElement) => {
+    detailTriggerRef.current = trigger;
     setSelectedTaskId(task.id);
     onRequestTaskDetail?.(task);
   };
@@ -205,7 +194,7 @@ export function WeeklyTasksSection({
   };
 
   return (
-    <section className="analysis-surface flex max-h-[min(44rem,calc(100dvh-2rem))] min-w-0 flex-col overflow-hidden rounded-[28px] border border-white/10 p-4 sm:rounded-[32px] sm:p-6 xl:h-[min(42rem,calc(100dvh-6rem))]">
+    <section className="analysis-surface min-w-0 rounded-[28px] border border-white/10 p-4 sm:rounded-[32px] sm:p-6">
       <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="text-[0.72rem] uppercase tracking-[0.28em] text-white/42">
@@ -245,7 +234,7 @@ export function WeeklyTasksSection({
         </div>
       ) : null}
 
-      <div className="mt-5 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable] sm:mt-6">
+      <div className="mt-5 sm:mt-6">
         <div className="grid gap-3 sm:gap-4">
           {tasks.map((task) => {
             const tone = statusMap[task.status];
@@ -303,7 +292,7 @@ export function WeeklyTasksSection({
                   <span>{task.dueLabel}</span>
                 </div>
 
-                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                   <Button
                     asChild
                     className="min-h-10 w-full justify-center rounded-full border border-[#d8ff5d]/20 bg-[#d8ff5d] px-4 text-slate-950 hover:bg-[#e8ff9a] sm:w-auto"
@@ -316,7 +305,8 @@ export function WeeklyTasksSection({
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => handleOpenDetail(task)}
+                    aria-haspopup="dialog"
+                    onClick={(event) => handleOpenDetail(task, event.currentTarget)}
                     className="min-h-10 w-full justify-center rounded-full border-white/10 bg-white/[0.03] px-4 text-white hover:bg-white/[0.08] sm:w-auto"
                   >
                     <Eye className="h-4 w-4" />
@@ -369,36 +359,40 @@ export function WeeklyTasksSection({
       </div>
 
       {selectedTask ? (
-        <div
-          className="fixed inset-0 z-[70] flex items-end justify-center bg-black/70 px-4 py-5 backdrop-blur-sm sm:items-center"
-          role="dialog"
+        <dialog
+          ref={detailDialogRef}
+          className="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none overflow-hidden border-0 bg-transparent px-2 py-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] text-[var(--ui-text)] open:flex open:items-center open:justify-center sm:p-4 backdrop:bg-neutral-950/65"
           aria-modal="true"
           aria-labelledby="task-detail-title"
-          onClick={() => setSelectedTaskId(null)}
+          onKeyDown={(event) => {
+            if (event.key !== "Tab") return;
+            const controls = event.currentTarget.querySelectorAll<HTMLElement>(
+              "button:enabled, a[href], select:enabled, [tabindex='0']",
+            );
+            const first = controls[0];
+            const last = controls[controls.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+              event.preventDefault();
+              last?.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+              event.preventDefault();
+              first?.focus();
+            }
+          }}
+          onCancel={(event) => {
+            event.preventDefault();
+            setSelectedTaskId(null);
+          }}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setSelectedTaskId(null);
+          }}
         >
-          <div
-            ref={detailPanelRef}
-            className="analysis-surface flex max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] border border-white/12 bg-[#090b10] shadow-[0_28px_90px_rgba(0,0,0,0.45)] sm:max-h-[calc(100dvh-3rem)]"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="flex shrink-0 items-start justify-between gap-4 px-5 pb-4 pt-5 sm:px-6 sm:pt-6">
-              <div>
-                <div className="text-[0.7rem] uppercase tracking-[0.28em] text-white/42">
-                  Task detail
-                </div>
-                <h3
-                  id="task-detail-title"
-                  className="mt-2 text-2xl font-semibold text-white"
-                >
-                  {selectedTask.title}
-                </h3>
-                <p className="mt-2 text-sm leading-6 text-white/58">
-                  {selectedTask.description}
-                </p>
-              </div>
+          <div className="flex max-h-full min-w-0 w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] shadow-2xl sm:rounded-3xl">
+            <div className="flex shrink-0 items-center justify-between gap-4 border-b border-[var(--ui-border)] px-4 py-2 sm:px-6">
+              <span className="text-sm font-semibold">Task detail</span>
               <button
                 type="button"
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/70 transition hover:bg-white/[0.08]"
+                className="ui-icon-button"
                 onClick={() => setSelectedTaskId(null)}
                 aria-label="Close task detail"
               >
@@ -406,10 +400,17 @@ export function WeeklyTasksSection({
               </button>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 sm:px-6">
-              <div className="grid gap-3 sm:grid-cols-2">
+            <div
+              role="region"
+              aria-label="Task information"
+              tabIndex={0}
+              className="min-h-0 overflow-y-auto overscroll-contain p-4 [overflow-wrap:anywhere] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ui-accent)] sm:p-6"
+            >
+              <h3 id="task-detail-title" className="text-xl font-semibold sm:text-2xl">{selectedTask.title}</h3>
+              <p className="mt-1.5 mb-4 text-sm leading-6 text-[var(--ui-muted)]">{selectedTask.description}</p>
+              <div className="grid gap-3 min-[22rem]:grid-cols-2">
                 <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-3">
-                  <div className="text-[0.68rem] uppercase tracking-[0.24em] text-white/38">
+                  <div className="text-[0.68rem] uppercase tracking-[0.24em] text-[var(--ui-muted)]">
                     Class
                   </div>
                   <div className="mt-2 text-sm font-medium text-white">
@@ -417,7 +418,7 @@ export function WeeklyTasksSection({
                   </div>
                 </div>
                 <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-3">
-                  <div className="text-[0.68rem] uppercase tracking-[0.24em] text-white/38">
+                  <div className="text-[0.68rem] uppercase tracking-[0.24em] text-[var(--ui-muted)]">
                     Template
                   </div>
                   <div className="mt-2 text-sm font-medium text-white">
@@ -425,7 +426,7 @@ export function WeeklyTasksSection({
                   </div>
                 </div>
                 <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-3">
-                  <div className="text-[0.68rem] uppercase tracking-[0.24em] text-white/38">
+                  <div className="text-[0.68rem] uppercase tracking-[0.24em] text-[var(--ui-muted)]">
                     Target
                   </div>
                   <div className="mt-2 text-sm font-medium text-white">
@@ -433,7 +434,7 @@ export function WeeklyTasksSection({
                   </div>
                 </div>
                 <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-3">
-                  <div className="text-[0.68rem] uppercase tracking-[0.24em] text-white/38">
+                  <div className="text-[0.68rem] uppercase tracking-[0.24em] text-[var(--ui-muted)]">
                     Progress
                   </div>
                   <div className="mt-2 text-sm font-medium text-white">
@@ -441,7 +442,7 @@ export function WeeklyTasksSection({
                     {selectedTask.progressDetailLabel}
                   </div>
                   {selectedTask.scoreGateLabel ? (
-                    <div className="mt-1 text-xs leading-5 text-white/48">
+                    <div className="mt-1 text-xs leading-5 text-[var(--ui-muted)]">
                       {selectedTask.scoreGateLabel}
                     </div>
                   ) : null}
@@ -449,66 +450,51 @@ export function WeeklyTasksSection({
               </div>
 
               <div className="mt-5 rounded-[20px] border border-white/10 bg-white/[0.03] p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 text-[0.7rem] uppercase tracking-[0.24em] text-white/42">
-                    <History className="h-4 w-4" />
-                    Submission history
-                  </div>
-                  {isSelectedDetailLoading ? (
-                    <span className="text-xs text-white/45">Loading</span>
-                  ) : null}
-                </div>
-
-                {selectedDetailError ? (
-                  <div className="mt-4 rounded-2xl border border-rose-300/20 bg-rose-500/10 px-3 py-3">
-                    <div className="flex items-start gap-2 text-sm leading-6 text-rose-100/78">
-                      <AlertCircle className="mt-1 h-4 w-4 shrink-0" />
-                      <span>{selectedDetailError}</span>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => onRequestTaskDetail?.(selectedTask)}
-                      className="mt-3 min-h-9 rounded-full border-rose-100/20 bg-rose-100/10 px-3 text-xs text-rose-50 hover:bg-rose-100/15"
-                    >
-                      Try loading again
-                    </Button>
-                  </div>
-                ) : isSelectedDetailLoading ? (
-                  <div className="mt-4 h-16 rounded-2xl border border-white/8 bg-black/20" />
-                ) : selectedSubmissionHistory.length > 0 ? (
-                  <div className="mt-4 max-h-56 overflow-y-auto pr-1">
-                    <div className="grid gap-2">
-                      {selectedSubmissionHistory.map((submission) => (
-                        <div
-                          key={submission.id}
-                          className="flex flex-col gap-2 rounded-2xl border border-white/8 bg-black/18 px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
-                        >
-                          <div className="min-w-0">
-                            <div className="text-sm font-medium text-white">
-                              {submission.title}
-                            </div>
-                            <div className="mt-1 text-xs text-white/42">
-                              {submission.dateLabel}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-white/60">
-                            <span>{submission.scoreLabel}</span>
-                            <span>{submission.gradeLabel}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="mt-4 rounded-2xl border border-white/8 bg-black/18 px-3 py-3 text-sm leading-6 text-white/48">
-                    No submitted reports yet.
-                  </p>
-                )}
+                <label
+                  htmlFor="task-report-select"
+                  className="text-[0.7rem] uppercase tracking-[0.24em] text-[var(--ui-muted)]"
+                >
+                  Matching report
+                </label>
+                <select
+                  id="task-report-select"
+                  value={getSelectedReportId(selectedTask)}
+                  onChange={(event) => {
+                    setChangedSelections((current) => ({
+                      ...current,
+                      [selectedTask.id]: event.target.value,
+                    }));
+                    setSelectedReportByTask((current) => ({
+                      ...current,
+                      [selectedTask.id]: event.target.value,
+                    }));
+                  }}
+                  disabled={selectedTask.reportOptions.length === 0}
+                  className="mt-3 min-h-11 w-full rounded-2xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none transition focus:border-[#d8ff5d]/40"
+                >
+                  {selectedTask.reportOptions.length > 0 ? (
+                    selectedTask.reportOptions.map((report) => (
+                      <option
+                        key={report.id}
+                        value={report.id}
+                        className="bg-[#090b10] text-white"
+                      >
+                        {report.scoreLabel} · {report.dateLabel} · {report.label}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="" className="bg-[#090b10] text-white">
+                      No matching completed report
+                    </option>
+                  )}
+                </select>
+                <p className="mt-3 text-xs leading-5 text-[var(--ui-muted)]">
+                  Reports are filtered by this task analysis type and template.
+                </p>
               </div>
 
               {selectedSubmitError ? (
-                <div className="mt-5 rounded-[20px] border border-rose-300/20 bg-rose-500/10 p-4">
+                <div ref={submitErrorRef} role="alert" className="mt-5 rounded-[20px] border border-rose-300/20 bg-rose-500/10 p-4">
                   <div className="flex items-start gap-3">
                     <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-100/80" />
                     <div className="min-w-0 flex-1">
@@ -539,52 +525,65 @@ export function WeeklyTasksSection({
               ) : null}
 
               <div className="mt-5 rounded-[20px] border border-white/10 bg-white/[0.03] p-4">
-                <label
-                  htmlFor="task-report-select"
-                  className="text-[0.7rem] uppercase tracking-[0.24em] text-white/42"
-                >
-                  Matching report
-                </label>
-                <select
-                  id="task-report-select"
-                  value={getSelectedReportId(selectedTask)}
-                  onChange={(event) => {
-                    setChangedSelections((current) => ({
-                      ...current,
-                      [selectedTask.id]: event.target.value,
-                    }));
-                    setSelectedReportByTask((current) => ({
-                      ...current,
-                      [selectedTask.id]: event.target.value,
-                    }));
-                  }}
-                  disabled={selectedTask.reportOptions.length === 0}
-                  className="mt-3 min-h-11 w-full rounded-2xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none transition focus:border-[#d8ff5d]/40"
-                >
-                  {selectedTask.reportOptions.length > 0 ? (
-                    selectedTask.reportOptions.map((report) => (
-                      <option
-                        key={report.id}
-                        value={report.id}
-                        className="bg-[#090b10] text-white"
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-[0.7rem] uppercase tracking-[0.24em] text-[var(--ui-muted)]">
+                    <History className="h-4 w-4" />
+                    Submission history
+                  </div>
+                  {isSelectedDetailLoading ? (
+                    <span className="text-xs text-[var(--ui-muted)]">Loading</span>
+                  ) : null}
+                </div>
+
+                {selectedDetailError ? (
+                  <div className="mt-4 rounded-2xl border border-rose-300/20 bg-rose-500/10 px-3 py-3">
+                    <div className="flex items-start gap-2 text-sm leading-6 text-rose-100/78">
+                      <AlertCircle className="mt-1 h-4 w-4 shrink-0" />
+                      <span>{selectedDetailError}</span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => onRequestTaskDetail?.(selectedTask)}
+                      className="mt-3 min-h-9 rounded-full border-rose-100/20 bg-rose-100/10 px-3 text-xs text-rose-50 hover:bg-rose-100/15"
+                    >
+                      Try loading again
+                    </Button>
+                  </div>
+                ) : isSelectedDetailLoading ? (
+                  <div className="mt-4 h-16 rounded-2xl border border-white/8 bg-black/20" />
+                ) : selectedSubmissionHistory.length > 0 ? (
+                  <div className="mt-4 grid gap-2">
+                    {selectedSubmissionHistory.map((submission) => (
+                      <div
+                        key={submission.id}
+                        className="flex flex-col gap-2 rounded-2xl border border-white/8 bg-black/18 px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
                       >
-                        {report.label} - {report.scoreLabel} -{" "}
-                        {report.dateLabel}
-                      </option>
-                    ))
-                  ) : (
-                    <option value="" className="bg-[#090b10] text-white">
-                      No matching completed report
-                    </option>
-                  )}
-                </select>
-                <p className="mt-3 text-xs leading-5 text-white/45">
-                  Reports are filtered by this task analysis type and template.
-                </p>
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-white">
+                            {submission.title}
+                          </div>
+                          <div className="mt-1 text-xs text-[var(--ui-muted)]">
+                            {submission.dateLabel}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-[var(--ui-muted)]">
+                          <span>{submission.scoreLabel}</span>
+                          <span>{submission.gradeLabel}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-4 rounded-2xl border border-white/8 bg-black/18 px-3 py-3 text-sm leading-6 text-[var(--ui-muted)]">
+                    No submitted reports yet.
+                  </p>
+                )}
               </div>
+
             </div>
 
-            <div className="flex shrink-0 flex-col gap-2 border-t border-white/10 bg-[#090b10]/96 px-5 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-6">
+            <div className="flex shrink-0 flex-col gap-2 border-t border-[var(--ui-border)] px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-6">
               <Button
                 asChild
                 className="min-h-11 rounded-full border border-[#d8ff5d]/20 bg-[#d8ff5d] px-4 text-slate-950 hover:bg-[#e8ff9a]"
@@ -611,7 +610,7 @@ export function WeeklyTasksSection({
               </Button>
             </div>
           </div>
-        </div>
+        </dialog>
       ) : null}
     </section>
   );

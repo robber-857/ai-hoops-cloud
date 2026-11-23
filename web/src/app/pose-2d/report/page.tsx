@@ -2,18 +2,16 @@
 
 "use client";
 
-import React, { useState, useEffect, Suspense, useMemo, useRef } from "react";
+import { useState, useEffect, Suspense, useMemo, useRef } from "react";
 import { isAdminRole } from "@/lib/authRedirect";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AccountEntryButton } from "@/components/account/AccountEntryButton";
+import { ReportHeader } from "@/components/Pose2D/ReportHeader";
+import { ReportScoreSummary } from "@/components/Pose2D/ReportScoreSummary";
+import { ReportFindingItem } from "@/components/Pose2D/ReportFindingItem";
 import { ReportFeedbackPanel } from "@/components/Pose2D/ReportFeedbackPanel";
-import { ThemeToggle } from "@/components/navigation/ThemeToggle";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { routes } from "@/lib/routes";
-import { cn } from "@/lib/utils";
 import globalConfig from "@/config/templates/global.json";
 import {
   getAllTemplates,
@@ -21,40 +19,15 @@ import {
   parseActionTemplateSnapshot,
   ActionTemplate,
 } from "@/config/templates";
-import { calculateRealScore, ScoreResult, Grade, AngleData } from "@/lib/scoring";
+import { calculateRealScore, ScoreResult, AngleData } from "@/lib/scoring";
 import { mergeTrainingTimelineMetrics } from "@/lib/trainingCalculator";
 import { rescoreTrainingReportForAge } from "@/lib/trainingReport";
 import { useAnalysisStore, FrameSample } from "@/store/analysisStore";
 import MetricTimelineCard from "@/components/Pose2D/MetricTimelineCard";
-import { ChevronLeft, Download, Activity, CheckCircle2, AlertCircle, Check, Link as LinkIcon, AlertTriangle, MessageCircle } from "lucide-react";
+import { ChevronDown, Activity, CheckCircle2, AlertTriangle, MessageCircle } from "lucide-react";
 import { reportService } from "@/services/reports";
 import { useAuthStore } from "@/store/authStore";
-import Image from "next/image";
-
-// --- 1. 类型定义与扩展 ---
-
-/** 解决 CSS 变量类型报错 */
-interface ExtendedCSS extends React.CSSProperties {
-  "--cardBase"?: string;
-  "--sheen"?: string;
-  "--led"?: string;
-}
-
-interface ScoreCardProps {
-  title: string;
-  score: number;
-  weight?: number;
-  available?: boolean;
-  icon: React.ComponentType<{ className?: string }>;
-}
-
-type Tone = {
-  accent: string;
-  cardBg: string;
-  borderClass: string;
-  led: string;
-  badgeClass: string;
-};
+import "./report.css";
 
 type SavedScoreData = ScoreResult & {
   saved_metrics?: AngleData[];
@@ -108,156 +81,6 @@ function getSafeReturnTo(value: string | null): string | null {
     : null;
 }
 
-// --- 2. 顶层工具函数 ---
-
-/** 修复 gradeTone 作用域 */
-const getGradeTone = (g: Grade): Tone => {
-  if (g === "S") {
-    return {
-      accent: "#E8C547",
-      cardBg: "#A66B00",
-      borderClass: "border-amber-300/80",
-      led: "232 197 71",
-      badgeClass: "bg-amber-300/15 text-amber-50 border-amber-200/60",
-    };
-  }
-  if (g === "F") {
-    return {
-      accent: "#E35757",
-      cardBg: "#7F1D1D",
-      borderClass: "border-red-400/80",
-      led: "227 87 87",
-      badgeClass: "bg-red-400/20 text-red-50 border-red-300/70",
-    };
-  }
-  if (g === "A" || g === "B") {
-    return {
-      accent: "#22C55E",
-      cardBg: "#065F46",
-      borderClass: "border-emerald-400/80",
-      led: "34 197 94",
-      badgeClass: "bg-emerald-400/20 text-emerald-50 border-emerald-300/70",
-    };
-  }
-  return {
-    accent: "#3B82F6",
-    cardBg: "#1D4ED8",
-    borderClass: "border-blue-400/80",
-    led: "59 130 246",
-    badgeClass: "bg-blue-400/20 text-blue-50 border-blue-300/70",
-  };
-};
-
-function getLocalGrade(score: number): Grade {
-  if (score >= 90) return "S";
-  if (score >= 85) return "A";
-  if (score >= 75) return "B";
-  if (score >= 60) return "C";
-  if (score >= 50) return "D";
-  return "F";
-}
-
-// --- 3. 内部组件 ---
-
-const ScoreCard: React.FC<ScoreCardProps> = ({
-  title,
-  score,
-  weight,
-  available = true,
-  icon: Icon,
-}) => {
-  const grade = getLocalGrade(score);
-  const tone = getGradeTone(grade);
-  const num = Math.round(score);
-
-  if (!available) {
-    return (
-      <Card className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] text-white shadow-sm">
-        <CardContent className="flex h-full flex-col justify-between p-3 sm:p-4">
-          <span className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.22em] text-white/55 sm:text-[10px]">
-            <Icon className="h-3 w-3 opacity-70 sm:h-3.5 sm:w-3.5" />
-            {title}
-          </span>
-          <div className="mt-4 text-2xl font-black text-white/70 sm:text-3xl">N/A</div>
-          <p className="mt-2 text-[10px] leading-4 text-white/42">
-            More clear movement samples are needed for this category.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card
-      className={cn(
-        "group relative overflow-hidden rounded-2xl border shadow-sm transition-all",
-        "card-energy text-white",
-        "hover:-translate-y-[1px] hover:shadow-lg",
-        tone.borderClass
-      )}
-      style={
-        {
-          "--cardBase": tone.cardBg,
-          "--sheen": tone.led,
-        } as ExtendedCSS
-      }
-    >
-      <CardContent className="relative z-[1] p-3 sm:p-4 flex flex-col justify-between h-full">
-        <div className="flex justify-between items-start mb-2 sm:mb-3">
-          <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.22em] text-white/80 flex items-center gap-1.5">
-            <Icon className="w-3 h-3 sm:w-3.5 sm:h-3.5 opacity-80" />
-            {title}
-          </span>
-          {weight !== undefined && (
-            <Badge
-              variant="outline"
-              className="text-[9px] sm:text-[10px] font-semibold rounded-md border-white/30 bg-white/10 text-white/80 px-1.5 py-0"
-            >
-              {(weight * 100).toFixed(0)}%
-            </Badge>
-          )}
-        </div>
-
-        <div className="flex items-baseline gap-2 mt-auto">
-          <span
-            className="text-2xl sm:text-3xl font-black tabular-nums led-num led-strong"
-            data-text={String(num)}
-            style={
-              {
-                "--led": tone.led,
-              } as ExtendedCSS
-            }
-          >
-            {num}
-          </span>
-          <Badge
-            className={cn(
-              "h-5 sm:h-6 px-1.5 sm:px-2 text-[9px] sm:text-[10px] font-extrabold rounded-md border",
-              tone.badgeClass
-            )}
-          >
-            {grade}
-          </Badge>
-        </div>
-
-        <div className="mt-3 sm:mt-4">
-          <div className="h-1.5 sm:h-2 w-full rounded-full bg-white/10 overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-700 ease-out"
-              style={{
-                width: `${Math.max(0, Math.min(100, score))}%`,
-                background: tone.accent,
-              }}
-            />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-// --- 4. 报告页面主体 ---
-
 function ReportContent() {
   const { currentAngles, currentVideoUrl, currentTemplate, currentTimeline } = useAnalysisStore();
   const user = useAuthStore((state) => state.user);
@@ -306,9 +129,6 @@ function ReportContent() {
   const reportViewMountedRef = useRef(true);
   const [isCopied, setIsCopied] = useState(false);
   const persistedReportSignatureRef = useRef<string | null>(null);
-  const performanceCurveRef = useRef<HTMLDivElement | null>(null);
-  const findingsColumnRef = useRef<HTMLDivElement | null>(null);
-  const [findingsCardHeight, setFindingsCardHeight] = useState<number | null>(null);
   const [persistedScoringOptions, setPersistedScoringOptions] = useState<Record<string, unknown>>({});
 
   useEffect(() => {
@@ -672,71 +492,6 @@ function ReportContent() {
   const hasCameraMismatch =
     selectedTemplate?.mode === "training" && dbCameraContext?.match === false;
 
-  useEffect(() => {
-    const performanceEl = performanceCurveRef.current;
-    const findingsEl = findingsColumnRef.current;
-
-    if (!performanceEl || !findingsEl || !hasPerformanceCurves) {
-      setFindingsCardHeight(null);
-      return;
-    }
-
-    const mediaQuery = window.matchMedia("(min-width: 1024px)");
-    let frameId = 0;
-
-    const updateHeight = () => {
-      if (!mediaQuery.matches) {
-        setFindingsCardHeight(null);
-        return;
-      }
-
-      const performanceBottom = performanceEl.getBoundingClientRect().bottom;
-      const findingsTop = findingsEl.getBoundingClientRect().top;
-      const nextHeight = Math.max(360, Math.round(performanceBottom - findingsTop));
-
-      setFindingsCardHeight((current) => (current === nextHeight ? current : nextHeight));
-    };
-
-    const scheduleUpdate = () => {
-      window.cancelAnimationFrame(frameId);
-      frameId = window.requestAnimationFrame(updateHeight);
-    };
-
-    updateHeight();
-    window.addEventListener("resize", scheduleUpdate);
-
-    if (typeof mediaQuery.addEventListener === "function") {
-      mediaQuery.addEventListener("change", scheduleUpdate);
-    } else {
-      mediaQuery.addListener(scheduleUpdate);
-    }
-
-    const resizeObserver =
-      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(scheduleUpdate);
-    resizeObserver?.observe(performanceEl);
-
-    return () => {
-      window.cancelAnimationFrame(frameId);
-      window.removeEventListener("resize", scheduleUpdate);
-      if (typeof mediaQuery.removeEventListener === "function") {
-        mediaQuery.removeEventListener("change", scheduleUpdate);
-      } else {
-        mediaQuery.removeListener(scheduleUpdate);
-      }
-      resizeObserver?.disconnect();
-    };
-  }, [
-    finalResult?.findings.length,
-    finalSavedMetrics?.length,
-    finalTimeline?.length,
-    hasPerformanceCurves,
-    selectedTemplateId,
-  ]);
-
-  const findingsCardStyle = findingsCardHeight
-    ? ({ height: `${findingsCardHeight}px` } as React.CSSProperties)
-    : undefined;
-
   if (!isMounted) return null;
 
   if (reportId && reportLoadError && !loading) {
@@ -744,7 +499,7 @@ function ReportContent() {
       <div className="max-w-lg space-y-4 rounded-2xl border border-white/10 p-6">
         <h1 className="text-xl font-semibold">Could not load report</h1>
         <p role="alert">{reportLoadError}</p>
-        <Button onClick={() => setReportLoadAttempt((attempt) => attempt + 1)}>Retry loading report</Button>
+        <Button className="ui-button" onClick={() => setReportLoadAttempt((attempt) => attempt + 1)}>Retry loading report</Button>
         <Link href={backHref} className="ml-4 underline">Back</Link>
       </div>
     </div>;
@@ -766,9 +521,6 @@ function ReportContent() {
      );
   }
 
-  const overallGrade = finalResult?.grade || "F";
-  const overallNum = Math.round(finalResult?.overall || 0);
-  const tone = getGradeTone(overallGrade);
   const reportSyncLabel =
     reportSyncState === "saving"
       ? "Saving"
@@ -779,7 +531,7 @@ function ReportContent() {
           : isTrainingAgePreview ? "Preview · unsaved" : "Ready";
 
   return (
-    <div className="report-shell min-h-screen text-slate-900 font-sans pb-20 relative overflow-x-hidden">
+    <div className="report-shell relative min-h-screen overflow-x-clip pb-20 font-sans">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_14%,rgba(225,29,72,0.24),transparent_24%),radial-gradient(circle_at_84%_12%,rgba(59,130,246,0.18),transparent_22%),radial-gradient(circle_at_54%_38%,rgba(255,255,255,0.06),transparent_28%),radial-gradient(circle_at_18%_72%,rgba(168,85,247,0.08),transparent_26%),linear-gradient(180deg,#05070c_0%,#0a1018_38%,#070b12_100%)]" />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[38rem] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_58%)]" />
       <div className="pointer-events-none absolute inset-0 tech-grid opacity-[0.34]" />
@@ -790,88 +542,25 @@ function ReportContent() {
       <div className="pointer-events-none absolute right-[12%] top-[24rem] h-[18rem] w-[18rem] rounded-full bg-fuchsia-500/10 blur-3xl sm:h-[22rem] sm:w-[22rem]" />
       <div className="pointer-events-none absolute inset-x-2 top-[4.5rem] bottom-6 rounded-[30px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] shadow-[0_40px_120px_rgba(0,0,0,0.34)] backdrop-blur-[4px] sm:inset-x-4 sm:top-[5.25rem] lg:inset-x-6" />
 
-      <header className="sticky top-0 z-50 relative overflow-hidden border-b border-white/10 bg-[linear-gradient(135deg,rgba(6,8,14,0.90)_0%,rgba(13,18,28,0.84)_46%,rgba(30,41,59,0.70)_100%)] shadow-[0_18px_60px_rgba(0,0,0,0.42)] backdrop-blur-xl supports-[backdrop-filter]:bg-[linear-gradient(135deg,rgba(6,8,14,0.72)_0%,rgba(13,18,28,0.66)_46%,rgba(30,41,59,0.56)_100%)]">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_-28%,rgba(225,29,72,0.20),transparent_32%),radial-gradient(circle_at_84%_0%,rgba(59,130,246,0.16),transparent_28%),linear-gradient(90deg,rgba(255,255,255,0.06),transparent_32%,transparent_70%,rgba(255,255,255,0.04))]" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
-        <div className="max-w-7xl mx-auto px-4 h-14 sm:h-16 flex items-center justify-between relative z-10">
-          <div className="flex items-center gap-2 sm:gap-4 relative z-10">
-            <Button
-              variant="ghost"
-              size="icon"
-              asChild
-              className="text-white hover:bg-white/10 hover:text-white h-8 w-8 sm:h-10 sm:w-10"
-            >
-              <Link
-                href={backHref}
-              >
-                <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
-              </Link>
-            </Button>
-            <div>
-              <h1 className="text-base sm:text-lg font-extrabold text-white/90 leading-tight">Back</h1>
-              <p className="text-[10px] sm:text-xs text-white/80 hidden sm:block">
-                {reportId ? `Report ID: ...${reportId.slice(-6)}` : `Generated on ${new Date().toLocaleDateString()}`}
-              </p>
-            </div>
-          </div>
-
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-            <Image
-              src="/logoonreport.png"
-              alt="App Logo"
-              className="h-10 w-auto sm:h-12 object-contain"
-              priority
-              width={1080}
-              height={540}
-            />
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-3 relative z-10">
-            <ThemeToggle />
-            <AccountEntryButton
-              compact
-              className="min-h-0 h-8 px-2.5 sm:h-9 sm:px-3 border-white/20 bg-white/[0.06] text-white/80 hover:bg-white/[0.1] lg:pr-4"
-            />
-            {reportId && (
-              <Button
-                variant="default"
-                size="sm"
-                onClick={handleShare}
-                disabled={isTrainingAgePreview || reportSyncState === "saving"}
-                className="gap-2 bg-white text-[#E35757] hover:bg-white/90 h-8 px-2 sm:h-9 sm:px-4 font-bold shadow-sm transition-all active:scale-95"
-              >
-                {isCopied ? <Check className="w-4 h-4" /> : <LinkIcon className="w-4 h-4" />}
-                <span className="hidden sm:inline">{isCopied ? "Copied" : "Share"}</span>
-              </Button>
-            )}
-
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 hidden md:flex border-white/40 bg-white/90 hover:bg-white text-slate-800"
-            >
-              <Download className="w-4 h-4" />
-              PDF
-            </Button>
-          </div>
-        </div>
-      </header>
+      <ReportHeader
+        backHref={backHref}
+        reportId={reportId}
+        onShare={handleShare}
+        copied={isCopied}
+        shareDisabled={isTrainingAgePreview || reportSyncState === "saving"}
+      />
 
       <main className="max-w-7xl mx-auto p-3 sm:p-6 space-y-4 sm:space-y-6 relative z-10">
-        {reportId && user && !isSharedView && (
-          <div className="flex justify-end">
-            <a className="ui-button" href="#coach-feedback"><MessageCircle size={16} /> Coach feedback</a>
-          </div>
-        )}
-        <section className="report-module rounded-2xl p-3 sm:p-4">
-          <div className="flex flex-col md:flex-row md:items-end gap-3 sm:gap-4">
-            <div className="w-full md:max-w-sm relative">
-              <label className="text-xs text-slate-300/80 mb-1.5 block ml-1 font-semibold tracking-[0.02em]">
+        <section aria-label="Report settings" className="report-module rounded-2xl p-4 sm:p-5">
+          <div className="grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_11rem] sm:gap-4 lg:grid-cols-[minmax(0,26rem)_11rem_minmax(0,1fr)]">
+            <div className="min-w-0">
+              <label htmlFor="report-template" className="report-field-label">
                 Select Action Template
               </label>
               <div className="relative">
                 <select
-                  className="report-select w-full appearance-none text-sm rounded-xl p-2.5 pr-9 outline-none cursor-pointer transition-all disabled:cursor-not-allowed disabled:opacity-60"
+                  id="report-template"
+                  className="report-select"
                   value={selectedTemplateId}
                   onChange={(e) => {
                     setSelectedTemplateId(e.target.value);
@@ -888,21 +577,19 @@ function ReportContent() {
                     </option>
                   ))}
                 </select>
-                <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/45">
-                  <ChevronLeft className="w-4 h-4 -rotate-90" />
-                </div>
+                <ChevronDown size={16} aria-hidden="true" className="report-chevron" />
               </div>
             </div>
 
-            <div className="w-full md:w-44">
-              <label className="text-xs text-slate-300/80 mb-1.5 block ml-1 font-semibold tracking-[0.02em]">
+            <div className="min-w-0">
+              <label htmlFor="report-age" className="report-field-label">
                 Age Group
               </label>
               <div className="relative">
                 <select
-                  className="report-select w-full appearance-none text-sm rounded-xl p-2.5 pr-9 outline-none cursor-pointer transition-all disabled:cursor-not-allowed disabled:opacity-60"
+                  className="report-select"
                   value={ageGroup}
-                  aria-label="Age Group"
+                  id="report-age"
                   onChange={(e) => {
                     setAgeGroup(e.target.value);
                     setAgeSaveError(null);
@@ -919,33 +606,30 @@ function ReportContent() {
                     </option>
                   ))}
                 </select>
-                <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/45">
-                  <ChevronLeft className="w-4 h-4 -rotate-90" />
-                </div>
+                <ChevronDown size={16} aria-hidden="true" className="report-chevron" />
               </div>
             </div>
 
             {reportId && (
-              <Badge
-                variant="outline"
-                className={cn(
-                  "mb-0.5 border-white/12 bg-white/[0.04] px-3 py-2 text-[0.68rem] uppercase tracking-[0.22em] text-white/62",
-                  reportSyncState === "saving" && "border-sky-300/20 bg-sky-300/10 text-sky-100",
-                  reportSyncState === "saved" && "border-emerald-300/20 bg-emerald-300/10 text-emerald-100",
-                  reportSyncState === "error" && "border-red-300/20 bg-red-300/10 text-red-100"
+              <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 sm:col-span-2 lg:col-span-1 lg:min-h-11">
+                <span role="status" className="report-sync-state" data-state={isTrainingAgePreview && reportSyncState === "idle" ? "preview" : reportSyncState}>
+                  {reportSyncLabel}
+                </span>
+                {user && !isSharedView && (
+                  <a className="ui-button" href="#coach-feedback">
+                    <MessageCircle size={16} aria-hidden="true" /> Coach feedback
+                  </a>
                 )}
-              >
-                {reportSyncLabel}
-              </Badge>
+              </div>
             )}
           </div>
           {isTrainingAgePreview && (
-            <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-white/75">
+            <div className="report-secondary mt-4 flex flex-wrap items-center gap-3 text-sm">
               <p className="w-full">Preview for ages {ageGroup}. Save as a new report to keep this result. The original report and measured values stay unchanged.</p>
-              <Button onClick={handleSaveAgeReport} disabled={reportSyncState === "saving" || agePreviewResult?.analysisStatus !== "ready" || !canReanalyzeAge}>
+              <Button className="ui-button ui-primary" onClick={handleSaveAgeReport} disabled={reportSyncState === "saving" || agePreviewResult?.analysisStatus !== "ready" || !canReanalyzeAge}>
                 {reportSyncState === "saving" ? "Saving…" : "Save as new report"}
               </Button>
-              <Button variant="outline" disabled={reportSyncState === "saving"} onClick={() => {
+              <Button className="ui-button" variant="outline" disabled={reportSyncState === "saving"} onClick={() => {
                 setAgeGroup(savedAgeGroup);
                 setAgeSaveError(null);
                 setReportSyncState("idle");
@@ -956,7 +640,7 @@ function ReportContent() {
         </section>
 
         {hasCameraMismatch && (
-          <div className="flex items-start gap-3 rounded-lg border border-sky-300/25 bg-sky-300/10 p-4 text-sky-50">
+          <div className="flex items-start gap-3 rounded-lg border border-sky-300/25 bg-sky-300/10 p-4 text-sky-100">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-sky-300" />
             <div>
               <h5 className="text-sm font-semibold">Check the camera view</h5>
@@ -974,7 +658,7 @@ function ReportContent() {
         )}
 
         {trainingTemplateContractError && (
-          <div className="flex items-start gap-3 rounded-lg border border-amber-300/25 bg-amber-300/10 p-4 text-amber-50">
+          <div className="flex items-start gap-3 rounded-lg border border-amber-300/25 bg-amber-300/10 p-4 text-amber-100">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" />
             <div>
               <h5 className="text-sm font-semibold">Template version data needs attention</h5>
@@ -1000,288 +684,70 @@ function ReportContent() {
 
         {finalResult ? (
           <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500">
-            <section className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-              <Card
-                className={cn(
-                  "col-span-2 md:col-span-1 relative overflow-hidden rounded-2xl border shadow-sm transition-all",
-                  "card-energy text-white",
-                  "hover:-translate-y-[1px] hover:shadow-lg",
-                  tone.borderClass
-                )}
-                style={
-                  {
-                    "--cardBase": tone.cardBg,
-                    "--sheen": tone.led,
-                  } as ExtendedCSS
-                }
-              >
-                <CardContent className="relative z-[1] p-4 sm:p-5 flex flex-col justify-between h-full">
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg sm:text-xl md:text-2xl font-extrabold tracking-[0.18em] leading-tight text-white/90 uppercase">
-                        OVERALL
-                      </h3>
-                      <Badge
-                        className={cn(
-                          "text-[10px] sm:text-[11px] px-2 py-0.5 font-extrabold rounded-md border",
-                          tone.badgeClass
-                        )}
-                      >
-                        {finalResult.grade}
-                      </Badge>
-                    </div>
-                    <div className="mt-3 sm:mt-4 flex items-baseline gap-3">
-                      <span
-                        className="text-4xl sm:text-5xl font-black tracking-tight tabular-nums led-num led-strong"
-                        data-text={String(overallNum)}
-                        style={
-                          {
-                            "--led": tone.led,
-                          } as ExtendedCSS
-                        }
-                      >
-                        {overallNum}
-                      </span>
-                      <span className="text-[10px] sm:text-xs font-semibold text-white/80">Weighted</span>
-                    </div>
+            <ReportScoreSummary result={finalResult} />
+
+            <div className="report-detail-grid grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
+              <div className="min-w-0 space-y-4 sm:space-y-6 lg:col-span-2">
+                <section aria-labelledby="report-replay-title" className="report-module overflow-hidden rounded-2xl">
+                  <div className="report-module-header flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3.5 sm:px-5">
+                    <h2 id="report-replay-title" className="flex items-center gap-2 text-base font-semibold">
+                      <Activity size={17} aria-hidden="true" />Analysis Replay
+                    </h2>
+                    {finalVideoUrl && <span className="report-secondary text-xs">Recommended playback: ~10s</span>}
                   </div>
-
-                  <div className="mt-3 sm:mt-4 flex items-center gap-2">
-                    <div className="h-1.5 sm:h-2 flex-1 bg-white/10 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-1000 ease-out"
-                        style={{
-                          width: `${finalResult.overall}%`,
-                          background: tone.accent,
-                        }}
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <ScoreCard
-                title="POSTURE"
-                score={finalResult.breakdown.posture}
-                weight={finalResult.weights.posture}
-                available={finalResult.availability?.posture !== false}
-                icon={Activity}
-              />
-              <ScoreCard
-                title="EXECUTION"
-                score={finalResult.breakdown.execution}
-                weight={finalResult.weights.execution}
-                available={finalResult.availability?.execution !== false}
-                icon={Activity}
-              />
-              <ScoreCard
-                title="CONSISTENCY"
-                score={finalResult.breakdown.consistency}
-                weight={finalResult.weights.consistency}
-                available={finalResult.availability?.consistency !== false}
-                icon={Activity}
-              />
-            </section>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-              
-              <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-                <Card className="report-module rounded-2xl overflow-hidden">
-                  <CardHeader className="report-module-header pb-3 px-4 pt-4">
-                    <CardTitle className="text-sm font-semibold text-white tracking-wide flex items-center gap-2">
-                      <Activity className="w-4 h-4 text-[#E35757]" />
-                      Analysis Replay{" "}
-                      <span className="text-[10px] sm:text-xs font-medium text-slate-300/70 hidden sm:inline">
-                        (recommended: play ~10s)
-                      </span>
-                    </CardTitle>
-                  </CardHeader>
-                  <div className="aspect-video bg-black relative flex items-center justify-center">
+                  <div className="aspect-video bg-black">
                     {finalVideoUrl ? (
                       <video
                         src={finalVideoUrl}
-                        className="w-full h-full object-contain"
+                        className="h-full w-full object-contain"
+                        aria-label="Analysis replay"
                         controls
                         playsInline
                         loop
                       />
                     ) : (
-                      <p className="text-white/45 text-sm">Video Not Found</p>
+                      <p className="report-video-empty grid h-full place-items-center text-sm">Video Not Found</p>
                     )}
                   </div>
-                </Card>
+                </section>
 
                 {hasPerformanceCurves && (
-                  <div
-                    ref={performanceCurveRef}
-                    className="lightify-timeline report-module rounded-2xl p-0 overflow-visible"
-                  >
-                    <MetricTimelineCard
-                      timeline={finalTimeline}
-                      templateId={selectedTemplateId}
-                      template={selectedTemplate}
-                      savedMetrics={finalSavedMetrics}
-                      scoringContext={{
-                        ...(reportId ? persistedScoringOptions : {}),
-                        ageGroup,
-                        handedness: reportId ? persistedScoringOptions.handedness || "right" : "right",
-                      }}
-                    />
-                  </div>
+                  <MetricTimelineCard
+                    timeline={finalTimeline}
+                    templateId={selectedTemplateId}
+                    template={selectedTemplate}
+                    savedMetrics={finalSavedMetrics}
+                    scoringContext={{
+                      ...(reportId ? persistedScoringOptions : {}),
+                      ageGroup,
+                      handedness: reportId ? persistedScoringOptions.handedness || "right" : "right",
+                    }}
+                  />
                 )}
               </div>
 
-              <div ref={findingsColumnRef} className="lg:col-span-1 flex min-h-0">
-                <Card
-                  className="report-module rounded-2xl flex min-h-[400px] min-w-0 flex-1 flex-col overflow-hidden lg:min-h-0"
-                  style={findingsCardStyle}
-                >
-                  <CardHeader className="report-module-header pb-3 px-4 pt-4">
-                    <CardTitle className="text-base font-semibold text-white flex items-center justify-between">
-                      <span>Top Findings</span>
-                      {finalResult && (
-                        <Badge
-                          variant="secondary"
-                          className="text-[10px] bg-white/[0.08] text-slate-200 border border-white/10"
-                        >
-                          {finalResult.findings.length} Checks
-                        </Badge>
-                      )}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="report-findings-scroll min-h-0 p-0 flex-1 overflow-y-auto overscroll-contain max-h-[500px] lg:max-h-none custom-scrollbar">
-                    <div className="space-y-3 p-3">
-                      {finalResult?.findings.map((finding, idx) => {
-                        const isMissing = Boolean(finding.isMissing);
-                        const isBad = finding.score < 60;
-                        const isPositive = finding.isPositive && !isMissing;
-                        return (
-                          <div
-                            key={idx}
-                            className={cn(
-                              "report-findings-item rounded-2xl border p-3 sm:p-4 transition-all",
-                              isMissing
-                                ? "border-amber-400/18 bg-[linear-gradient(180deg,rgba(251,191,36,0.08),rgba(251,191,36,0.02))]"
-                                : isPositive
-                                ? "border-emerald-400/18 bg-[linear-gradient(180deg,rgba(16,185,129,0.08),rgba(16,185,129,0.02))]"
-                                : isBad
-                                  ? "border-red-400/18 bg-[linear-gradient(180deg,rgba(248,113,113,0.08),rgba(248,113,113,0.02))]"
-                                  : "border-amber-400/18 bg-[linear-gradient(180deg,rgba(251,191,36,0.08),rgba(251,191,36,0.02))]"
-                            )}
-                          >
-                            <div className="flex justify-between items-start mb-3 gap-3">
-                              <div className="min-w-0">
-                                <h4 className="font-semibold text-white/95 text-sm leading-tight pr-3">
-                                  {finding.title}
-                                </h4>
-                                <div className="mt-2 flex items-center gap-2 flex-wrap">
-                                  <Badge
-                                    variant="outline"
-                                    className="text-[9px] sm:text-[10px] px-1.5 py-0 h-4 border-white/10 bg-white/[0.04] text-slate-300/75 uppercase"
-                                  >
-                                    {finding.category}
-                                  </Badge>
-                                  <span
-                                    className={cn(
-                                      "inline-flex h-5 items-center rounded-full px-2 text-[10px] font-bold uppercase tracking-[0.12em]",
-                                      isMissing
-                                        ? "bg-amber-400/12 text-amber-300"
-                                        : isPositive
-                                        ? "bg-emerald-400/12 text-emerald-300"
-                                        : isBad
-                                          ? "bg-red-400/12 text-red-300"
-                                          : "bg-amber-400/12 text-amber-300"
-                                    )}
-                                  >
-                                    {isMissing
-                                      ? "N/A"
-                                      : finding.state === "low"
-                                        ? "Try More"
-                                        : finding.state === "high"
-                                          ? "Reduce"
-                                          : isPositive
-                                        ? "Stable"
-                                        : isBad
-                                          ? "Needs Work"
-                                          : "Watch"}
-                                  </span>
-                                </div>
-                              </div>
-                              <div
-                                className={cn(
-                                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border",
-                                  isMissing
-                                    ? "border-amber-400/25 bg-amber-400/10"
-                                    : isPositive
-                                    ? "border-emerald-400/25 bg-emerald-400/10"
-                                    : isBad
-                                      ? "border-red-400/25 bg-red-400/10"
-                                      : "border-amber-400/25 bg-amber-400/10"
-                                )}
-                              >
-                                {isPositive ? (
-                                  <CheckCircle2 className="w-4 h-4 text-emerald-300" />
-                                ) : (
-                                  <AlertCircle
-                                    className={cn(
-                                      "w-4 h-4 shrink-0",
-                                      isMissing || !isBad ? "text-amber-300" : "text-red-300"
-                                    )}
-                                  />
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 mb-3">
-                              <div className="h-3 w-px bg-white/10" />
-                              <span
-                                className={cn(
-                                  "text-xs font-extrabold",
-                                  isMissing
-                                    ? "text-amber-300"
-                                    : isPositive
-                                    ? "text-emerald-300"
-                                    : isBad
-                                      ? "text-red-300"
-                                      : "text-amber-300"
-                                )}
-                              >
-                                {isMissing ? "N/A" : `${finding.score} pts`}
-                              </span>
-                            </div>
-                            {(finding.actualValue || finding.targetText) && (
-                              <div className="mb-3 grid gap-2 rounded-xl border border-white/8 bg-black/15 p-2.5 text-xs sm:grid-cols-2">
-                                <div>
-                                  <div className="text-[9px] font-bold uppercase tracking-[0.16em] text-white/38">
-                                    Actual
-                                  </div>
-                                  <div className="mt-1 text-white/75">
-                                    {finding.actualValue || "Not enough data"}
-                                  </div>
-                                </div>
-                                <div>
-                                  <div className="text-[9px] font-bold uppercase tracking-[0.16em] text-white/38">
-                                    Simple target
-                                  </div>
-                                  <div className="mt-1 text-white/75">{finding.targetText}</div>
-                                </div>
-                              </div>
-                            )}
-                            <p className="report-findings-note text-xs text-slate-200 leading-relaxed p-2.5 rounded-xl">
-                              {finding.hint}
-                            </p>
-                          </div>
-                        );
-                      })}
-
-                      {(!finalResult || finalResult.findings.length === 0) && (
-                        <div className="flex flex-col items-center justify-center py-12 text-white/45 gap-2">
-                          <CheckCircle2 className="w-8 h-8 opacity-40" />
-                          <p className="text-sm font-semibold">No critical findings found.</p>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+              <div className="relative min-w-0">
+                <section aria-labelledby="report-findings-title" className="report-findings-panel report-module flex flex-col overflow-hidden rounded-2xl lg:absolute lg:inset-0">
+                  <div className="report-module-header flex shrink-0 items-center justify-between gap-3 px-4 py-3.5 sm:px-5">
+                    <h2 id="report-findings-title" className="text-base font-semibold">Top Findings</h2>
+                    <span className="report-secondary text-xs font-medium">
+                      {finalResult.findings.length} {finalResult.findings.length === 1 ? "check" : "checks"}
+                    </span>
+                  </div>
+                  <div className="report-findings-scroll min-h-0 lg:overflow-y-auto">
+                    {finalResult.findings.length ? (
+                      <ul>
+                        {finalResult.findings.map((finding, index) => (
+                          <ReportFindingItem key={finding.id ?? index} finding={finding} />
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="report-secondary flex items-center justify-center gap-2 p-6 text-sm">
+                        <CheckCircle2 size={18} aria-hidden="true" />No critical findings found.
+                      </p>
+                    )}
+                  </div>
+                </section>
               </div>
             </div>
           </div>
@@ -1293,368 +759,6 @@ function ReportContent() {
         )}
         {reportId && user && !isSharedView && <ReportFeedbackPanel key={`${user.public_id}:${reportId}`} reportId={reportId} />}
       </main>
-
-      <style jsx global>{`
-        .report-shell {
-          background-color: #05070c;
-        }
-
-        .report-module {
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          background:
-            radial-gradient(circle at top left, rgba(225, 29, 72, 0.08), transparent 24%),
-            radial-gradient(circle at top right, rgba(59, 130, 246, 0.08), transparent 22%),
-            linear-gradient(180deg, rgba(15, 23, 42, 0.90), rgba(10, 15, 24, 0.86));
-          box-shadow:
-            0 24px 70px rgba(0, 0, 0, 0.26),
-            inset 0 1px 0 rgba(255, 255, 255, 0.05);
-          backdrop-filter: blur(16px);
-        }
-
-        .report-module-header {
-          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-          background: linear-gradient(
-            180deg,
-            rgba(255, 255, 255, 0.03),
-            rgba(255, 255, 255, 0)
-          );
-        }
-
-        .report-select {
-          border: 1px solid rgba(255, 255, 255, 0.10);
-          background:
-            linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04)),
-            rgba(8, 12, 20, 0.92);
-          color: rgba(255, 255, 255, 0.92);
-          box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.04),
-            0 10px 30px rgba(0, 0, 0, 0.18);
-        }
-
-        .report-select:hover {
-          border-color: rgba(255, 255, 255, 0.16);
-        }
-
-        .report-select:focus {
-          border-color: rgba(225, 29, 72, 0.65);
-          box-shadow:
-            0 0 0 4px rgba(225, 29, 72, 0.16),
-            inset 0 1px 0 rgba(255, 255, 255, 0.05),
-            0 10px 30px rgba(0, 0, 0, 0.24);
-        }
-
-        .report-findings-item:hover {
-          background:
-            linear-gradient(90deg, rgba(255, 255, 255, 0.03), transparent 72%),
-            rgba(255, 255, 255, 0.015);
-          transform: translateY(-1px);
-          box-shadow:
-            0 18px 40px rgba(0, 0, 0, 0.16),
-            inset 0 1px 0 rgba(255, 255, 255, 0.04);
-        }
-
-        .report-findings-note {
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          background:
-            linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04)),
-            rgba(8, 12, 20, 0.92);
-          box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.03),
-            0 10px 24px rgba(0, 0, 0, 0.16);
-        }
-
-        .report-findings-scroll {
-          scrollbar-width: thin;
-          scrollbar-color: rgba(148, 163, 184, 0.28) transparent;
-        }
-
-        .report-findings-scroll::-webkit-scrollbar {
-          width: 8px;
-        }
-
-        .report-findings-scroll::-webkit-scrollbar-track {
-          background: transparent;
-          margin: 12px 0;
-        }
-
-        .report-findings-scroll::-webkit-scrollbar-thumb {
-          border: 2px solid transparent;
-          border-radius: 999px;
-          background: rgba(148, 163, 184, 0.28);
-          background-clip: padding-box;
-        }
-
-        .report-findings-scroll:hover::-webkit-scrollbar-thumb {
-          background: rgba(203, 213, 225, 0.42);
-          background-clip: padding-box;
-        }
-
-        .tech-grid {
-          background-image:
-            linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-            linear-gradient(to right, rgba(225, 29, 72, 0.05) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(59, 130, 246, 0.04) 1px, transparent 1px);
-          background-size: 58px 58px, 58px 58px, 14px 14px, 14px 14px;
-          background-position: center center;
-          mask-image: linear-gradient(
-            180deg,
-            rgba(0, 0, 0, 0.68) 0%,
-            rgba(0, 0, 0, 0.42) 45%,
-            rgba(0, 0, 0, 0.18) 100%
-          );
-        }
-
-        .tech-orbits {
-          background-image:
-            radial-gradient(
-              ellipse 62% 42% at 8% 18%,
-              transparent 0 67%,
-              rgba(255, 255, 255, 0.10) 67.5% 68%,
-              transparent 68.5%
-            ),
-            radial-gradient(
-              ellipse 58% 36% at 88% 12%,
-              transparent 0 69%,
-              rgba(225, 29, 72, 0.14) 69.5% 70%,
-              transparent 70.5%
-            ),
-            radial-gradient(
-              ellipse 54% 34% at 82% 68%,
-              transparent 0 71%,
-              rgba(59, 130, 246, 0.12) 71.5% 72%,
-              transparent 72.5%
-            ),
-            radial-gradient(
-              ellipse 72% 48% at 30% 88%,
-              transparent 0 75%,
-              rgba(148, 163, 184, 0.10) 75.5% 76%,
-              transparent 76.5%
-            );
-          mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.9), transparent 92%);
-        }
-
-        .report-noise {
-          background-image:
-            linear-gradient(120deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 36%),
-            linear-gradient(300deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 42%),
-            radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.04), transparent 62%);
-          mix-blend-mode: screen;
-        }
-
-        .card-energy {
-          position: relative;
-          overflow: hidden;
-          isolation: isolate;
-          background: transparent;
-        }
-
-        .card-energy::before {
-          content: "";
-          position: absolute;
-          inset: -1px;
-          background:
-            radial-gradient(
-              circle at 0% 0%,
-              color-mix(in srgb, var(--cardBase) 70%, #000 30%),
-              transparent 60%
-            ),
-            radial-gradient(
-              circle at 100% 100%,
-              color-mix(in srgb, var(--cardBase) 65%, #000 35%),
-              transparent 65%
-            ),
-            linear-gradient(
-              135deg,
-              color-mix(in srgb, var(--cardBase) 80%, #000 20%),
-              color-mix(in srgb, var(--cardBase) 45%, #000 55%)
-            );
-          opacity: 0.98;
-          z-index: -2;
-        }
-
-        @keyframes card-x-sweep {
-          0% {
-            transform: translate(-20%, 12%) rotate(8deg);
-          }
-          50% {
-            transform: translate(15%, -10%) rotate(8deg);
-          }
-          100% {
-            transform: translate(40%, 18%) rotate(8deg);
-          }
-        }
-
-        .card-energy::after {
-          content: "";
-          position: absolute;
-          inset: -40%;
-          background:
-            linear-gradient(
-              60deg,
-              rgba(255, 255, 255, 0) 0%,
-              rgba(255, 255, 255, 0.9) 40%,
-              rgba(255, 255, 255, 0) 60%
-            ),
-            linear-gradient(
-              -60deg,
-              rgba(255, 255, 255, 0) 0%,
-              rgba(255, 255, 255, 0.7) 40%,
-              rgba(255, 255, 255, 0) 60%
-            );
-          mix-blend-mode: screen;
-          opacity: 0.25;
-          z-index: -1;
-          animation: card-x-sweep 9s linear infinite;
-        }
-
-        @keyframes led-sweep {
-          0% {
-            background-position: 0% 50%;
-          }
-          100% {
-            background-position: 220% 50%;
-          }
-        }
-
-        @keyframes led-flicker {
-          0%,
-          100% {
-            filter: brightness(1);
-          }
-          2% {
-            filter: brightness(0.92);
-          }
-          4% {
-            filter: brightness(1.06);
-          }
-          7% {
-            filter: brightness(0.96);
-          }
-          10% {
-            filter: brightness(1.08);
-          }
-          55% {
-            filter: brightness(0.98);
-          }
-          58% {
-            filter: brightness(1.05);
-          }
-        }
-
-        .led-num {
-          position: relative;
-          display: inline-block;
-          color: rgb(var(--led));
-          text-shadow:
-            0 0 12px rgba(var(--led), 0.28),
-            0 0 1px rgba(0, 0, 0, 0.18);
-          animation: led-flicker 3s steps(1, end) infinite;
-        }
-
-        .led-num::after {
-          content: attr(data-text);
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          background-image: linear-gradient(
-            90deg,
-            rgba(255, 255, 255, 0) 0%,
-            rgba(255, 255, 255, 0.9) 18%,
-            rgba(255, 255, 255, 0) 36%,
-            rgba(255, 255, 255, 0.6) 52%,
-            rgba(255, 255, 255, 0) 70%,
-            rgba(255, 255, 255, 0.8) 86%,
-            rgba(255, 255, 255, 0) 100%
-          );
-          background-size: 220% 100%;
-          -webkit-background-clip: text;
-          background-clip: text;
-          -webkit-text-fill-color: transparent;
-          color: transparent;
-          opacity: 0.9;
-          mix-blend-mode: screen;
-          animation: led-sweep 6.5s linear infinite;
-        }
-
-        .led-strong {
-          text-shadow:
-            0 0 20px rgba(var(--led), 0.36),
-            0 0 3px rgba(0, 0, 0, 0.2);
-        }
-
-        .lightify-timeline
-          :is(
-            [class*="bg-slate-"],
-            [class*="bg-zinc-"],
-            [class*="bg-neutral-"],
-            [class*="bg-gray-"]
-          ) {
-          background-color: rgba(9, 13, 22, 0.92) !important;
-        }
-        .lightify-timeline
-          :is(
-            [class*="text-white"],
-            [class*="text-slate-"],
-            [class*="text-zinc-"],
-            [class*="text-neutral-"],
-            [class*="text-gray-"]
-          ) {
-          color: #e5edf8 !important;
-        }
-        .lightify-timeline
-          :is(
-            [class*="border-slate-"],
-            [class*="border-zinc-"],
-            [class*="border-neutral-"],
-            [class*="border-gray-"]
-          ) {
-          border-color: rgba(255, 255, 255, 0.09) !important;
-        }
-        .lightify-timeline :is([class*="text-black"]) {
-          color: #f8fafc !important;
-        }
-        .lightify-timeline :is([class*="text-slate-500"], [class*="text-gray-500"]) {
-          color: rgba(203, 213, 225, 0.72) !important;
-        }
-        .lightify-timeline :is([class*="text-slate-400"], [class*="text-gray-400"]) {
-          color: rgba(203, 213, 225, 0.58) !important;
-        }
-        .lightify-timeline :is([class*="bg-white"]) {
-          background-color: rgba(255, 255, 255, 0.05) !important;
-        }
-        .lightify-timeline :is([class*="hover:bg-slate-"], [class*="hover:bg-gray-"]) {
-          --tw-bg-opacity: 1 !important;
-        }
-
-        @media (max-width: 640px) {
-          .tech-grid {
-            background-size: 42px 42px, 42px 42px, 12px 12px, 12px 12px;
-          }
-
-          .tech-orbits {
-            background-image:
-              radial-gradient(
-                ellipse 82% 48% at 18% 14%,
-                transparent 0 69%,
-                rgba(255, 255, 255, 0.08) 69.5% 70%,
-                transparent 70.5%
-              ),
-              radial-gradient(
-                ellipse 70% 42% at 92% 16%,
-                transparent 0 70%,
-                rgba(225, 29, 72, 0.10) 70.5% 71%,
-                transparent 71.5%
-              ),
-              radial-gradient(
-                ellipse 86% 54% at 48% 88%,
-                transparent 0 76%,
-                rgba(59, 130, 246, 0.08) 76.5% 77%,
-                transparent 77.5%
-              );
-          }
-        }
-      `}</style>
     </div>
   );
 }
