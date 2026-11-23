@@ -83,12 +83,12 @@ export default function AssistantPage() {
   return (
     <section className="mx-auto w-full max-w-3xl space-y-5">
       <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="mb-3 grid h-11 w-11 place-items-center rounded-xl bg-[var(--ui-accent-soft)] text-[var(--ui-accent)]">
+        <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2 sm:block">
+          <div className="grid h-11 w-11 place-items-center rounded-xl bg-[var(--ui-accent-soft)] text-[var(--ui-accent)] sm:mb-3">
             <Sparkles size={21} aria-hidden="true" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("AI Coach")}</h1>
-          <p className="mt-2 text-sm leading-6 text-[var(--ui-muted)]">
+          <p className="col-span-2 text-sm leading-6 text-[var(--ui-muted)] sm:mt-2">
             {t("Ask a basketball question or get an idea for your next practice.")}
           </p>
         </div>
@@ -99,10 +99,10 @@ export default function AssistantPage() {
       </header>
 
       {!messages.length && !pending && (
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="grid max-sm:rounded-2xl max-sm:border max-sm:border-[var(--ui-border)] max-sm:bg-[var(--ui-surface)] sm:grid-cols-3 sm:gap-2">
           {prompts.map((prompt) => (
             <button key={prompt} type="button" onClick={() => void ask(t(prompt))}
-              className="ui-panel flex min-w-0 items-start justify-between gap-2 p-4 text-left text-sm font-medium hover:bg-[var(--ui-subtle)]">
+              className="flex min-h-12 min-w-0 items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium hover:bg-[var(--ui-subtle)] focus-visible:z-10 max-sm:border-b max-sm:border-[var(--ui-border)] max-sm:first:rounded-t-2xl max-sm:last:rounded-b-2xl max-sm:last:border-b-0 sm:items-start sm:rounded-2xl sm:border sm:border-[var(--ui-border)] sm:bg-[var(--ui-surface)] sm:p-4">
               {t(prompt)} <ArrowUpRight size={15} className="shrink-0 text-[var(--ui-accent)]" aria-hidden="true" />
             </button>
           ))}
@@ -147,9 +147,9 @@ export default function AssistantPage() {
         <label htmlFor="assistant-question" className="sr-only">{t("Your training question")}</label>
         <textarea ref={input} id="assistant-question" rows={3} value={draft} maxLength={2400} disabled={Boolean(pending)}
           placeholder={t("Ask about a drill or a training score…")}
-          className="block w-full resize-y rounded-xl bg-[var(--ui-subtle)] p-3 text-sm"
+          className="block w-full resize-y rounded-xl bg-[var(--ui-subtle)] p-3 text-base sm:text-sm"
           onChange={(event) => setDraft(event.target.value)} />
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 sm:items-center">
           <p className="text-xs leading-5 text-[var(--ui-muted)]">{t("Uses your assigned tasks and recent scores. Keep personal details out of your question.")}</p>
           <button type="submit" disabled={!draft.trim() || Boolean(pending)} className="ui-button ui-primary disabled:opacity-50">
             <Send size={15} aria-hidden="true" /> {t("Send")}

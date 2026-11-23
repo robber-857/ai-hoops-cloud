@@ -5,8 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Check, ChevronLeft, Link as LinkIcon, Printer } from "lucide-react";
 
-import { AccountEntryButton } from "@/components/account/AccountEntryButton";
-import { ThemeToggle } from "@/components/navigation/ThemeToggle";
+import { PoseAccountTools } from "./PoseAccountTools";
 import "./report-header.css";
 
 type ReportHeaderProps = {
@@ -23,7 +22,7 @@ export function ReportHeader({ backHref, reportId, onShare, copied, shareDisable
 
   return (
     <header className="pose-report-header sticky top-0 z-50 border-b">
-      <div className="mx-auto grid min-h-14 max-w-7xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3 sm:min-h-16 sm:gap-3 sm:px-6 md:grid-cols-[1fr_auto_1fr]">
+      <div className="grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3 sm:min-h-16 sm:gap-3 sm:px-6 lg:grid-cols-[1fr_auto_1fr] lg:px-8">
         <div className="flex min-w-0 items-center gap-2">
           <Link className="pose-report-control" href={backHref} aria-label={t("Back")} title={t("Back")}>
             <ChevronLeft size={20} aria-hidden="true" />
@@ -36,7 +35,7 @@ export function ReportHeader({ backHref, reportId, onShare, copied, shareDisable
           </div>
         </div>
 
-        <div className="pose-report-brand pointer-events-none min-w-0 justify-self-start md:justify-self-center">
+        <div className="pose-report-brand pointer-events-none min-w-0 justify-self-start lg:justify-self-center">
           <Image
             src="/logoonreport.png"
             alt="Infinity Sport"
@@ -54,8 +53,6 @@ export function ReportHeader({ backHref, reportId, onShare, copied, shareDisable
         </div>
 
         <div className="pose-report-actions flex items-center justify-self-end gap-1 sm:gap-2">
-          <ThemeToggle className="pose-report-control" />
-          <AccountEntryButton compact className="pose-report-control pose-report-account" />
           {reportId && (
             <button
               type="button"
@@ -79,6 +76,7 @@ export function ReportHeader({ backHref, reportId, onShare, copied, shareDisable
             <Printer size={16} aria-hidden="true" />
             <span className="hidden sm:inline">{t("Print")}</span>
           </button>
+          <PoseAccountTools />
         </div>
       </div>
     </header>

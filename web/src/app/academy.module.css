@@ -51,9 +51,11 @@
   color: #55565a;
 }
 .login {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 22px;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
   border-bottom: 1px solid #252529;
   padding: 12px 0;
   font-size: 14px;
@@ -633,7 +635,6 @@
   }
   .login {
     font-size: 12px;
-    gap: 12px;
   }
   .hero {
     display: flex;
