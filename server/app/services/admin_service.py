@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from app.services.display_names import staff_display_name
 from app.services.report_service import _original_reports_only
+from app.services.template_rules import template_content_hash
 
-import hashlib
 import json
 import re
 from datetime import datetime, timezone
@@ -77,27 +77,6 @@ FORBIDDEN_TRAINING_COMPUTE_KEYS = {
     "cadenceSPM",
     "repTempoSec",
 }
-
-
-def _normalize_json_numbers(value):
-    if isinstance(value, dict):
-        return {key: _normalize_json_numbers(item) for key, item in value.items()}
-    if isinstance(value, list):
-        return [_normalize_json_numbers(item) for item in value]
-    if isinstance(value, float) and value.is_integer():
-        return int(value)
-    return value
-
-
-def _local_template_content_hash(raw_template: dict) -> str:
-    canonical_json = json.dumps(
-        _normalize_json_numbers(raw_template),
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
-        allow_nan=False,
-    )
-    return hashlib.sha256(canonical_json.encode("utf-8")).hexdigest()
 
 
 def _ensure_admin_access(current_user: User) -> None:
@@ -1260,7 +1239,7 @@ class AdminService:
 
             planned_changes.append((local_template, existing_template, existing_version, action))
 
-        current_preview_token = _local_template_content_hash({
+        current_preview_token = template_content_hash({
             "analysis_type": analysis_type.value,
             "items": [item.model_dump(mode="json") for item in items],
             "content_hashes": [item["content_hash"] for item in local_templates],
@@ -1875,7 +1854,7 @@ class AdminService:
             if mode == AnalysisType.training.value:
                 self._validate_local_training_template(raw_template, template_path)
 
-            content_hash = _local_template_content_hash(raw_template)
+            content_hash = template_content_hash(raw_template)
             relative_source_path = template_path.relative_to(Path(__file__).resolve().parents[3]).as_posix()
             metrics = raw_template.get("metrics") if isinstance(raw_template.get("metrics"), list) else []
             metric_summary = [

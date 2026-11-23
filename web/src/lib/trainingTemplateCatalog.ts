@@ -19,6 +19,10 @@ export type TrainingTemplateCatalogItem = {
   contentHash: string;
 };
 
+export function getLocalTemplateVersion(template: ActionTemplate): string {
+  return template.version || "local-v1";
+}
+
 function canonicalJson(value: unknown): string {
   if (value === null) return "null";
   if (typeof value === "string" || typeof value === "boolean") {
@@ -81,8 +85,9 @@ export async function buildTrainingTemplateCatalog(
   return Promise.all(
     localTemplates.map(async (template) => {
       const contentHash = await calculateTrainingTemplateContentHash(template);
+      const localVersion = getLocalTemplateVersion(template);
       const remoteTemplate =
-        remoteTemplates.find((item) => item.template_code === template.templateId) ?? null;
+        remoteTemplates.find((item) => item.template_code === template.templateId && item.analysis_type === template.mode && item.status === "active") ?? null;
 
       if (!remoteTemplate) {
         return {
@@ -96,11 +101,11 @@ export async function buildTrainingTemplateCatalog(
       }
 
       const remoteVersion =
-        remoteTemplate.versions.find((version) => version.version === template.version) ?? null;
+        remoteTemplate.versions.find((version) => version.version === localVersion) ?? null;
       if (
         !remoteVersion
         || remoteVersion.status !== "active"
-        || remoteTemplate.current_version !== template.version
+        || remoteTemplate.current_version !== localVersion
       ) {
         return {
           template,
@@ -108,8 +113,8 @@ export async function buildTrainingTemplateCatalog(
           remoteVersion,
           availability: "version_mismatch" as const,
           availabilityMessage: remoteTemplate.current_version
-            ? `Update required. Published ${remoteTemplate.current_version} · requires ${template.version}.`
-            : `Update required. Publish version ${template.version} to enable analysis.`,
+            ? `Update required. Published ${remoteTemplate.current_version} · requires ${localVersion}.`
+            : `Update required. Publish version ${localVersion} to enable analysis.`,
           contentHash,
         };
       }
@@ -119,11 +124,10 @@ export async function buildTrainingTemplateCatalog(
       const remoteContentHash = rawRemoteTemplate
         ? await calculateTrainingTemplateContentHash(rawRemoteTemplate)
         : null;
-      if (
-        !declaredHash
-        || declaredHash !== contentHash
-        || remoteContentHash !== contentHash
-      ) {
+      // The original shooting and dribbling import used a different numeric JSON encoding.
+      // Compare its actual rules against the local file without altering the stored legacy hash.
+      const hasLegacyHash = template.mode !== "training" && localVersion === "local-v1";
+      if (remoteContentHash !== contentHash || (!hasLegacyHash && declaredHash !== contentHash)) {
         return {
           template,
           remoteTemplate,

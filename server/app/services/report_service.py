@@ -31,6 +31,7 @@ from app.schemas.report import (
     ReportListItem, ReportRead, SaveReportRequest, ReanalyzeReportAgeRequest, ReanalyzedScoreResult,
 )
 from app.services.display_names import staff_display_name
+from app.services.template_rules import version_rules_hash
 
 
 COACH_ROLES = ADMIN_ROLES | {UserRole.coach}
@@ -217,6 +218,7 @@ class ReportService:
         strict_template_lock = (
             session.analysis_type == AnalysisType.training
             or getattr(session, "task_assignment", None) is not None
+            or payload.template_content_hash is not None
         )
         normalized_template_code = (
             session.template_code if strict_template_lock else payload.template_code
@@ -279,6 +281,8 @@ class ReportService:
                     status_code=status.HTTP_409_CONFLICT,
                     detail="The report template version does not exist.",
                 )
+            if payload.template_content_hash and payload.template_content_hash != version_rules_hash(resolved_template_version):
+                raise HTTPException(status_code=409, detail="The report rules do not match the uploaded movement version.")
         else:
             normalized_template_version = payload.template_version
 
@@ -287,7 +291,9 @@ class ReportService:
             .where(AnalysisReport.session_id == session.id, _original_reports_only())
             .order_by(AnalysisReport.created_at.desc())
         )
-        if strict_template_lock and existing_report and (
+        previous_score_data = existing_report.score_data if existing_report else None
+        previous_snapshot = previous_score_data.get("template_snapshot") if isinstance(previous_score_data, dict) else None
+        if existing_report and (strict_template_lock or isinstance(previous_snapshot, dict)) and (
             existing_report.template_id != normalized_template_code
             or existing_report.template_version != normalized_template_version
         ):
@@ -302,8 +308,12 @@ class ReportService:
             template_code=normalized_template_code,
             template_version=normalized_template_version,
         )
-        if session.analysis_type == AnalysisType.training and template_snapshot is None:
-            raise HTTPException(status_code=409, detail="The locked Training template rules are incomplete.")
+        if isinstance(previous_snapshot, dict):
+            template_snapshot = previous_snapshot
+        elif template_snapshot and payload.template_content_hash:
+            template_snapshot["contentHash"] = payload.template_content_hash
+        if (session.analysis_type == AnalysisType.training or payload.template_content_hash) and template_snapshot is None:
+            raise HTTPException(status_code=409, detail="The locked movement template rules are incomplete.")
         score_data = _score_data_with_snapshot(_without_reanalysis_provenance(payload.score_data), template_snapshot)
 
         now = datetime.now(timezone.utc)

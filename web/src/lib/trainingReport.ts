@@ -4,7 +4,7 @@ import type { FrameSample } from "@/store/analysisStore";
 import type { DribbleFrame } from "./dribbleTemporal";
 import { calculateRealScore, type AngleData, type ScoreResult } from "./scoring";
 import { aggregateTrainingSequence } from "./trainingCalculator";
-import { calculateTrainingTemplateContentHash } from "./trainingTemplateCatalog";
+import { calculateTrainingTemplateContentHash, getLocalTemplateVersion } from "./trainingTemplateCatalog";
 import globalConfig from "@/config/templates/global.json";
 
 export const DEFAULT_REPORT_AGE_GROUP = "16-18";
@@ -84,10 +84,10 @@ export async function verifyTrainingReportTemplate(
   template: ActionTemplate,
   session: Pick<CompletedUploadSession, "templateCode" | "templateVersion" | "templateContentHash">,
 ): Promise<void> {
-  if (session.templateCode !== template.templateId || session.templateVersion !== template.version) {
-    throw new Error("The training template version changed after this upload. Refresh the page and upload a new clip to use the current rules.");
+  if (session.templateCode !== template.templateId || session.templateVersion !== getLocalTemplateVersion(template)) {
+    throw new Error("The movement template version changed after this upload. Refresh the page and upload a new clip to use the current rules.");
   }
   if (!session.templateContentHash || session.templateContentHash !== await calculateTrainingTemplateContentHash(template)) {
-    throw new Error("The training rules do not match this upload's locked rules. Refresh the page and upload a new clip before generating a report.");
+    throw new Error("The movement rules do not match this upload's locked rules. Refresh the page and upload a new clip before generating a report.");
   }
 }

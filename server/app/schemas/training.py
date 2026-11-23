@@ -36,6 +36,7 @@ class UploadInitRequest(BaseModel):
     file_size: int = Field(gt=0)
     template_code: str | None = Field(default=None, max_length=100)
     template_version: str | None = Field(default=None, max_length=50)
+    template_content_hash: str | None = Field(default=None, pattern="^[a-f0-9]{64}$")
     class_public_id: UUID | None = None
     task_assignment_public_id: UUID | None = None
     source_type: str = Field(default="free_practice", max_length=20)

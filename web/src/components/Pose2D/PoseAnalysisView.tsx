@@ -533,7 +533,7 @@ export default function PoseAnalysisView({
       const lockedTemplateCode = uploadSession?.templateCode ?? templateCode;
       const activeTemplate =
         templates.find((template) => template.templateId === lockedTemplateCode)
-        ?? (analysisType === "training" ? undefined : templates[0]);
+        ?? (lockedTemplateCode || analysisType === "training" ? undefined : templates[0]);
 
       if (!activeTemplate) {
         alert("The uploaded session does not have a matching analysis template.");
@@ -549,7 +549,7 @@ export default function PoseAnalysisView({
 
       let finalInputForScoring: AngleData[] = [];
       let detectedHandness = "right";
-      if (analysisType === "training") {
+      if (analysisType === "training" || uploadSession.templateContentHash) {
         await verifyTrainingReportTemplate(activeTemplate, uploadSession);
       }
       let trainingCameraMatch: boolean | null = null;
@@ -657,6 +657,7 @@ export default function PoseAnalysisView({
         session_public_id: uploadSession.sessionPublicId,
         template_code: activeTemplate.templateId,
         template_version: lockedTemplateVersion,
+        template_content_hash: uploadSession.templateContentHash ?? undefined,
         overall_score: realScoreResult.overall,
         grade: realScoreResult.grade,
         score_data: scoreDataToSave,

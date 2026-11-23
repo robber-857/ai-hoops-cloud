@@ -13,6 +13,7 @@ class SaveReportRequest(BaseModel):
     session_public_id: UUID
     template_code: str = Field(min_length=1, max_length=100)
     template_version: str | None = Field(default=None, max_length=50)
+    template_content_hash: str | None = Field(default=None, pattern="^[a-f0-9]{64}$")
     overall_score: float | None = Field(default=None, ge=0, le=100)
     grade: str | None = Field(default=None, max_length=10)
     score_data: dict

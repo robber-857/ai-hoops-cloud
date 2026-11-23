@@ -29,6 +29,7 @@ from app.services.admin_service import AdminService
 from app.services.report_service import ReportService
 from app.services.training_service import TrainingService
 from app.services.template_service import TemplateService
+from app.services.template_rules import template_content_hash
 from app.api.v1 import admin as admin_api
 
 
@@ -209,6 +210,64 @@ class TrainingTemplateContractTests(unittest.TestCase):
         self.assertEqual(db.scalar_calls, 0)
         self.assertEqual(response.template_code, payload.template_code)
         self.assertEqual(response.template_version, payload.template_version)
+
+    def test_catalog_upload_uses_current_actual_rules_for_shooting_and_dribbling(self) -> None:
+        player = SimpleNamespace(id=1, public_id=uuid4(), role=UserRole.student)
+        for mode in (AnalysisType.shooting, AnalysisType.dribbling):
+            with self.subTest(mode=mode):
+                raw = {"templateId": "move", "mode": mode.value, "metrics": [{"target": 1.0}]}
+                digest = template_content_hash(raw)
+                version = SimpleNamespace(
+                    public_id=uuid4(), version="local-v1", status="active", is_default=True,
+                    scoring_rules={"template": raw, "content_hash": "legacy"},
+                    summary_template={"content_hash": "legacy"},
+                )
+                template = SimpleNamespace(
+                    public_id=uuid4(), template_code="move", analysis_type=mode,
+                    status="active", current_version=version.version, versions=[version],
+                )
+                payload = UploadInitRequest(
+                    analysis_type=mode, file_name="move.mp4", content_type="video/mp4",
+                    file_size=1024, template_code="move", template_version="local-v1",
+                    template_content_hash=digest,
+                )
+                db = _UploadDb()
+                service = TrainingService(db)
+                with patch.object(db, "scalar", return_value=template):
+                    result = service.init_upload(player, payload)
+                    self.assertEqual((result.template_code, result.template_version), ("move", "local-v1"))
+                    self.assertEqual(result.template_content_hash, digest)
+                    self.assertEqual(len(db.added), 2)
+
+                    mismatched = payload.model_copy(update={"template_content_hash": "0" * 64})
+                    with self.assertRaises(HTTPException) as context:
+                        service.init_upload(player, mismatched)
+                    self.assertEqual(context.exception.status_code, 409)
+                    self.assertEqual(len(db.added), 2)
+
+    def test_catalog_report_rejects_a_different_code_or_hash(self) -> None:
+        raw = {"templateId": "shot", "mode": "shooting", "metrics": [{"target": 20}]}
+        session = SimpleNamespace(
+            analysis_type=AnalysisType.shooting, template_code="shot",
+            template_version="local-v1", video=object(),
+        )
+        template = SimpleNamespace(id=1, analysis_type=AnalysisType.shooting)
+        version = SimpleNamespace(scoring_rules={"template": raw})
+        player = SimpleNamespace(id=1, role=UserRole.student)
+        db = _SingleScalarDb(session)
+        service = ReportService(db)
+        payload = SaveReportRequest(
+            session_public_id=uuid4(), template_code="shot", template_version="local-v1",
+            template_content_hash=template_content_hash(raw), score_data={},
+        )
+        with self.assertRaises(HTTPException) as context:
+            service.save_report(player, payload.model_copy(update={"template_code": "another_shot"}))
+        self.assertEqual(context.exception.status_code, 409)
+
+        with patch.object(db, "scalar", side_effect=[session, template, version]), self.assertRaises(HTTPException) as context:
+            service.save_report(player, payload.model_copy(update={"template_content_hash": "0" * 64}))
+        self.assertEqual(context.exception.status_code, 409)
+        self.assertIn("rules", context.exception.detail)
 
     def test_report_rejects_template_different_from_upload_session(self) -> None:
         session = SimpleNamespace(
