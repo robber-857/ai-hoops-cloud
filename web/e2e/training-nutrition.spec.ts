@@ -364,10 +364,11 @@ test.describe("simplified training and food nutrition with real dedicated APIs",
       await assertNoHorizontalOverflow(page);
     }
     await page.setViewportSize({ width: 390, height: 844 });
-    const menu = page.getByRole("button", { name: "打开工作区菜单", exact: true });
+    const mobileNav = page.getByRole("navigation", { name: "移动端个人中心", exact: true });
+    const menu = mobileNav.getByRole("button", { name: "更多", exact: true });
     await menu.focus();
     await menu.press("Enter");
-    const drawer = page.getByRole("dialog", { name: "学员中心", exact: true });
+    const drawer = page.getByRole("dialog", { name: "更多", exact: true });
     await expect(drawer).toBeVisible();
     const close = drawer.getByRole("button", { name: "关闭工作区菜单", exact: true });
     await expect(close).toBeFocused();
