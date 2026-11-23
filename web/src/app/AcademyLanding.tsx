@@ -4,7 +4,6 @@ import { useInterfaceText } from "@/hooks/useInterfaceText";
 import Image from "next/image";
 import { LanguageSelect } from "@/components/navigation/LanguageSelect";
 import {
-  ArrowDown,
   ArrowUpRight,
   Users,
   ClipboardList,
@@ -56,7 +55,7 @@ export default function AcademyLanding() {
         <div className={s.headerActions}>
           <LanguageSelect />
           <a className={s.login} href="/auth/login">
-            {t("Log in")} <ArrowUpRight size={16} />
+            {t("Log in")}
           </a>
         </div>
       </header>
@@ -74,7 +73,7 @@ export default function AcademyLanding() {
             {t("Bring your training, video feedback and player development into one place.")}
           </p>
           <a className={s.primary} href="#training">
-            {t("Explore the platform")} <ArrowDown size={17} />
+            {t("Explore the platform")}
           </a>
           <p className={s.heroNote}>
             {t("Built around the court.")}

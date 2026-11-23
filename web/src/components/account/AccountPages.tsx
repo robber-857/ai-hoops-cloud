@@ -7,6 +7,7 @@ import { ArrowRight, CalendarDays, ClipboardList, FileChartColumn, LineChart, Sp
 import { useAccountCenter } from "./AccountDataProvider";
 import { StatOverviewRow } from "./StatOverviewRow";
 import { OverviewActivity } from "./OverviewActivity";
+import { trainingNavigation } from "./accountNavigation";
 import { WeeklyTasksSection } from "./WeeklyTasksSection";
 import { GrowthTrendsSection } from "./GrowthTrendsSection";
 import { MeasurementTrendsSection } from "./MeasurementTrendsSection";
@@ -60,14 +61,14 @@ export function AccountOverviewPage() {
 
   return (
     <>
-      <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
-        <div>
+      <header className="flex min-w-0 flex-wrap items-end justify-between gap-x-6 gap-y-4">
+        <div className="min-w-0">
           <time dateTime={today} className="mb-2 inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--ui-muted)]">
             <CalendarDays size={14} className="text-[var(--ui-accent)]" aria-hidden="true" /> {dateLabel}
           </time>
-          <h1 className="text-3xl font-bold tracking-[-0.04em] sm:text-4xl">{t("Welcome back,")} {displayName}</h1>
+          <h1 className="text-[clamp(1.65rem,7vw,2.25rem)] font-bold leading-tight tracking-[-0.04em] max-lg:text-balance sm:text-4xl">{t("Welcome back,")} {displayName}</h1>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="hidden flex-wrap items-center gap-2 lg:flex">
           <Link href={routes.user.tasks} className="ui-button ui-primary">
             {t("Training tasks")} <ArrowRight size={16} aria-hidden="true" />
           </Link>
@@ -76,6 +77,16 @@ export function AccountOverviewPage() {
           </Link>
         </div>
       </header>
+      <nav aria-label={t("Training workspaces")} className="grid gap-2 lg:hidden">
+        <h2 className="text-sm font-semibold">{t("Video analysis")}</h2>
+        <div className="grid grid-cols-3 gap-2">
+          {trainingNavigation.map(({ href, label, icon: Icon }) => (
+            <Link key={href} href={href} className="account-analysis-shortcut">
+              <Icon size={17} aria-hidden="true" /><span>{t(label)}</span>
+            </Link>
+          ))}
+        </div>
+      </nav>
       <AccountPageStatus />
       {!isReportsLoading && !loadError && (
         <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(17rem,1fr)] xl:[reading-flow:grid-rows]">

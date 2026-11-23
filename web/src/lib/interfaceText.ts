@@ -258,6 +258,7 @@ const simplifiedChinese: Readonly<Record<string, string>> = {
   "Switch to dark mode": "切换至深色模式",
   "Switch to light mode": "切换至浅色模式",
   "Open workspace menu": "打开工作区菜单",
+  "More": "更多",
   "Close workspace menu": "关闭工作区菜单",
   "Personal center mobile": "移动端个人中心",
   "AI Hoops home": "AI Hoops 首页",

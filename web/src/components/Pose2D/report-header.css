@@ -40,8 +40,8 @@
 
 .pose-report-header .pose-report-control {
   display: inline-flex;
-  min-width: 2.5rem;
-  min-height: 2.5rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
@@ -74,6 +74,12 @@
   cursor: not-allowed;
 }
 
+.pose-report-actions .pose-account-tools {
+  margin-inline-start: 0.125rem;
+  padding-inline-start: 0.375rem;
+  border-inline-start: 1px solid var(--report-control-border);
+}
+
 /* At narrow phone widths, use the emblem at the start of the brand image. */
 @media screen and (max-width: 22.5rem) {
   .pose-report-brand .pose-report-brand-dark {
@@ -90,9 +96,13 @@
 }
 
 @media (min-width: 40rem) {
-  .pose-report-actions button:not(.ui-icon-button),
-  .pose-report-account {
+  .pose-report-actions .pose-report-control {
     padding-inline: 0.75rem;
+  }
+
+  .pose-report-actions .pose-account-tools {
+    margin-inline-start: 0.25rem;
+    padding-inline-start: 0.75rem;
   }
 }
 

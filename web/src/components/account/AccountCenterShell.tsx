@@ -6,19 +6,22 @@ import { useInterfaceText } from "@/hooks/useInterfaceText";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { ChevronRight, CircleDot, PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { WorkspaceMobileMenu } from "@/components/navigation/WorkspaceMobileMenu";
+import { Bell, ChevronRight, CircleDot, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { WorkspaceMobileDrawer } from "@/components/navigation/WorkspaceMobileDrawer";
 import { ThemeToggle } from "@/components/navigation/ThemeToggle";
 import { LogoutButton } from "./LogoutButton";
 import {
   accountNavigation,
   accountNavigationSections,
+  mobileMenuSections,
+  mobileTabs,
   profileNavigation,
   settingsNavigation,
   trainingNavigation,
 } from "./accountNavigation";
 import { routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
+import "./account-mobile.css";
 
 type AccountNavItem = (typeof accountNavigation)[number];
 
@@ -75,7 +78,7 @@ export function AccountCenterShell({
   return (
     <div
       className={cn(
-        "theme-workspace min-h-screen bg-[var(--ui-bg)] text-[var(--ui-text)] lg:grid",
+        "account-workspace theme-workspace min-h-screen bg-[var(--ui-bg)] text-[var(--ui-text)] lg:grid",
         collapsed ? "lg:grid-cols-[4.75rem_minmax(0,1fr)]" : "lg:grid-cols-[14.25rem_minmax(0,1fr)]",
       )}
     >
@@ -133,8 +136,8 @@ export function AccountCenterShell({
 
       <div className="min-w-0">
         <header className="sticky top-0 z-40 border-b border-[var(--ui-border)] bg-[var(--ui-surface)] pt-[env(safe-area-inset-top)]">
-          <div className="mx-auto flex min-h-16 max-w-[1440px] items-center justify-between gap-2 px-4 sm:px-6 lg:px-8">
-            <Link href={routes.home} className="flex min-h-11 shrink-0 items-center gap-2 text-base font-extrabold tracking-tight lg:hidden">
+          <div className="account-topbar mx-auto flex min-h-16 max-w-[1440px] items-center justify-between gap-2 px-4 sm:px-6 lg:px-8">
+            <Link href={routes.home} aria-label={t("AI Hoops home")} className="flex min-h-11 shrink-0 items-center gap-2 text-base font-extrabold tracking-tight lg:hidden">
               <span className="flex size-8 items-center justify-center rounded-lg bg-[var(--ui-action)] text-[var(--ui-action-text)]">
                 <CircleDot size={19} aria-hidden="true" />
               </span>
@@ -147,21 +150,26 @@ export function AccountCenterShell({
                 <span className="truncate font-semibold text-[var(--ui-text)]">{t(pageLabel)}</span>
               </>}
             </div>
-            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-              <ThemeToggle />
+            <div className="flex shrink-0 items-center gap-0.5 sm:gap-3">
+              <ThemeToggle className="account-topbar-theme" />
+              <Link href={routes.user.messages} aria-label={t("Notifications")}
+                aria-current={pathname === routes.user.messages ? "page" : undefined}
+                className="account-topbar-icon lg:hidden">
+                <Bell size={20} aria-hidden="true" />
+              </Link>
               <Link
                 href={routes.user.profile}
                 aria-label={t("Open personal profile")}
-                className="flex min-h-11 items-center gap-2 rounded-lg p-1.5 hover:bg-[var(--ui-subtle)]"
+                aria-current={pathname === routes.user.profile ? "page" : undefined}
+                className="account-topbar-profile flex min-h-11 items-center gap-2 rounded-lg p-1.5 hover:bg-[var(--ui-subtle)]"
               >
                 {avatar}
                 <span className="hidden max-w-32 truncate text-sm font-semibold sm:block">{username}</span>
               </Link>
-              <WorkspaceMobileMenu items={accountNavigation} eyebrow={t("Player hub")} variant="drawer" />
             </div>
           </div>
         </header>
-        <nav aria-label={t("Training workspaces")} className="border-b border-[var(--ui-border)] bg-[var(--ui-surface)]">
+        <nav aria-label={t("Training workspaces")} className="hidden border-b border-[var(--ui-border)] bg-[var(--ui-surface)] lg:block">
           <div className="mx-auto grid max-w-[1440px] grid-cols-3 items-center gap-1 px-3 sm:flex sm:gap-2 sm:px-6 lg:px-8">
             <span className="mr-1 hidden text-xs font-semibold text-[var(--ui-muted)] lg:block">{t("Video analysis")}</span>
             {trainingNavigation.map(({ href, label, icon: Icon }) => (
@@ -179,6 +187,17 @@ export function AccountCenterShell({
           {children}
         </main>
       </div>
+      <nav aria-label={t("Personal center mobile")} className="account-bottom-bar lg:hidden">
+        <div className="account-bottom-tabs">
+          {mobileTabs.map(({ href, label, icon: Icon }) => (
+            <Link key={href} href={href} aria-current={pathname === href ? "page" : undefined} className="account-bottom-tab">
+              <span className="account-tab-icon"><Icon size={20} aria-hidden="true" /></span>
+              <span>{t(label)}</span>
+            </Link>
+          ))}
+          <WorkspaceMobileDrawer title="More" sections={mobileMenuSections} />
+        </div>
+      </nav>
     </div>
   );
 }
