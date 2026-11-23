@@ -1,23 +1,93 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState, type FormEvent } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
-export function ReportPagination({ page, total, onChange, disabled = false }: {
-  page: number; total: number; onChange: (page: number) => void; disabled?: boolean;
-}) {
+type ReportPaginationProps = {
+  page: number;
+  total: number;
+  onChange: (page: number) => void;
+  disabled?: boolean;
+};
+
+export function ReportPagination({
+  page,
+  total,
+  onChange,
+  disabled = false,
+}: ReportPaginationProps) {
   const pages = Math.max(1, Math.ceil(total / 10));
+  const inputId = useId();
   const [input, setInput] = useState("");
   const target = Number(input);
   const valid = /^\d+$/.test(input) && Number.isInteger(target) && target >= 1 && target <= pages;
-  const buttonClass = "min-h-11 rounded-lg border border-white/20 px-4 disabled:cursor-not-allowed disabled:opacity-40";
-  return <nav aria-label="Report pagination" className="mt-5 flex flex-wrap items-center gap-3 text-sm text-white/80">
-    <span aria-live="polite">{total ? `${(page - 1) * 10 + 1}–${Math.min(page * 10, total)} of ${total}` : "0 reports"} · Page {page} of {pages}</span>
-    <button type="button" className={buttonClass} disabled={disabled || page <= 1} onClick={() => onChange(page - 1)}>Previous</button>
-    <button type="button" className={buttonClass} disabled={disabled || page >= pages} onClick={() => onChange(page + 1)}>Next</button>
-    <form className="flex items-center gap-2" onSubmit={event => { event.preventDefault(); if (valid && !disabled) { onChange(target); setInput(""); } }}>
-      <label>Go to page <input aria-label="Page number" type="number" min={1} max={pages} step={1} value={input} disabled={disabled}
-        onChange={event => setInput(event.target.value)} className="ml-2 min-h-11 w-20 rounded-lg border border-white/20 bg-[#10141b] px-2 text-white" /></label>
-      <button className={buttonClass} disabled={disabled || !valid} type="submit">Go</button>
-    </form>
-  </nav>;
+
+  function jumpToPage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!valid || disabled) return;
+    onChange(target);
+    setInput("");
+  }
+
+  return (
+    <nav
+      aria-label="Report pagination"
+      className="mt-4 flex min-w-0 flex-wrap items-center justify-between gap-x-5 gap-y-3 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] px-3 py-3 text-sm text-[var(--ui-text)] sm:px-4"
+    >
+      <div aria-live="polite" aria-atomic="true" className="min-w-0 flex-1 basis-full sm:basis-auto">
+        <p className="font-semibold tabular-nums">Page {page} of {pages}</p>
+        <p className="mt-0.5 text-xs tabular-nums text-[var(--ui-muted)]">
+          {total ? `Showing ${(page - 1) * 10 + 1}–${Math.min(page * 10, total)} of ${total} reports` : "0 reports"}
+        </p>
+      </div>
+      <div role="group" aria-label="Previous and next page" className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          className="ui-button disabled:cursor-not-allowed"
+          disabled={disabled || page <= 1}
+          onClick={() => onChange(page - 1)}
+        >
+          <ChevronLeft size={16} aria-hidden="true" />
+          Previous
+        </button>
+        <button
+          type="button"
+          className="ui-button disabled:cursor-not-allowed"
+          disabled={disabled || page >= pages}
+          onClick={() => onChange(page + 1)}
+        >
+          Next
+          <ChevronRight size={16} aria-hidden="true" />
+        </button>
+      </div>
+      <form
+        aria-label="Jump to a page"
+        className="flex min-w-0 flex-wrap items-center gap-2 max-sm:w-full max-sm:border-t max-sm:border-[var(--ui-border)] max-sm:pt-3"
+        onSubmit={jumpToPage}
+      >
+        <label htmlFor={inputId} className="font-medium text-[var(--ui-muted)]">
+          Page number
+        </label>
+        <input
+          id={inputId}
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={pages}
+          step={1}
+          value={input}
+          disabled={disabled}
+          onChange={(event) => setInput(event.target.value)}
+          className="min-h-11 w-16 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-subtle)] px-2 text-[var(--ui-text)] tabular-nums disabled:cursor-not-allowed"
+        />
+        <button
+          className="ui-button ui-primary disabled:cursor-not-allowed"
+          disabled={disabled || !valid}
+          type="submit"
+        >
+          Go
+        </button>
+      </form>
+    </nav>
+  );
 }
