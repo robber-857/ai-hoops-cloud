@@ -66,7 +66,6 @@ export function GrowthTrendsSection({ initialType = "shooting" }: { initialType?
   const end = Math.min(currentDay, selectedDate ?? latestDay);
   const start = end - (dayCount - 1) * DAY_MS;
   const points: ChartPoint[] = data.filter(({ time }) => time >= start && time <= end);
-  const hasUnscoredDays = points.some((point, index) => index > 0 && point.time - points[index - 1].time > DAY_MS);
   const first = points[0];
   const latest = points.at(-1);
   const comparison = points.length > 1 && first && latest
@@ -183,7 +182,6 @@ export function GrowthTrendsSection({ initialType = "shooting" }: { initialType?
           </dl>
         )}
 
-        {hasUnscoredDays && <p className="mb-1 text-xs text-[var(--ui-muted)]">Gaps mark days without a saved score.</p>}
         {!history ? (
           <p role="status" className="flex min-h-40 items-center justify-center rounded-xl bg-[var(--ui-subtle)] px-5 text-center text-sm text-[var(--ui-muted)]">Loading saved scores…</p>
         ) : history.failed ? (

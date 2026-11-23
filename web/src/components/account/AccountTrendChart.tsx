@@ -6,6 +6,7 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -47,16 +48,18 @@ function dateTicks([start, end]: [number, number], limit: number) {
   );
 }
 
-function markUnscoredDays(points: ChartPoint[]): PlotPoint[] {
-  const plot: PlotPoint[] = [];
-  for (const point of points) {
-    const previous = plot.at(-1);
+function buildScorePlot(points: ChartPoint[]) {
+  const plotPoints: PlotPoint[] = [];
+  const gaps: { from: ChartPoint; to: ChartPoint }[] = [];
+  points.forEach((point, index) => {
+    const previous = points[index - 1];
     if (previous && point.time - previous.time > DAY_MS) {
-      plot.push({ time: previous.time + DAY_MS, value: null });
+      plotPoints.push({ time: previous.time + DAY_MS, value: null });
+      gaps.push({ from: previous, to: point });
     }
-    plot.push(point);
-  }
-  return plot;
+    plotPoints.push(point);
+  });
+  return { plotPoints, gaps };
 }
 
 export function AccountTrendChart({
@@ -82,7 +85,7 @@ export function AccountTrendChart({
   const [plotWidth, setPlotWidth] = useState(0);
   const unitSuffix = unit ? ` ${unit}` : "";
   const displayValue = (value: number) => `${valueFormat.format(value)}${unitSuffix}`;
-  const plotPoints = series === "scores" ? markUnscoredDays(points) : points;
+  const { plotPoints, gaps } = series === "scores" ? buildScorePlot(points) : { plotPoints: points, gaps: [] };
   const tickLimit = plotWidth < 420 ? 3 : plotWidth < 750 ? 5 : 7;
   if (!points.length) {
     return (
@@ -94,7 +97,13 @@ export function AccountTrendChart({
 
   return (
     <div className="min-w-0">
-      <div className="h-[clamp(13rem,34vw,17rem)] min-w-0 rounded-xl bg-[color-mix(in_srgb,var(--ui-subtle)_42%,var(--ui-surface))] [&_.recharts-surface:focus-visible]:outline-2 [&_.recharts-surface:focus-visible]:outline-offset-2 [&_.recharts-surface:focus-visible]:outline-[var(--ui-accent)] [&_.recharts-surface_g:focus:not(:focus-visible)]:outline-none">
+      {gaps.length > 0 && (
+        <p className="mb-2 flex items-center gap-2 text-xs text-[var(--ui-muted)]">
+          <span aria-hidden="true" className="w-6 shrink-0 border-t-2 border-dashed" style={{ borderColor: color }} />
+          Dashed lines span days with no saved score.
+        </p>
+      )}
+      <div className="h-[clamp(15rem,38vw,21rem)] min-w-0 rounded-xl bg-[color-mix(in_srgb,var(--ui-subtle)_42%,var(--ui-surface))] [&_.recharts-surface:focus-visible]:outline-2 [&_.recharts-surface:focus-visible]:outline-offset-2 [&_.recharts-surface:focus-visible]:outline-[var(--ui-accent)] [&_.recharts-surface_g:focus:not(:focus-visible)]:outline-none">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} onResize={setPlotWidth}>
           <AreaChart
             title={title}
@@ -134,6 +143,18 @@ export function AccountTrendChart({
               tickMargin={8}
               width={38}
             />
+            {gaps.map(({ from, to }) => (
+              <ReferenceLine
+                key={from.time}
+                segment={[{ x: from.time, y: from.value }, { x: to.time, y: to.value }]}
+                stroke={color}
+                strokeDasharray="4 5"
+                strokeOpacity={0.65}
+                strokeWidth={1.75}
+                strokeLinecap="round"
+                pointerEvents="none"
+              />
+            ))}
             <Tooltip
               isAnimationActive={false}
               content={({ active, payload }) => {
@@ -162,7 +183,7 @@ export function AccountTrendChart({
               strokeWidth={2.5}
               strokeLinecap="round"
               strokeLinejoin="round"
-              fill={`url(#${gradient})`}
+              fill={gaps.length ? "none" : `url(#${gradient})`}
               baseValue={valueRange[0]}
               dot={points.length <= 30 && { r: points.length <= 3 ? 5 : 3.5, stroke: "var(--ui-surface)", strokeWidth: 2, fill: color }}
               activeDot={{ r: 6, stroke: "var(--ui-surface)", strokeWidth: 2.5, fill: color }}
