@@ -101,7 +101,7 @@ export type AdminBulkClassMembersResponse = {
   errors: AdminBulkClassMemberError[];
 };
 
-export type AdminUserRole = "user" | "student" | "coach" | "admin";
+export type AdminUserRole = "user" | "student" | "coach" | "admin" | "super_admin";
 export type AdminUserStatus = "active" | "disabled" | "locked";
 
 export type AdminUserClassMembershipRead = {

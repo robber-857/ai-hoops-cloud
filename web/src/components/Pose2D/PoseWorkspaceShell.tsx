@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 
 import { AccountEntryButton } from '@/components/account/AccountEntryButton';
+import { ThemeToggle } from '@/components/navigation/ThemeToggle';
 import { routes } from '@/lib/routes';
 import { cn } from '@/lib/utils';
 import {
@@ -24,6 +25,7 @@ type AnalysisMode = 'shooting' | 'dribbling' | 'training';
 type PoseWorkspaceShellProps = {
   mode: AnalysisMode;
   hasUpload: boolean;
+  trainingPreview?: React.ReactNode;
   children: React.ReactNode;
 };
 
@@ -225,10 +227,10 @@ const modeConfig: Record<AnalysisMode, ModeConfig> = {
   },
   training: {
     eyebrow: 'Basic Training Lab',
-    titleLead: 'Coach each',
-    titleAccent: 'training rep',
+    titleLead: 'Practice a',
+    titleAccent: 'movement',
     description:
-      'A more deliberate upload and review flow for conditioning work, with reserved space for future template demos like squats, planks, and high knees.',
+      'Choose an exercise, check how to film it, and upload your clip for feedback on your technique.',
     accentText: 'text-emerald-300',
     accentBorder: 'border-emerald-400/20',
     accentSurface: 'from-emerald-500/18 via-slate-950 to-slate-950',
@@ -238,21 +240,12 @@ const modeConfig: Record<AnalysisMode, ModeConfig> = {
       'border-emerald-300/30 bg-emerald-300 text-slate-950 hover:bg-emerald-200',
     accentButtonMuted:
       'border-emerald-300/18 bg-emerald-300/10 text-emerald-100 hover:border-emerald-300/35 hover:bg-emerald-300/16',
-    sampleLabel: 'Side-view training template',
-    sampleTitle: 'Example movement preview placeholder',
-    sampleDescription:
-      'Future template demos can appear here for squat, wall sit, plank, and running mechanics so users know the expected angle before upload.',
-    templates: ['High Knees', 'Wall Sit', 'Deep Squat'],
-    guide: [
-      'Side view usually works best for posture-based training checks.',
-      'Keep the athlete centered with full body visibility.',
-      'Template switching UI is ready for hookup when you need it.',
-    ],
-    stats: [
-      { label: 'Templates', value: '05' },
-      { label: 'Camera', value: 'Side' },
-      { label: 'Session', value: 'Ready' },
-    ],
+    sampleLabel: '',
+    sampleTitle: '',
+    sampleDescription: '',
+    templates: [],
+    guide: [],
+    stats: [],
   },
 };
 
@@ -265,6 +258,7 @@ const navItems = [
 export default function PoseWorkspaceShell({
   mode,
   hasUpload,
+  trainingPreview,
   children,
 }: PoseWorkspaceShellProps) {
   const config = modeConfig[mode];
@@ -402,10 +396,11 @@ export default function PoseWorkspaceShell({
                     Report
                   </Link>
                   <AccountEntryButton />
+                  <ThemeToggle />
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 sm:w-fit">
+              {config.stats.length > 0 && <div className="grid grid-cols-3 gap-3 sm:w-fit">
                 {config.stats.map((stat) => (
                   <div
                     key={stat.label}
@@ -427,10 +422,10 @@ export default function PoseWorkspaceShell({
                     </div>
                   </div>
                 ))}
-              </div>
+              </div>}
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr] xl:items-end">
+            <div className={cn('grid gap-6', mode !== 'training' && 'xl:grid-cols-[1.08fr_0.92fr] xl:items-end')}>
               <div className="max-w-3xl">
                 <div
                   className={cn(
@@ -449,7 +444,7 @@ export default function PoseWorkspaceShell({
                 </p>
               </div>
 
-              <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-4 backdrop-blur-xl sm:p-5">
+              {mode !== 'training' && <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-4 backdrop-blur-xl sm:p-5">
                 <div className="flex items-start gap-3">
                   <div
                     className={cn(
@@ -469,12 +464,12 @@ export default function PoseWorkspaceShell({
                     </p>
                   </div>
                 </div>
-              </div>
+              </div>}
             </div>
           </div>
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-[1.18fr_0.82fr]">
+        {mode === 'training' ? trainingPreview : <section className="grid gap-6 xl:grid-cols-[1.18fr_0.82fr]">
           <div
             className={cn(
               'analysis-surface overflow-hidden rounded-[30px] border border-white/10 bg-gradient-to-br',
@@ -718,7 +713,7 @@ export default function PoseWorkspaceShell({
               </div>
             </div>
           </div>
-        </section>
+        </section>}
 
         <section className="analysis-surface rounded-[32px] border border-white/10 p-4 sm:p-6">
           <div className="flex flex-col gap-4 border-b border-white/8 pb-5 sm:flex-row sm:items-end sm:justify-between">

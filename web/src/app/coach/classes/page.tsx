@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { isAdminRole } from "@/lib/authRedirect";
 import { AlertTriangle, Loader2, ShieldAlert } from "lucide-react";
 
 import { CoachClassList } from "@/components/coach/CoachClassList";
@@ -28,7 +29,7 @@ export default function CoachClassesPage() {
   const [classes, setClasses] = useState<CoachClassRead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const canAccessCoach = user?.role === "coach" || user?.role === "admin";
+  const canAccessCoach = user?.role === "coach" || isAdminRole(user?.role);
 
   useEffect(() => {
     if (!hasInitialized || !user || !canAccessCoach) {

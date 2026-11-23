@@ -3,7 +3,11 @@ import type { AuthUser } from "@/types/auth";
 
 export type AuthRole = AuthUser["role"];
 
-const authRoles: AuthRole[] = ["admin", "coach", "student", "user"];
+const authRoles: AuthRole[] = ["super_admin", "admin", "coach", "student", "user"];
+
+export function isAdminRole(role: string | null | undefined): boolean {
+  return role === "admin" || role === "super_admin";
+}
 
 function isKnownAuthRole(value: string): value is AuthRole {
   return authRoles.includes(value as AuthRole);
@@ -47,7 +51,7 @@ export function canRoleOpenPath(role: string, path: string) {
     return normalizedRole === "student" || normalizedRole === "user";
   }
 
-  if (normalizedRole === "admin") {
+  if (isAdminRole(normalizedRole)) {
     return true;
   }
 
@@ -64,7 +68,7 @@ export function canRoleOpenPath(role: string, path: string) {
 export function getDefaultPathForRole(role: string) {
   const normalizedRole = normalizeAuthRole(role);
 
-  if (normalizedRole === "admin") {
+  if (isAdminRole(normalizedRole)) {
     return routes.admin.home;
   }
   if (normalizedRole === "coach") {

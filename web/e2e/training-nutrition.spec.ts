@@ -104,7 +104,7 @@ test.describe("simplified training and food nutrition with real dedicated APIs",
     expect(saved.request().postDataJSON()).toMatchObject({ nickname, training_started_on: dates.started });
     expect(await saved.json()).toMatchObject({ nickname, training_started_on: dates.started });
     await expect(basics.getByText(/Profile saved\./)).toBeVisible();
-    await expect(page.getByRole("link", { name: "Open personal center", exact: true })).toContainText(nickname);
+    await expect(page.getByRole("link", { name: "Open personal profile", exact: true })).toContainText(nickname);
 
     await saveMeasurement(page, "150", "40");
     await saveMeasurement(page, "155", "43");
@@ -137,7 +137,7 @@ test.describe("simplified training and food nutrition with real dedicated APIs",
     await expect(basics.getByLabel("Started training on", { exact: true })).toHaveValue("");
     await expect(basics.locator("output")).toHaveText("Not recorded");
     await expect(measurements.locator("li")).toHaveCount(0);
-    await expect(page.getByRole("link", { name: "Open personal center", exact: true })).not.toContainText(nickname);
+    await expect(page.getByRole("link", { name: "Open personal profile", exact: true })).not.toContainText(nickname);
   });
 
   test("coach publishes personal activity minutes, parent reads, stale preview retries and history stays frozen", async ({ page, browser, seed, baseURL }) => {
@@ -367,7 +367,7 @@ test.describe("simplified training and food nutrition with real dedicated APIs",
     const menu = page.getByRole("button", { name: "Open workspace menu", exact: true });
     await menu.focus();
     await menu.press("Enter");
-    const drawer = page.getByRole("dialog", { name: "Personal center", exact: true });
+    const drawer = page.getByRole("dialog", { name: "Player hub", exact: true });
     await expect(drawer).toBeVisible();
     const close = drawer.getByRole("button", { name: "Close workspace menu", exact: true });
     await expect(close).toBeFocused();

@@ -129,7 +129,9 @@ def _announcement_summary(item: Announcement, is_read: bool) -> AnnouncementSumm
     )
 
 
-def _notification_summary(item: Notification) -> NotificationSummaryRead:
+def _notification_summary(
+    item: Notification, report_public_id: UUID | None = None,
+) -> NotificationSummaryRead:
     return NotificationSummaryRead(
         public_id=item.public_id,
         type=item.type,
@@ -137,6 +139,7 @@ def _notification_summary(item: Notification) -> NotificationSummaryRead:
         content=item.content,
         business_type=item.business_type,
         business_id=item.business_id,
+        report_public_id=report_public_id,
         is_read=item.is_read,
         read_at=item.read_at,
         created_at=item.created_at,
@@ -302,8 +305,13 @@ class MeService:
             )
         ) or 0
 
+        reports = self._feedback_report_links(current_user.id, notifications)
         return MeNotificationsResponse(
-            items=[_notification_summary(notification) for notification in notifications],
+            items=[
+                _notification_summary(notification, reports.get(notification.business_id))
+                if notification.business_type == "report_feedback" else _notification_summary(notification)
+                for notification in notifications
+            ],
             unread_count=int(unread_count),
         )
 
@@ -369,7 +377,25 @@ class MeService:
             self.db.commit()
             self.db.refresh(notification)
 
-        return _notification_summary(notification)
+        reports = self._feedback_report_links(current_user.id, [notification])
+        return _notification_summary(notification, reports.get(notification.business_id))
+
+    def _feedback_report_links(self, user_id: int, notifications: list[Notification]) -> dict[int, UUID]:
+        ids = {
+            item.business_id for item in notifications
+            if item.business_type == "report_feedback" and item.business_id is not None
+        }
+        if not ids:
+            return {}
+        return {
+            report_id: public_id for report_id, public_id in self.db.execute(
+                select(AnalysisReport.id, AnalysisReport.public_id).where(
+                    AnalysisReport.id.in_(ids),
+                    AnalysisReport.user_id == user_id,
+                    AnalysisReport.deleted_at.is_(None),
+                )
+            )
+        }
 
     def get_trends(
         self,

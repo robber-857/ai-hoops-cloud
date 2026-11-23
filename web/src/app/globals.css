@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./workspace-theme.css";
 
 :root {
   --font-sans: "Inter", "Segoe UI", sans-serif;
@@ -100,6 +101,15 @@
     position: relative;
     color-scheme: dark;
     background-color: #07080b;
+  }
+
+  html[data-theme="light"] {
+    color-scheme: light;
+    background-color: var(--ui-bg);
+  }
+
+  html[data-theme="light"] body {
+    background: var(--ui-bg);
   }
 
   body {

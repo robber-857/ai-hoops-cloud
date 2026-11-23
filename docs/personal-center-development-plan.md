@@ -1,6 +1,8 @@
 # 个人中心开发文档
 
-## 2026-10-03：精简家长端（当前执行方案）
+> 历史执行方案。2026-11-23 起，侧栏、Overview、训练计划、班级报告和趋势图见[小班协作与学生训练工作台 PRD](student-workspace-prd.md)。
+
+## 2026-10-03：精简家长端
 
 关联：[现行需求](holiday-camp-training-nutrition-requirements.md) · [开发计划](holiday-camp-development-plan.md) · [新交接](holiday-camp-development-handoff-2026-10-03.md) · [本轮验证](holiday-camp-simplified-local-validation-2026-10-03.md) · [操作说明](holiday-camp-simplified-user-guide.md)。本节替代下方三餐/菜谱UI规划；R1–R4页面、API与持久化已实现。前端17文件206项、类型、变更lint及隔离webpack构建通过；具体屏宽、登录操作和错误恢复仅采用验证文档实际记录，不以页面存在宣称真实UI验收或用户确认完成。未部署。
 

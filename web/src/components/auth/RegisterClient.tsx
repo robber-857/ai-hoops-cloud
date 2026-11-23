@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Activity, Bolt, Eye, EyeOff, Mail, Trophy, UserPlus } from "lucide-react";
 
 import { BackToLandingLink } from "@/components/auth/BackToLandingLink";
+import { withClassInvite } from "@/lib/classInvite";
 import { routes } from "@/lib/routes";
 import { authService } from "@/services/auth";
 
@@ -47,6 +48,8 @@ function StatRow({
 
 export function RegisterClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const loginHref = withClassInvite(routes.auth.login, searchParams.get("next"));
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreed, setAgreed] = useState(true);
@@ -103,7 +106,7 @@ export function RegisterClient() {
           email_code: form.email_code,
         });
         setStatusMessage("Registration complete. Redirecting to sign in.");
-        router.push(routes.auth.login);
+        router.push(loginHref);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unable to create account.");
       }
@@ -366,7 +369,7 @@ export function RegisterClient() {
 
             <div className="text-center text-sm text-white/58">
               Already in the program?
-              <Link href={routes.auth.login} className="ml-1 font-bold text-[#ff9f4a] hover:underline">
+              <Link href={loginHref} className="ml-1 font-bold text-[#ff9f4a] hover:underline">
                 Back to login
               </Link>
             </div>

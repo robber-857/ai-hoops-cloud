@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { isAdminRole } from "@/lib/authRedirect";
 import {
   AlertTriangle,
   Bell,
@@ -65,7 +66,7 @@ export default function CoachNotificationsPage() {
   const [readFilter, setReadFilter] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const canAccessCoach = user?.role === "coach" || user?.role === "admin";
+  const canAccessCoach = user?.role === "coach" || isAdminRole(user?.role);
 
   useEffect(() => {
     if (!hasInitialized || !user || !canAccessCoach) {

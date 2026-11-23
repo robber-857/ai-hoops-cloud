@@ -90,7 +90,7 @@ export async function buildTrainingTemplateCatalog(
           remoteTemplate,
           remoteVersion: null,
           availability: "missing_database" as const,
-          availabilityMessage: "This template has not been synced to the training catalog.",
+          availabilityMessage: "This exercise has not been published for analysis.",
           contentHash,
         };
       }
@@ -107,7 +107,9 @@ export async function buildTrainingTemplateCatalog(
           remoteTemplate,
           remoteVersion,
           availability: "version_mismatch" as const,
-          availabilityMessage: "The active database version does not match this app build.",
+          availabilityMessage: remoteTemplate.current_version
+            ? `Update required. Published ${remoteTemplate.current_version} · requires ${template.version}.`
+            : `Update required. Publish version ${template.version} to enable analysis.`,
           contentHash,
         };
       }

@@ -1,5 +1,6 @@
 "use client";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { isAdminRole } from "@/lib/authRedirect";
 import { AccountCenterShell } from "@/components/account/AccountCenterShell";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { CoachShell } from "@/components/coach/CoachShell";
@@ -12,7 +13,7 @@ export default function RecipeLayout({
   const user = useAuthStore((s) => s.user);
   return (
     <ProtectedRoute>
-      {user?.role === "admin" ? (
+      {user && isAdminRole(user.role) ? (
         <AdminShell user={user} title="Recipe library" breadcrumb={["Recipes"]}>
           {children}
         </AdminShell>

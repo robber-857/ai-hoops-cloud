@@ -1,12 +1,32 @@
-# API Spec Draft
+# API Guide
 
 Base path: `/api/v1`
 
 ## Status
 
-This document reflects the current local training-camp main flow as of 2026-04-30.
+See the locally served FastAPI OpenAPI schema for complete request and response fields. The product rules and acceptance scenarios for the student workspace are documented in the [current PRD](student-workspace-prd.md).
 
-The API no longer only covers auth. Uploads, reports, personal center aggregation, and training templates are now part of the active backend surface.
+## Class invitations and videos
+
+| Route | Access and behavior |
+| --- | --- |
+| `POST /class-invitations/preview` | An invitation token reveals the class name and link validity. |
+| `POST /class-invitations/apply` | An authenticated player submits an application for coach review. |
+| `GET/POST/DELETE /coach/classes/{class_public_id}/invitation` | Scoped coach or admin checks, issues or revokes the active link. A new raw token is returned at issuance. |
+| `GET /coach/classes/{class_public_id}/join-requests` | Scoped coach or admin reads applications. |
+| `PATCH /coach/classes/{class_public_id}/join-requests/{request_public_id}` | Approve or decline an application. Membership and decision notification are updated transactionally. |
+| `GET/POST /coach/classes/{class_public_id}/videos` | Scoped list and upload. The upload has a title query parameter and an MP4 or WebM body. |
+| `DELETE /coach/classes/{class_public_id}/videos/{video_public_id}` | Scoped soft archive. |
+| `GET /me/class-videos` | Lists videos available to the authenticated player. |
+| `GET /class-videos/{video_public_id}/playback` | Returns a short-lived signed URL after a fresh access check. |
+
+## Coach feedback and AI
+
+- `GET /reports/{report_public_id}/feedback` returns the private thread and `can_write`.
+- `POST /reports/{report_public_id}/feedback` accepts `body` and UUID `request_id`, creates the comment and notification atomically, and returns the original item on retries with the same ID and body.
+- `GET /me/notifications` and mark-read responses can contain `report_public_id` for direct navigation from feedback notifications.
+- `POST /me/assistant` accepts alternating `user` and `assistant` messages ending with a question, up to nine messages. It returns an answer and zero to three trusted recommendation links. Authenticated student or legacy player accounts only.
+- `POST /admin/users` and `PATCH /admin/users/{user_public_id}` require a system administrator to assign or revoke `admin`. Existing admins retain ordinary operations.
 
 ## Auth
 

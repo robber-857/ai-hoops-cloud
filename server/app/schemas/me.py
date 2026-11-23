@@ -92,6 +92,7 @@ class NotificationSummaryRead(BaseModel):
     content: str | None = None
     business_type: str | None = None
     business_id: int | None = None
+    report_public_id: UUID | None = None
     is_read: bool
     read_at: datetime | None = None
     created_at: datetime

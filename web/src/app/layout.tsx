@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { AuthBootstrap } from "@/components/auth/AuthBootstrap";
+import { initializeTheme } from "@/lib/workspaceTheme";
 
 import "./globals.css";
 
@@ -16,7 +17,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" data-theme="dark" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: initializeTheme }} />
+      </head>
       <body className="antialiased">
         <AuthBootstrap />
         {children}

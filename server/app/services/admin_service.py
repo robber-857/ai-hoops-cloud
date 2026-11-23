@@ -20,8 +20,9 @@ from app.models.announcement import Announcement
 from app.models.announcement_read import AnnouncementRead
 from app.models.camp_class import CampClass
 from app.models.class_member import ClassMember
-from app.models.enums import AnalysisType, UserRole, UserStatus
+from app.models.enums import ADMIN_ROLES, AnalysisType, UserRole, UserStatus
 from app.models.notification import Notification
+from app.models.operation_log import OperationLog
 from app.models.template_example_video import TemplateExampleVideo
 from app.models.training_camp import TrainingCamp
 from app.models.training_session import TrainingSession
@@ -100,11 +101,24 @@ def _local_template_content_hash(raw_template: dict) -> str:
 
 
 def _ensure_admin_access(current_user: User) -> None:
-    if current_user.role != UserRole.admin:
+    if current_user.role not in ADMIN_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access is required.",
         )
+
+
+def _ensure_user_management_access(
+    current_user: User, target: User | None = None, new_role: UserRole | None = None,
+) -> None:
+    if new_role == UserRole.super_admin and (target is None or target.role != new_role):
+        raise HTTPException(status_code=403, detail="System administrators are provisioned by an operator.")
+    if current_user.role == UserRole.super_admin:
+        return
+    if target and target.id == current_user.id and new_role in (None, current_user.role):
+        return
+    if new_role in ADMIN_ROLES or (target and target.role in ADMIN_ROLES):
+        raise HTTPException(status_code=403, detail="System administrator access is required to manage administrators.")
 
 
 def _camp_read(camp: TrainingCamp, class_count: int) -> AdminCampRead:
@@ -458,6 +472,7 @@ class AdminService:
 
     def create_user(self, current_user: User, payload: AdminCreateUserRequest) -> AdminUserDetailRead:
         _ensure_admin_access(current_user)
+        _ensure_user_management_access(current_user, new_role=payload.role)
         username = payload.username.strip()
         phone_number = self._normalize_phone_number(payload.phone_number)
         email = self._normalize_email(payload.email) if payload.email else None
@@ -477,6 +492,8 @@ class AdminService:
         self.db.add(user)
         self.db.flush()
 
+        if user.role == UserRole.admin:
+            self._log_role_change(current_user, user, None)
         if payload.class_public_ids is not None:
             self._sync_user_class_memberships(user, payload.class_public_ids)
 
@@ -497,12 +514,21 @@ class AdminService:
         payload: AdminUpdateUserRequest,
     ) -> AdminUserDetailRead:
         _ensure_admin_access(current_user)
-        user = self._get_user_by_public_id(user_public_id, include_memberships=True)
+        user = self._get_user_by_public_id(user_public_id, include_memberships=True, for_update=True)
         fields_set = payload.model_fields_set
+        _ensure_user_management_access(current_user, user, payload.role)
+        if user.role == UserRole.super_admin and (
+            payload.role not in (None, UserRole.super_admin)
+            or payload.status not in (None, UserStatus.active)
+        ):
+            raise HTTPException(status_code=403, detail="System administrator role and status are managed by an operator.")
 
         if "role" in fields_set and payload.role is not None:
             self._ensure_not_self_lockout(current_user, user, new_role=payload.role)
+            previous_role = user.role
             user.role = payload.role
+            if previous_role != user.role and (previous_role in ADMIN_ROLES or user.role in ADMIN_ROLES):
+                self._log_role_change(current_user, user, previous_role)
         if "status" in fields_set and payload.status is not None:
             self._ensure_not_self_lockout(current_user, user, new_status=payload.status)
             user.status = payload.status
@@ -563,7 +589,10 @@ class AdminService:
 
     def disable_user(self, current_user: User, user_public_id: UUID) -> None:
         _ensure_admin_access(current_user)
-        user = self._get_user_by_public_id(user_public_id)
+        user = self._get_user_by_public_id(user_public_id, for_update=True)
+        _ensure_user_management_access(current_user, user)
+        if user.role == UserRole.super_admin:
+            raise HTTPException(status_code=403, detail="System administrator status is managed by an operator.")
         self._ensure_not_self_lockout(current_user, user, new_status=UserStatus.disabled)
         user.status = UserStatus.disabled
         user.deleted_at = datetime.now(timezone.utc)
@@ -1754,7 +1783,7 @@ class AdminService:
     ) -> None:
         if current_user.id != target_user.id:
             return
-        if new_role is not None and new_role != UserRole.admin:
+        if new_role is not None and new_role != current_user.role:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Admin users cannot remove their own admin role.",
@@ -1764,6 +1793,16 @@ class AdminService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Admin users cannot disable their own account.",
             )
+
+    def _log_role_change(self, actor: User, target: User, previous: UserRole | None) -> None:
+        self.db.add(OperationLog(
+            user_id=actor.id,
+            module="users",
+            action="change_role",
+            target_type="user",
+            target_id=str(target.public_id),
+            log_metadata={"previous": previous.value if previous else None, "role": target.role.value},
+        ))
 
     def _normalize_phone_number(self, phone_number: str) -> str:
         phone_number = phone_number.strip()
@@ -2279,8 +2318,11 @@ class AdminService:
         user_public_id: UUID,
         *,
         include_memberships: bool = False,
+        for_update: bool = False,
     ) -> User:
         stmt = select(User).where(User.public_id == user_public_id)
+        if for_update:
+            stmt = stmt.with_for_update().execution_options(populate_existing=True)
         if include_memberships:
             stmt = stmt.options(
                 selectinload(User.class_members)

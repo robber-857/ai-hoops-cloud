@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Activity, CalendarDays, Utensils } from "lucide-react";
 import { useEffect, useState } from "react";
 import { meService } from "@/services/me";
 import { playerProfileService } from "@/services/playerProfile";
@@ -71,8 +72,8 @@ function ReloadNotice({ message, retry }: { message: string; retry: () => void }
   </div>;
 }
 
-const cardClass = "min-w-0 space-y-4 rounded-[22px] border border-white/15 bg-[#080d16]/85 p-5";
-const linkClass = "inline-flex min-h-11 items-center text-sm text-[#d8ff5d] underline";
+const cardClass = "ui-panel space-y-3 p-4 sm:p-5";
+const linkClass = "ui-link";
 
 export function TrainingNutritionOverview({ userPublicId }: { userPublicId: string | null }) {
   const profile = useOwnedResource(userPublicId, loadProfile);
@@ -81,9 +82,11 @@ export function TrainingNutritionOverview({ userPublicId }: { userPublicId: stri
   const basics = profile.data?.profile;
   const summary = today.data?.summary;
 
-  return <div className="grid min-w-0 gap-4 lg:grid-cols-3">
+  return <div className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-3">
     <section className={cardClass}>
-      <h2 className="text-xl font-semibold">Player profile</h2>
+      <h2 className="flex items-center gap-2 text-lg font-bold">
+        <Activity size={19} className="text-[var(--ui-chart-teal)]" aria-hidden="true" /> Player profile
+      </h2>
       {profile.loading && <p role="status" className="text-sm text-white/70">Loading profile…</p>}
       {profile.error && <ReloadNotice message={profile.error} retry={profile.retry}/>}
       {!!profile.data?.errors.length && <ReloadNotice message={profile.data.errors.join(" ")} retry={profile.retry}/>}
@@ -110,7 +113,9 @@ export function TrainingNutritionOverview({ userPublicId }: { userPublicId: stri
       <Link className={linkClass} href="/me/profile">View and update profile</Link>
     </section>
     <section className={cardClass}>
-      <h2 className="text-xl font-semibold">Today’s training</h2>
+      <h2 className="flex items-center gap-2 text-lg font-bold">
+        <CalendarDays size={19} className="text-[var(--ui-chart-violet)]" aria-hidden="true" /> Today’s training
+      </h2>
       {today.loading && <p role="status" className="text-sm text-white/70">Loading today’s published classes…</p>}
       {today.error && <ReloadNotice message={today.error} retry={today.retry}/>}
       {summary && <>
@@ -129,7 +134,9 @@ export function TrainingNutritionOverview({ userPublicId }: { userPublicId: stri
       <Link className={linkClass} href="/me/class-reports/daily">View daily training records</Link>
     </section>
     <section className={cardClass}>
-      <h2 className="text-xl font-semibold">Food nutrients</h2>
+      <h2 className="flex items-center gap-2 text-lg font-bold">
+        <Utensils size={19} className="text-[var(--ui-chart-orange)]" aria-hidden="true" /> Food nutrients
+      </h2>
       <p className="text-sm leading-6 text-white/75">Compare carbohydrate, protein and fat per 100 g of meat, eggs, dairy and vegetables, with the preparation state and food source shown.</p>
       <p className="text-sm leading-6 text-white/70">For general recovery, remember fluids and regular meals containing carbohydrate and protein.</p>
       <Link className={linkClass} href="/foods">Explore food nutrition per 100 g</Link>

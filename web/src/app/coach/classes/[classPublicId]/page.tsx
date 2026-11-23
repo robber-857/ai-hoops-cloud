@@ -21,10 +21,13 @@ import { CoachShell } from "@/components/coach/CoachShell";
 import { CoachStudentTable } from "@/components/coach/CoachStudentTable";
 import { CoachAnnouncementTable } from "@/components/coach/CoachAnnouncementTable";
 import { CoachTaskTable } from "@/components/coach/CoachTaskTable";
+import { ClassJoinPanel } from "@/components/coach/ClassJoinPanel";
+import { ClassVideoLibrary } from "@/components/account/ClassVideoLibrary";
 import { CreateAnnouncementPanel } from "@/components/coach/CreateAnnouncementPanel";
 import { CreateTaskPanel } from "@/components/coach/CreateTaskPanel";
 import { formatDate, formatScore, getClassStatusTone } from "@/components/coach/coachUtils";
 import { routes } from "@/lib/routes";
+import { isAdminRole } from "@/lib/authRedirect";
 import { cn } from "@/lib/utils";
 import {
   coachService,
@@ -41,7 +44,7 @@ import {
 import type { ReportAnalysisType } from "@/services/reports";
 import { useAuthStore } from "@/store/authStore";
 
-type TabId = "students" | "reports" | "tasks" | "announcements";
+type TabId = "students" | "reports" | "tasks" | "announcements" | "videos";
 type ComposerId = "task" | "announcement";
 
 const filterFieldClass =
@@ -177,7 +180,7 @@ export default function CoachClassDetailPage() {
   const [announcementToFilter, setAnnouncementToFilter] = useState("");
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
 
-  const canAccessCoach = user?.role === "coach" || user?.role === "admin";
+  const canAccessCoach = user?.role === "coach" || isAdminRole(user?.role);
 
   useEffect(() => {
     if (!hasInitialized || !user || !canAccessCoach || !classPublicId) {
@@ -582,7 +585,7 @@ export default function CoachClassDetailPage() {
             ) : null}
           </div>
 
-          <div className="mt-5 flex gap-2 border-b border-white/10">
+          <div className="mt-5 flex flex-wrap gap-2 border-b border-white/10">
             {[
               { id: "students" as const, label: "Class students", count: students.length },
               { id: "reports" as const, label: "Recent reports", count: reports.length },
@@ -592,6 +595,7 @@ export default function CoachClassDetailPage() {
                 label: "Announcements",
                 count: announcements.length,
               },
+              { id: "videos" as const, label: "Class videos" },
             ].map((tab) => {
               const isActive = activeTab === tab.id;
 
@@ -606,7 +610,7 @@ export default function CoachClassDetailPage() {
                   )}
                 >
                   <span className="relative z-10">
-                    {tab.label} <span className="text-white/34">{tab.count}</span>
+                    {tab.label} {typeof tab.count === "number" && <span className="text-white/34">{tab.count}</span>}
                   </span>
                   {isActive ? (
                     <motion.span
@@ -630,7 +634,23 @@ export default function CoachClassDetailPage() {
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.22 }}
                 >
+                  {classItem && <ClassJoinPanel
+                    key={classPublicId}
+                    classId={classPublicId}
+                    canInvite={classItem.status === "active"}
+                    onApproved={async () => setStudents((await coachService.listClassStudents(classPublicId)).items)}
+                  />}
                   <CoachStudentTable students={students} />
+                </motion.div>
+              ) : activeTab === "videos" ? (
+                <motion.div
+                  key="videos"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.22 }}
+                >
+                  {classItem && <ClassVideoLibrary key={classPublicId} classId={classPublicId} canUpload={classItem.status === "active"} />}
                 </motion.div>
               ) : activeTab === "reports" ? (
                 <motion.div

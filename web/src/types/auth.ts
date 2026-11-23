@@ -6,7 +6,7 @@ export interface AuthUser {
   email: string | null;
   nickname: string | null;
   avatar_url: string | null;
-  role: "user" | "student" | "coach" | "admin";
+  role: "user" | "student" | "coach" | "admin" | "super_admin";
   is_active: boolean;
   created_at: string;
   updated_at: string;

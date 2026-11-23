@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { isAdminRole } from "@/lib/authRedirect";
 import { LessonReportPublisher } from "@/components/class-reports/LessonReportPublisher";
 import { CoachShell } from "@/components/coach/CoachShell";
 import {
@@ -17,7 +18,7 @@ import {
 } from "@/services/campLessons";
 export default function CoachLessonsPage() {
   const user = useAuthStore((s) => s.user),
-    allowed = user?.role === "coach" || user?.role === "admin";
+    allowed = user?.role === "coach" || isAdminRole(user?.role);
   const [classes, setClasses] = useState<CoachClassRead[]>([]),
     [classId, setClassId] = useState(""),
     [plans, setPlans] = useState<CampPlan[]>([]),

@@ -17,7 +17,7 @@ from app.models.analysis_report import AnalysisReport
 from app.models.announcement import Announcement
 from app.models.camp_class import CampClass
 from app.models.class_member import ClassMember
-from app.models.enums import ReportStatus, UserRole
+from app.models.enums import ADMIN_ROLES, ReportStatus, UserRole
 from app.models.notification import Notification
 from app.models.training_session import TrainingSession
 from app.models.training_task import TrainingTask
@@ -45,7 +45,7 @@ from app.schemas.coach import (
 )
 
 
-COACH_ACCESS_ROLES = {UserRole.coach, UserRole.admin}
+COACH_ACCESS_ROLES = ADMIN_ROLES | {UserRole.coach}
 
 
 def _numeric_to_float(value: Decimal | float | None) -> float | None:
@@ -759,7 +759,7 @@ class CoachService:
             .options(selectinload(CampClass.camp))
             .order_by(CampClass.created_at.desc())
         )
-        if current_user.role != UserRole.admin:
+        if current_user.role not in ADMIN_ROLES:
             stmt = stmt.join(ClassMember, ClassMember.class_id == CampClass.id).where(
                 ClassMember.user_id == current_user.id,
                 ClassMember.member_role == "coach",
@@ -776,7 +776,7 @@ class CoachService:
             .options(selectinload(CampClass.camp))
             .where(CampClass.public_id == class_public_id)
         )
-        if current_user.role != UserRole.admin:
+        if current_user.role not in ADMIN_ROLES:
             stmt = stmt.join(ClassMember, ClassMember.class_id == CampClass.id).where(
                 ClassMember.user_id == current_user.id,
                 ClassMember.member_role == "coach",
@@ -914,7 +914,7 @@ class CoachService:
             .order_by(ClassMember.joined_at.desc(), ClassMember.created_at.desc())
         )
 
-        if current_user.role != UserRole.admin:
+        if current_user.role not in ADMIN_ROLES:
             coach_class_ids = (
                 select(ClassMember.class_id)
                 .where(
@@ -926,7 +926,7 @@ class CoachService:
             stmt = stmt.where(ClassMember.class_id.in_(coach_class_ids))
 
         memberships = self.db.scalars(stmt).all()
-        if current_user.role != UserRole.admin and not memberships:
+        if current_user.role not in ADMIN_ROLES and not memberships:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found.")
         return student, memberships
 

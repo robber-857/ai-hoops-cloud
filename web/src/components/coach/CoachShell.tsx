@@ -22,6 +22,7 @@ import type { Group, Points } from "three";
 
 import { LogoutButton } from "@/components/account/LogoutButton";
 import { WorkspaceMobileMenu } from "@/components/navigation/WorkspaceMobileMenu";
+import { ThemeToggle } from "@/components/navigation/ThemeToggle";
 import { routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import type { AuthUser } from "@/types/auth";
@@ -179,7 +180,7 @@ function CoachScene({ pointerRef }: { pointerRef: MutableRefObject<PointerState>
 
 function CoachBackground({ pointerRef }: { pointerRef: MutableRefObject<PointerState> }) {
   return (
-    <div className="pointer-events-none fixed inset-0 z-0">
+    <div className="workspace-dark-decoration pointer-events-none fixed inset-0 z-0">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_8%,rgba(56,248,255,0.16),transparent_28%),radial-gradient(circle_at_84%_20%,rgba(216,255,93,0.1),transparent_24%),radial-gradient(circle_at_46%_92%,rgba(167,139,250,0.16),transparent_28%),linear-gradient(135deg,#030712_0%,#07111d_42%,#05070c_100%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:72px_72px] opacity-28" />
       <Canvas
@@ -210,7 +211,7 @@ export function CoachShell({ children, user, title, breadcrumb }: CoachShellProp
 
   return (
     <main
-      className="relative min-h-screen overflow-hidden bg-[#030712] text-white"
+      className="theme-workspace relative min-h-screen overflow-hidden bg-[#030712] text-white"
       onPointerMove={handlePointerMove}
     >
       {pathname !== routes.coach.lessons && <CoachBackground pointerRef={pointerRef} />}
@@ -316,6 +317,7 @@ export function CoachShell({ children, user, title, breadcrumb }: CoachShellProp
                 label="Log out"
                 className="hidden min-h-10 rounded-lg border-white/10 bg-white/[0.045] px-3 text-xs text-white/72 hover:bg-white/[0.08] lg:inline-flex"
               />
+              <ThemeToggle />
               <WorkspaceMobileMenu
                 items={mobileNavItems}
                 eyebrow="Coach workspace"

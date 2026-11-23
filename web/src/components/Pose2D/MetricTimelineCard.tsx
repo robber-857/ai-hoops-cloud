@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useId, useMemo, useState } from "react";
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
@@ -15,10 +17,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Activity, ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { Activity, ChevronLeft, ChevronRight, Lightbulb } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTemplateById, type ActionTemplate, type Metric } from "@/config/templates";
 import type { AngleData, MetricScoreBand } from "@/lib/scoring";
 import { buildTrainingMetricChartModels } from "@/lib/trainingMetricPresentation";
@@ -53,17 +53,19 @@ type PerformanceChartItem = {
 };
 
 const tooltipStyle: React.CSSProperties = {
-  backgroundColor: "#0f172a",
-  border: "1px solid rgba(148, 163, 184, 0.28)",
+  backgroundColor: "var(--ui-surface)",
+  border: "1px solid var(--ui-border)",
   borderRadius: 10,
-  boxShadow: "0 18px 48px rgba(2, 6, 23, 0.28)",
-  color: "#e2e8f0",
+  boxShadow: "var(--ui-shadow)",
+  color: "var(--ui-text)",
 };
 
 const tooltipLabelStyle: React.CSSProperties = {
-  color: "#cbd5e1",
+  color: "var(--ui-text)",
   fontWeight: 600,
 };
+
+const initialChartDimensions = { width: 320, height: 230 };
 
 const GENERIC_METRIC_CONFIG: Record<
   string,
@@ -332,42 +334,43 @@ function SummaryRange({
   const targetCenter = rangeStart + (rangeEnd - rangeStart) / 2;
   const markerLabelTransform =
     markerPercent > 88 ? "translateX(-100%)" : markerPercent < 12 ? "translateX(0)" : "translateX(-50%)";
+  const targetTextColor = `color-mix(in oklab, ${accent} 55%, var(--ui-text))`;
   const targetLabelStyle: React.CSSProperties =
     rangeEnd > 92
-      ? { right: 0, color: accent }
+      ? { right: 0 }
       : rangeStart < 8
-        ? { left: 0, color: accent }
-        : { left: `${targetCenter}%`, transform: "translateX(-50%)", color: accent };
+        ? { left: 0 }
+        : { left: `${targetCenter}%`, transform: "translateX(-50%)" };
 
   return (
-    <div className="flex h-full flex-col justify-center gap-5 rounded-lg border border-dashed border-slate-800 bg-slate-950/45 px-4 py-4">
+    <div className="flex h-full flex-col justify-center gap-5 rounded-lg border border-dashed border-[var(--ui-border)] bg-[var(--ui-subtle)] px-4 py-4">
       <div>
-        <div className="text-xs font-medium text-slate-300">{label}</div>
-        <div className="mt-2 text-3xl font-semibold tabular-nums text-slate-50">
+        <div className="text-xs font-medium text-[var(--ui-muted)]">{label}</div>
+        <div className="mt-2 text-3xl font-semibold tabular-nums text-[var(--ui-text)]">
           {formatMetric(value, 3)}
-          {unit ? <span className="ml-1 text-sm font-medium text-slate-400">{unit}</span> : null}
+          {unit ? <span className="ml-1 text-sm font-medium text-[var(--ui-muted)]">{unit}</span> : null}
         </div>
       </div>
 
       <div className="space-y-2">
         <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wide">
-          <span className="text-slate-500">Full scale</span>
-          <span style={{ color: accent }}>Target zone</span>
+          <span className="text-[var(--ui-muted)]">Full scale</span>
+          <span style={{ color: targetTextColor }}>Target zone</span>
         </div>
 
         <div className="relative h-16">
-          <div className="absolute inset-x-0 top-7 h-5 -translate-y-1/2 rounded-full border border-slate-600/80 bg-slate-700/80 shadow-inner shadow-slate-950/60" />
+          <div className="absolute inset-x-0 top-7 h-5 -translate-y-1/2 rounded-full border border-[var(--ui-border)] bg-[var(--ui-surface)]" />
 
           {[0, 25, 50, 75, 100].map((tick) => (
             <div
               key={tick}
-              className="absolute top-4 h-6 w-px bg-slate-400/30"
+              className="absolute top-4 h-6 w-px bg-[var(--ui-border)]"
               style={{ left: `${tick}%` }}
             />
           ))}
 
           <div
-            className="absolute top-7 h-6 -translate-y-1/2 rounded-full border border-white/20"
+            className="absolute top-7 h-6 -translate-y-1/2 rounded-full border border-[var(--ui-surface)]"
             style={{
               left: `${rangeStart}%`,
               width: `${targetWidth}%`,
@@ -378,10 +381,10 @@ function SummaryRange({
 
           {targetPercent !== null ? (
             <div
-              className="absolute top-2 h-10 w-px bg-slate-100/80"
+              className="absolute top-2 h-10 w-px bg-[var(--ui-muted)]"
               style={{ left: `${targetPercent}%` }}
             >
-              <span className="absolute -top-4 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium text-slate-300">
+              <span className="absolute -top-4 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium text-[var(--ui-muted)]">
                 Goal
               </span>
             </div>
@@ -390,11 +393,11 @@ function SummaryRange({
           {value !== null ? (
             <>
               <div
-                className="absolute top-7 h-9 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-slate-950 shadow-[0_0_0_1px_rgba(248,250,252,0.45),0_8px_18px_rgba(2,6,23,0.5)]"
+                className="absolute top-7 h-9 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--ui-surface)] shadow-sm"
                 style={{ left: `${markerPercent}%`, background: accent }}
               />
               <div
-                className="absolute top-0 whitespace-nowrap rounded-md border border-slate-700 bg-slate-950 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-slate-100"
+                className="absolute top-0 whitespace-nowrap rounded-md border border-[var(--ui-border)] bg-[var(--ui-surface)] px-2 py-0.5 text-[10px] font-semibold tabular-nums text-[var(--ui-text)]"
                 style={{
                   left: `${markerPercent}%`,
                   transform: markerLabelTransform,
@@ -406,10 +409,10 @@ function SummaryRange({
           ) : null}
         </div>
 
-        <div className="relative h-9 text-[11px] font-medium text-slate-400">
+        <div className="relative h-9 text-[11px] font-medium text-[var(--ui-muted)]">
           <span className="absolute left-0 top-0 tabular-nums">{range.domain[0]}</span>
           <span className="absolute right-0 top-0 tabular-nums">{range.domain[1]}</span>
-          <span className="absolute top-5 whitespace-nowrap tabular-nums" style={targetLabelStyle}>
+          <span className="absolute top-5 whitespace-nowrap tabular-nums" style={{ ...targetLabelStyle, color: targetTextColor }}>
             Target {formatRangeText(range)}
           </span>
         </div>
@@ -421,19 +424,24 @@ function SummaryRange({
 function MetricLineChart({
   points,
   range,
+  domain,
   target,
   label,
   accent,
   savedValue,
 }: {
   points: ChartPoint[];
-  range: MetricRange;
+  range?: MetricRange;
+  domain?: [number, number];
   target?: number;
   label: string;
   accent: string;
   savedValue: number | null;
 }) {
-  if (points.length < 2) {
+  const gradientId = useId();
+  const stroke = `color-mix(in oklab, ${accent} 73%, var(--ui-text))`;
+
+  if (points.length < 2 && range) {
     return (
       <SummaryRange
         value={savedValue}
@@ -446,47 +454,57 @@ function MetricLineChart({
   }
 
   return (
-    <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-      <LineChart data={points} margin={{ top: 8, right: 14, left: -18, bottom: 0 }}>
-        <CartesianGrid stroke="#334155" strokeDasharray="3 3" vertical={false} opacity={0.35} />
-        <ReferenceArea y1={range.min} y2={range.max} fill={accent} fillOpacity={0.12} />
+    <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={initialChartDimensions}>
+      <AreaChart data={points} margin={{ top: 8, right: 16, left: -4, bottom: 0 }}>
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={stroke} stopOpacity={0.24} />
+            <stop offset="100%" stopColor={stroke} stopOpacity={0.01} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid stroke="var(--ui-border)" strokeDasharray="3 4" vertical={false} />
+        {range && <ReferenceArea y1={range.min} y2={range.max} fill={accent} fillOpacity={0.14} />}
         {target !== undefined ? (
-          <ReferenceLine y={target} stroke="#e2e8f0" strokeDasharray="4 4" strokeOpacity={0.72} />
+          <ReferenceLine y={target} stroke="var(--ui-muted)" strokeDasharray="4 4" strokeOpacity={0.72} />
         ) : null}
         <XAxis
           dataKey="time"
           type="number"
           domain={["dataMin", "dataMax"]}
-          tickFormatter={(value: number | string) => `${Number(value).toFixed(0)}s`}
-          stroke="#94a3b8"
+          tickFormatter={(value: number | string) => `${formatRangeNumber(Number(value), 1)}s`}
+          stroke="var(--ui-muted)"
           fontSize={11}
           tickLine={false}
           axisLine={false}
+          minTickGap={24}
         />
         <YAxis
-          domain={range.domain}
-          stroke="#94a3b8"
+          domain={range?.domain ?? domain ?? ["auto", "auto"]}
+          tickFormatter={(value: number | string) => formatRangeNumber(Number(value), 2)}
+          stroke="var(--ui-muted)"
           fontSize={11}
           tickLine={false}
           axisLine={false}
+          width={42}
         />
         <Tooltip
-          cursor={{ stroke: "#cbd5e1", strokeOpacity: 0.2 }}
+          cursor={{ stroke: "var(--ui-muted)", strokeDasharray: "3 4" }}
           contentStyle={tooltipStyle}
           labelStyle={tooltipLabelStyle}
           labelFormatter={(value: number | string) => `${Number(value).toFixed(1)}s`}
           formatter={(value: number | string) => [Number(value).toFixed(2), label]}
         />
-        <Line
-          type="monotone"
+        <Area
+          type="linear"
           dataKey="value"
-          stroke={accent}
-          strokeWidth={2}
-          dot={points.length <= 80 ? { r: 1.2, strokeWidth: 0, fill: accent } : false}
-          activeDot={{ r: 3.5, stroke: "#f8fafc", strokeWidth: 1, fill: accent }}
-          animationDuration={500}
+          stroke={stroke}
+          strokeWidth={2.5}
+          fill={`url(#${gradientId})`}
+          dot={points.length < 4 ? { r: 3, strokeWidth: 0, fill: stroke } : false}
+          activeDot={{ r: 4.5, stroke: "var(--ui-surface)", strokeWidth: 2, fill: stroke }}
+          isAnimationActive={false}
         />
-      </LineChart>
+      </AreaChart>
     </ResponsiveContainer>
   );
 }
@@ -514,24 +532,24 @@ function ConsistencyChart({
   }
 
   return (
-    <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+    <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={initialChartDimensions}>
       <BarChart data={points} margin={{ top: 8, right: 14, left: -18, bottom: 0 }}>
-        <CartesianGrid stroke="#334155" strokeDasharray="3 3" vertical={false} opacity={0.3} />
+        <CartesianGrid stroke="var(--ui-border)" strokeDasharray="3 4" vertical={false} />
         <ReferenceArea y1={0} y2={0.062} fill={accent} fillOpacity={0.12} />
-        <ReferenceLine y={0.05} stroke="#e2e8f0" strokeDasharray="4 4" strokeOpacity={0.6} />
+        <ReferenceLine y={0.05} stroke="var(--ui-muted)" strokeDasharray="4 4" strokeOpacity={0.6} />
         <XAxis
           dataKey="time"
           type="number"
           domain={["dataMin", "dataMax"]}
           tickFormatter={(value: number | string) => `${Number(value).toFixed(0)}s`}
-          stroke="#94a3b8"
+          stroke="var(--ui-muted)"
           fontSize={11}
           tickLine={false}
           axisLine={false}
         />
         <YAxis
           domain={[0, 0.12]}
-          stroke="#94a3b8"
+          stroke="var(--ui-muted)"
           fontSize={11}
           tickLine={false}
           axisLine={false}
@@ -580,16 +598,16 @@ function GuideHandChart({
   }
 
   return (
-    <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+    <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={initialChartDimensions}>
       <BarChart data={points} margin={{ top: 8, right: 14, left: -22, bottom: 0 }}>
-        <CartesianGrid stroke="#334155" strokeDasharray="3 3" vertical={false} opacity={0.25} />
-        <ReferenceLine y={0.75} stroke="#e2e8f0" strokeDasharray="4 4" strokeOpacity={0.55} />
+        <CartesianGrid stroke="var(--ui-border)" strokeDasharray="3 4" vertical={false} />
+        <ReferenceLine y={0.75} stroke="var(--ui-muted)" strokeDasharray="4 4" strokeOpacity={0.55} />
         <XAxis
           dataKey="time"
           type="number"
           domain={["dataMin", "dataMax"]}
           tickFormatter={(value: number | string) => `${Number(value).toFixed(0)}s`}
-          stroke="#94a3b8"
+          stroke="var(--ui-muted)"
           fontSize={11}
           tickLine={false}
           axisLine={false}
@@ -647,24 +665,24 @@ function VariationBarChart({
   }
 
   return (
-    <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+    <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={initialChartDimensions}>
       <BarChart data={points} margin={{ top: 8, right: 14, left: -18, bottom: 0 }}>
-        <CartesianGrid stroke="#334155" strokeDasharray="3 3" vertical={false} opacity={0.3} />
+        <CartesianGrid stroke="var(--ui-border)" strokeDasharray="3 4" vertical={false} />
         <ReferenceArea y1={range.min} y2={range.max} fill={accent} fillOpacity={0.12} />
-        <ReferenceLine y={target} stroke="#e2e8f0" strokeDasharray="4 4" strokeOpacity={0.58} />
+        <ReferenceLine y={target} stroke="var(--ui-muted)" strokeDasharray="4 4" strokeOpacity={0.58} />
         <XAxis
           dataKey="time"
           type="number"
           domain={["dataMin", "dataMax"]}
           tickFormatter={(value: number | string) => `${Number(value).toFixed(0)}s`}
-          stroke="#94a3b8"
+          stroke="var(--ui-muted)"
           fontSize={11}
           tickLine={false}
           axisLine={false}
         />
         <YAxis
           domain={range.domain}
-          stroke="#94a3b8"
+          stroke="var(--ui-muted)"
           fontSize={11}
           tickLine={false}
           axisLine={false}
@@ -713,12 +731,12 @@ function MidlineCrossingChart({
   }
 
   return (
-    <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+    <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={initialChartDimensions}>
       <LineChart data={points} margin={{ top: 8, right: 14, left: -18, bottom: 0 }}>
-        <CartesianGrid stroke="#334155" strokeDasharray="3 3" opacity={0.32} />
+        <CartesianGrid stroke="var(--ui-border)" strokeDasharray="3 4" />
         <ReferenceLine
           y={0}
-          stroke="#e2e8f0"
+          stroke="var(--ui-muted)"
           strokeDasharray="4 4"
           strokeOpacity={0.65}
         />
@@ -727,21 +745,21 @@ function MidlineCrossingChart({
           type="number"
           domain={["dataMin", "dataMax"]}
           tickFormatter={(value: number | string) => `${Number(value).toFixed(0)}s`}
-          stroke="#94a3b8"
+          stroke="var(--ui-muted)"
           fontSize={11}
           tickLine={false}
           axisLine={false}
         />
         <YAxis
           domain={[-1.2, 1.2]}
-          stroke="#94a3b8"
+          stroke="var(--ui-muted)"
           fontSize={11}
           tickLine={false}
           axisLine={false}
           tickFormatter={(value: number | string) => Number(value).toFixed(1)}
         />
         <Tooltip
-          cursor={{ stroke: "#cbd5e1", strokeOpacity: 0.2 }}
+          cursor={{ stroke: "var(--ui-muted)", strokeOpacity: 0.2 }}
           contentStyle={tooltipStyle}
           labelStyle={tooltipLabelStyle}
           labelFormatter={(value: number | string) => `${Number(value).toFixed(1)}s`}
@@ -770,124 +788,95 @@ function TemplatePerformanceCard({
   subtitle: string;
   charts: readonly PerformanceChartItem[];
 }) {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const activeChart = charts[activeIndex] ?? charts[0];
+  const id = useId();
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const activeIndex = selectedIndex < charts.length ? selectedIndex : 0;
+  const activeChart = charts[activeIndex];
 
   if (!activeChart) return null;
 
-  const handlePrev = () => {
-    setActiveIndex((prev) => (prev - 1 + charts.length) % charts.length);
-  };
-
-  const handleNext = () => {
-    setActiveIndex((prev) => (prev + 1) % charts.length);
-  };
+  function step(offset: number) {
+    setSelectedIndex((activeIndex + offset + charts.length) % charts.length);
+  }
 
   return (
-    <Card className="overflow-hidden border-slate-800 bg-slate-900/45 shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-slate-800/80 px-4 py-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <Activity className="h-4 w-4 shrink-0 text-sky-500" />
+    <section className="ui-panel overflow-hidden text-[var(--ui-text)]" aria-labelledby={`${id}-heading`}>
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--ui-border)] px-4 py-4 sm:px-6">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[var(--ui-accent-soft)] text-[var(--ui-accent)]">
+            <Activity className="size-4" aria-hidden="true" />
+          </span>
           <div className="min-w-0">
-            <CardTitle className="text-sm font-semibold uppercase tracking-wide text-slate-100">
-              Performance Curves
-            </CardTitle>
-            <p className="mt-1 truncate text-xs text-slate-400">
-              {subtitle} - {timeline?.length ?? 0} timeline samples
+            <h3 id={`${id}-heading`} className="text-base font-semibold">Performance Curves</h3>
+            <p className="mt-0.5 text-xs text-[var(--ui-muted)]">
+              {subtitle}{timeline?.length ? ` · ${timeline.length} samples` : ""}
             </p>
           </div>
         </div>
+        {charts.length > 1 && (
+          <div className="flex items-center gap-2">
+            <button type="button" className="ui-icon-button" onClick={() => step(-1)} aria-label="Previous chart">
+              <ChevronLeft className="size-4" aria-hidden="true" />
+            </button>
+            <span className="min-w-9 text-center text-xs tabular-nums text-[var(--ui-muted)]">
+              {activeIndex + 1} / {charts.length}
+            </span>
+            <button type="button" className="ui-icon-button" onClick={() => step(1)} aria-label="Next chart">
+              <ChevronRight className="size-4" aria-hidden="true" />
+            </button>
+          </div>
+        )}
+      </header>
 
-        <div className="flex shrink-0 items-center gap-2 text-slate-400">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-slate-500 hover:bg-slate-800 hover:text-slate-100"
-            onClick={handlePrev}
-            aria-label="Previous chart"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="min-w-[3rem] text-center font-mono text-xs tabular-nums text-slate-300">
-            {activeIndex + 1} / {charts.length}
-          </span>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-slate-500 hover:bg-slate-800 hover:text-slate-100"
-            onClick={handleNext}
-            aria-label="Next chart"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="p-4 sm:p-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-stretch">
-          <div className="min-w-0 flex-1">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1 pt-1">
-                <h4 className="truncate text-base font-semibold text-slate-100">
-                  {activeChart.title}
-                </h4>
-                <p className="mt-1 truncate text-xs leading-5 text-slate-400">
-                  {activeChart.helper}
-                </p>
-              </div>
-              <div className="shrink-0 rounded-lg border border-slate-700/80 bg-slate-950/60 px-2.5 py-2 text-right sm:px-3">
-                <div className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
-                  {activeChart.valueLabel}
-                </div>
-                <div className="mt-0.5 text-base font-semibold tabular-nums leading-none text-slate-100 sm:text-sm sm:leading-normal">
-                  {activeChart.value}
-                </div>
-              </div>
+      <div className="space-y-4 p-4 sm:p-6">
+        {charts.length > 1 && (
+          <div role="group" aria-label="Performance metrics" className="flex flex-wrap gap-2">
+            {charts.map((chart, index) => (
+              <button
+                key={chart.metricKey}
+                type="button"
+                aria-pressed={index === activeIndex}
+                aria-controls={`${id}-chart`}
+                onClick={() => setSelectedIndex(index)}
+                className="rounded-lg border border-[var(--ui-border)] px-3 py-2 text-xs font-medium text-[var(--ui-muted)] transition-colors hover:bg-[var(--ui-subtle)] aria-pressed:border-[var(--ui-accent)] aria-pressed:bg-[var(--ui-accent-soft)] aria-pressed:text-[var(--ui-text)] sm:text-sm"
+              >
+                {chart.title}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <figure id={`${id}-chart`} aria-labelledby={`${id}-metric`} className="min-w-0 overflow-hidden rounded-xl border border-[var(--ui-border)]">
+          <div className="flex flex-wrap items-start justify-between gap-3 px-4 pt-4 sm:px-5">
+            <div className="min-w-0">
+              <h4 id={`${id}-metric`} className="flex items-center gap-2 text-lg font-semibold">
+                <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: activeChart.accent }} />
+                {activeChart.title}
+              </h4>
+              {activeChart.helper && <p className="mt-1 text-xs leading-5 text-[var(--ui-muted)]">{activeChart.helper}</p>}
             </div>
-
-            <div className="h-[280px] min-h-[280px] w-full min-w-0 rounded-xl border border-slate-800/70 bg-slate-950/25 px-2 py-3 sm:h-[320px] sm:px-3">
-              {activeChart.chart}
+            <div className="rounded-lg bg-[var(--ui-subtle)] px-3 py-2">
+              <p className="text-xs text-[var(--ui-muted)]">{activeChart.valueLabel}</p>
+              <p className="text-xl font-semibold tabular-nums">{activeChart.value}</p>
             </div>
           </div>
 
-          <aside className="flex min-w-0 flex-col rounded-xl border border-slate-800/80 bg-slate-950/35 p-4 sm:p-5 lg:w-[360px]">
-            <div className="flex items-start gap-3">
-              <span
-                className="mt-1 h-3 w-3 shrink-0 rounded-full"
-                style={{ backgroundColor: activeChart.accent }}
-              />
-              <div className="min-w-0">
-                <h4 className="text-xl font-bold leading-tight text-slate-50">
-                  {activeChart.title}
-                </h4>
-              </div>
-            </div>
+          <div key={activeChart.metricKey} className="h-[255px] w-full min-w-0 px-2 py-3 sm:h-[295px] sm:px-4">
+            {activeChart.chart}
+          </div>
 
-            <div className="mt-6 flex items-start gap-3">
-              <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-500" />
-              <p className="text-sm leading-6 text-slate-300">{activeChart.explanation}</p>
-            </div>
-
-            <div className="mt-5 rounded-lg border border-slate-800/70 bg-slate-900/35 p-3">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                High score cue
-              </div>
-              <p className="mt-2 text-sm leading-6 text-slate-300">{activeChart.advice}</p>
-            </div>
-
-            <div className="mt-auto pt-5">
-              <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
-                <div
-                  className="h-full rounded-full"
-                  style={{ width: "72%", backgroundColor: activeChart.accent }}
-                />
-              </div>
-            </div>
-          </aside>
-        </div>
-      </CardContent>
-    </Card>
+          <figcaption className="grid gap-3 border-t border-[var(--ui-border)] bg-[var(--ui-subtle)] px-4 py-3 text-sm leading-6 text-[var(--ui-muted)] sm:px-5">
+            <p>{activeChart.explanation}</p>
+            {activeChart.advice && (
+              <p className="flex items-start gap-2 text-[var(--ui-text)]">
+                <Lightbulb className="mt-1 size-4 shrink-0 text-[var(--ui-accent)]" aria-hidden="true" />
+                <span>{activeChart.advice}</span>
+              </p>
+            )}
+          </figcaption>
+        </figure>
+      </div>
+    </section>
   );
 }
 
@@ -898,8 +887,6 @@ function HipHighPerformanceCard({
   timeline: FrameSample[] | null | undefined;
   savedMetrics?: AngleData[] | null;
 }) {
-  const [activeIndex, setActiveIndex] = useState(0);
-
   const stanceSaved = getSavedMetric(savedMetrics, "shoulderStanceRatio");
   const guideSaved = getSavedMetric(savedMetrics, "guideHandInChestBoxRate");
   const heightSaved = getSavedMetric(savedMetrics, "wristHeightRatioToShoulder");
@@ -927,7 +914,7 @@ function HipHighPerformanceCard({
       title: "Dribble Height",
       helper: "Target range 0.45-0.75",
       metricKey: "wristHeightRatioToShoulder",
-      valueLabel: "Average",
+      valueLabel: heightSaved === null ? "Average" : "Saved average",
       value: formatMetric(getSummaryValue(heightPoints, heightSaved)),
       accent: "#38bdf8",
       explanation:
@@ -993,121 +980,8 @@ function HipHighPerformanceCard({
     },
   ] as const;
 
-  const activeChart = charts[activeIndex] ?? charts[0];
-
-  const handlePrev = () => {
-    setActiveIndex((prev) => (prev - 1 + charts.length) % charts.length);
-  };
-
-  const handleNext = () => {
-    setActiveIndex((prev) => (prev + 1) % charts.length);
-  };
-
   return (
-    <Card className="overflow-hidden border-slate-800 bg-slate-900/45 shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-slate-800/80 px-4 py-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <Activity className="h-4 w-4 shrink-0 text-sky-500" />
-          <div className="min-w-0">
-            <CardTitle className="text-sm font-semibold uppercase tracking-wide text-slate-100">
-              Performance Curves
-            </CardTitle>
-            <p className="mt-1 truncate text-xs text-slate-400">
-              Front one-hand hip-high dribble - {timeline?.length ?? 0} timeline samples
-            </p>
-          </div>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-2 text-slate-400">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-slate-500 hover:bg-slate-800 hover:text-slate-100"
-            onClick={handlePrev}
-            aria-label="Previous chart"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="min-w-[3rem] text-center font-mono text-xs tabular-nums text-slate-300">
-            {activeIndex + 1} / {charts.length}
-          </span>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-slate-500 hover:bg-slate-800 hover:text-slate-100"
-            onClick={handleNext}
-            aria-label="Next chart"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="p-4 sm:p-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-stretch">
-          <div className="min-w-0 flex-1">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1 pt-1">
-                <h4 className="truncate text-base font-semibold text-slate-100">
-                  {activeChart.title}
-                </h4>
-                <p className="mt-1 truncate text-xs leading-5 text-slate-400">
-                  {activeChart.helper}
-                </p>
-              </div>
-              <div className="shrink-0 rounded-lg border border-slate-700/80 bg-slate-950/60 px-2.5 py-2 text-right sm:px-3">
-                <div className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
-                  {activeChart.valueLabel}
-                </div>
-                <div className="mt-0.5 text-base font-semibold tabular-nums leading-none text-slate-100 sm:text-sm sm:leading-normal">
-                  {activeChart.value}
-                </div>
-              </div>
-            </div>
-
-            <div className="h-[280px] min-h-[280px] w-full min-w-0 rounded-xl border border-slate-800/70 bg-slate-950/25 px-2 py-3 sm:h-[320px] sm:px-3">
-              {activeChart.chart}
-            </div>
-          </div>
-
-          <aside className="flex min-w-0 flex-col rounded-xl border border-slate-800/80 bg-slate-950/35 p-4 sm:p-5 lg:w-[360px]">
-            <div className="flex items-start gap-3">
-              <span
-                className="mt-1 h-3 w-3 shrink-0 rounded-full"
-                style={{ backgroundColor: activeChart.accent }}
-              />
-              <div className="min-w-0">
-                <h4 className="text-xl font-bold leading-tight text-slate-50">
-                  {activeChart.title}
-                </h4>
-              </div>
-            </div>
-
-            <div className="mt-6 flex items-start gap-3">
-              <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-500" />
-              <p className="text-sm leading-6 text-slate-300">{activeChart.explanation}</p>
-            </div>
-
-            <div className="mt-5 rounded-lg border border-slate-800/70 bg-slate-900/35 p-3">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                High score cue
-              </div>
-              <p className="mt-2 text-sm leading-6 text-slate-300">{activeChart.advice}</p>
-            </div>
-
-            <div className="mt-auto pt-5">
-              <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
-                <div
-                  className="h-full rounded-full"
-                  style={{ width: "72%", backgroundColor: activeChart.accent }}
-                />
-              </div>
-            </div>
-          </aside>
-        </div>
-      </CardContent>
-    </Card>
+    <TemplatePerformanceCard timeline={timeline} subtitle="Front one-hand hip-high dribble" charts={charts} />
   );
 }
 
@@ -1118,8 +992,6 @@ function FrontNarrowCrossoverPerformanceCard({
   timeline: FrameSample[] | null | undefined;
   savedMetrics?: AngleData[] | null;
 }) {
-  const [activeIndex, setActiveIndex] = useState(0);
-
   const leftToeSaved = getSavedMetric(savedMetrics, "toeAngleDegLeft");
   const rightToeSaved = getSavedMetric(savedMetrics, "toeAngleDegRight");
   const stanceSaved = getSavedMetric(savedMetrics, "shoulderStanceRatio");
@@ -1300,121 +1172,8 @@ function FrontNarrowCrossoverPerformanceCard({
     },
   ] as const;
 
-  const activeChart = charts[activeIndex] ?? charts[0];
-
-  const handlePrev = () => {
-    setActiveIndex((prev) => (prev - 1 + charts.length) % charts.length);
-  };
-
-  const handleNext = () => {
-    setActiveIndex((prev) => (prev + 1) % charts.length);
-  };
-
   return (
-    <Card className="overflow-hidden border-slate-800 bg-slate-900/45 shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-slate-800/80 px-4 py-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <Activity className="h-4 w-4 shrink-0 text-sky-500" />
-          <div className="min-w-0">
-            <CardTitle className="text-sm font-semibold uppercase tracking-wide text-slate-100">
-              Performance Curves
-            </CardTitle>
-            <p className="mt-1 truncate text-xs text-slate-400">
-              Front narrow crossover - {timeline?.length ?? 0} timeline samples
-            </p>
-          </div>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-2 text-slate-400">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-slate-500 hover:bg-slate-800 hover:text-slate-100"
-            onClick={handlePrev}
-            aria-label="Previous chart"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="min-w-[3rem] text-center font-mono text-xs tabular-nums text-slate-300">
-            {activeIndex + 1} / {charts.length}
-          </span>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-slate-500 hover:bg-slate-800 hover:text-slate-100"
-            onClick={handleNext}
-            aria-label="Next chart"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="p-4 sm:p-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-stretch">
-          <div className="min-w-0 flex-1">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1 pt-1">
-                <h4 className="truncate text-base font-semibold text-slate-100">
-                  {activeChart.title}
-                </h4>
-                <p className="mt-1 truncate text-xs leading-5 text-slate-400">
-                  {activeChart.helper}
-                </p>
-              </div>
-              <div className="shrink-0 rounded-lg border border-slate-700/80 bg-slate-950/60 px-2.5 py-2 text-right sm:px-3">
-                <div className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
-                  {activeChart.valueLabel}
-                </div>
-                <div className="mt-0.5 text-base font-semibold tabular-nums leading-none text-slate-100 sm:text-sm sm:leading-normal">
-                  {activeChart.value}
-                </div>
-              </div>
-            </div>
-
-            <div className="h-[280px] min-h-[280px] w-full min-w-0 rounded-xl border border-slate-800/70 bg-slate-950/25 px-2 py-3 sm:h-[320px] sm:px-3">
-              {activeChart.chart}
-            </div>
-          </div>
-
-          <aside className="flex min-w-0 flex-col rounded-xl border border-slate-800/80 bg-slate-950/35 p-4 sm:p-5 lg:w-[360px]">
-            <div className="flex items-start gap-3">
-              <span
-                className="mt-1 h-3 w-3 shrink-0 rounded-full"
-                style={{ backgroundColor: activeChart.accent }}
-              />
-              <div className="min-w-0">
-                <h4 className="text-xl font-bold leading-tight text-slate-50">
-                  {activeChart.title}
-                </h4>
-              </div>
-            </div>
-
-            <div className="mt-6 flex items-start gap-3">
-              <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-500" />
-              <p className="text-sm leading-6 text-slate-300">{activeChart.explanation}</p>
-            </div>
-
-            <div className="mt-5 rounded-lg border border-slate-800/70 bg-slate-900/35 p-3">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                High score cue
-              </div>
-              <p className="mt-2 text-sm leading-6 text-slate-300">{activeChart.advice}</p>
-            </div>
-
-            <div className="mt-auto pt-5">
-              <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
-                <div
-                  className="h-full rounded-full"
-                  style={{ width: "72%", backgroundColor: activeChart.accent }}
-                />
-              </div>
-            </div>
-          </aside>
-        </div>
-      </CardContent>
-    </Card>
+    <TemplatePerformanceCard timeline={timeline} subtitle="Front narrow crossover" charts={charts} />
   );
 }
 
@@ -2181,135 +1940,35 @@ function DataDrivenTrainingPerformanceCard({
 }
 
 function GenericMetricTimelineCard({ timeline }: { timeline: FrameSample[] | null | undefined }) {
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const charts = useMemo<PerformanceChartItem[]>(() => {
+    if (!timeline?.length) return [];
+    return Object.entries(GENERIC_METRIC_CONFIG).flatMap(([key, config]) => {
+      const points = buildSeries(timeline, key);
+      if (points.length === 0) return [];
 
-  const availableMetrics = useMemo(() => {
-    if (!timeline || timeline.length === 0) return [];
-
-    const firstFrameAngles = timeline[0].angles;
-    const keys = firstFrameAngles.map((angle) => angle.name);
-    return keys.filter((key) => GENERIC_METRIC_CONFIG[key]);
+      return [{
+        title: config.label,
+        helper: "",
+        metricKey: key,
+        valueLabel: "Average",
+        value: formatMetric(average(points)),
+        accent: config.color,
+        explanation: config.desc,
+        advice: "",
+        chart: (
+          <MetricLineChart
+            points={points}
+            domain={config.domain}
+            label={config.label}
+            accent={config.color}
+            savedValue={average(points)}
+          />
+        ),
+      }];
+    });
   }, [timeline]);
 
-  const activeKey = availableMetrics[currentIndex] || "";
-  const config = GENERIC_METRIC_CONFIG[activeKey];
-
-  const chartData = useMemo(() => {
-    if (!timeline) return [];
-
-    return timeline
-      .filter((_, index) => index % 3 === 0)
-      .map((frame) => {
-        const metric = frame.angles.find((angle) => angle.name === activeKey);
-        return {
-          time: frame.time.toFixed(1),
-          value: metric ? metric.value : 0,
-        };
-      });
-  }, [timeline, activeKey]);
-
-  const handleNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % availableMetrics.length);
-  };
-
-  const handlePrev = () => {
-    setCurrentIndex((prev) => (prev - 1 + availableMetrics.length) % availableMetrics.length);
-  };
-
-  if (availableMetrics.length === 0) return null;
-
-  return (
-    <Card className="overflow-hidden border-slate-800 bg-slate-900/50 shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800/50 pb-2">
-        <CardTitle className="flex items-center gap-2 text-sm font-medium uppercase tracking-wide text-slate-300">
-          <Activity className="h-4 w-4 text-sky-500" />
-          Performance Curves
-        </CardTitle>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 text-slate-400 hover:text-white"
-            onClick={handlePrev}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="font-mono text-xs text-slate-500">
-            {currentIndex + 1} / {availableMetrics.length}
-          </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 text-slate-400 hover:text-white"
-            onClick={handleNext}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </CardHeader>
-
-      <CardContent className="p-4">
-        <div className="flex flex-col gap-6 md:flex-row">
-          <div className="h-[200px] min-w-0 flex-1">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.5} />
-                <XAxis
-                  dataKey="time"
-                  stroke="#94a3b8"
-                  fontSize={10}
-                  tickLine={false}
-                  axisLine={false}
-                  minTickGap={30}
-                />
-                <YAxis
-                  stroke="#94a3b8"
-                  fontSize={10}
-                  tickLine={false}
-                  axisLine={false}
-                  domain={config.domain || ["auto", "auto"]}
-                  hide
-                />
-                <Tooltip
-                  contentStyle={tooltipStyle}
-                  itemStyle={{ color: config.color }}
-                  labelStyle={tooltipLabelStyle}
-                  formatter={(value: number | string) => [Number(value).toFixed(2), config.label]}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="value"
-                  stroke={config.color}
-                  strokeWidth={2}
-                  dot={chartData.length <= 80 ? { r: 1.2, strokeWidth: 0, fill: config.color } : false}
-                  activeDot={{ r: 3.5, fill: config.color, stroke: "#f8fafc", strokeWidth: 1 }}
-                  animationDuration={500}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="flex flex-col justify-center space-y-3 rounded-xl border border-slate-800/50 bg-slate-950/30 p-4 md:w-1/3">
-            <div>
-              <h4 className="flex items-center gap-2 text-lg font-bold text-white">
-                <span
-                  className="h-3 w-3 rounded-full"
-                  style={{ backgroundColor: config.color }}
-                />
-                {config.label}
-              </h4>
-            </div>
-
-            <div className="flex items-start gap-2">
-              <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-500" />
-              <p className="text-sm leading-relaxed text-slate-300">{config.desc}</p>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+  return <TemplatePerformanceCard timeline={timeline} subtitle="Recorded motion" charts={charts} />;
 }
 
 export default function MetricTimelineCard({

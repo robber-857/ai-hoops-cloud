@@ -12,6 +12,10 @@ class UserRole(str, Enum):
     student = "student"
     admin = "admin"
     coach = "coach"
+    super_admin = "super_admin"
+
+
+ADMIN_ROLES = frozenset({UserRole.admin, UserRole.super_admin})
 
 
 class VerificationTargetType(str, Enum):

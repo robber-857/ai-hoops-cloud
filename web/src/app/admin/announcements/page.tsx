@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { isAdminRole } from "@/lib/authRedirect";
 import {
   AlertTriangle,
   Archive,
@@ -154,7 +155,7 @@ export default function AdminAnnouncementsPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [form, setForm] = useState<AdminCreateAnnouncementPayload>(emptyForm);
 
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminRole(user?.role);
 
   const loadAnnouncements = async () => {
     const response = await adminService.listAnnouncements({

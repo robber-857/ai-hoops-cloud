@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { isAdminRole } from "@/lib/authRedirect";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -121,7 +122,7 @@ export default function AdminTemplatesPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminRole(user?.role);
   const selectedTemplate = useMemo(
     () => templates.find((template) => template.public_id === selectedTemplateId) ?? null,
     [selectedTemplateId, templates],

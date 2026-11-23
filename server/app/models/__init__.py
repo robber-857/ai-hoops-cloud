@@ -10,9 +10,11 @@ from app.models.camp_class import CampClass
 from app.models.camp_plan import CampPlan
 from app.models.camp_lesson import CampLesson, CampLessonRevision
 from app.models.class_member import ClassMember
+from app.models.class_collaboration import ClassInvitation, ClassJoinRequest, ClassVideo
 from app.models.notification import Notification
 from app.models.operation_log import OperationLog
 from app.models.report_snapshot import ReportSnapshot
+from app.models.report_feedback import ReportFeedback
 from app.models.student_achievement import StudentAchievement
 from app.models.student_goal import StudentGoal
 from app.models.student_growth_snapshot import StudentGrowthSnapshot
@@ -45,9 +47,13 @@ __all__ = [
     "CampLesson",
     "CampLessonRevision",
     "ClassMember",
+    "ClassInvitation",
+    "ClassJoinRequest",
+    "ClassVideo",
     "Notification",
     "OperationLog",
     "ReportSnapshot",
+    "ReportFeedback",
     "StudentAchievement",
     "StudentGoal",
     "StudentGrowthSnapshot",

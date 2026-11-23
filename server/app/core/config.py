@@ -64,6 +64,11 @@ class Settings(BaseSettings):
 
     upload_video_bucket: str = Field(default="user-videos", alias="UPLOAD_VIDEO_BUCKET")
     template_video_bucket: str = Field(default="template-videos", alias="TEMPLATE_VIDEO_BUCKET")
+    class_video_supabase_url: str | None = Field(default=None, alias="SUPABASE_URL")
+    class_video_supabase_key: str | None = Field(default=None, alias="SUPABASE_SERVICE_ROLE_KEY")
+    class_video_bucket: str = Field(default="class-videos", alias="CLASS_VIDEO_BUCKET")
+    training_assistant_api_key: str | None = Field(default=None, alias="TRAINING_ASSISTANT_OPENAI_API_KEY")
+    training_assistant_model: str = Field(default="gpt-4.1-mini", alias="TRAINING_ASSISTANT_MODEL")
 
     model_config = SettingsConfigDict(
         # Production deployments should provide real environment variables.

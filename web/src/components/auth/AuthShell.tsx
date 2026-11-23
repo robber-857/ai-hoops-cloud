@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/navigation/ThemeToggle";
 import { routes } from "@/lib/routes";
 
 interface AuthShellProps {
@@ -28,11 +29,11 @@ export function AuthShell({
   children,
 }: AuthShellProps) {
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(255,143,77,0.18),_transparent_28%),radial-gradient(circle_at_85%_20%,_rgba(61,152,255,0.18),_transparent_26%),linear-gradient(145deg,_#07111f_0%,_#0d1b2e_42%,_#081423_100%)] text-white">
+    <main className="theme-workspace workspace-auth-surface min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(255,143,77,0.18),_transparent_28%),radial-gradient(circle_at_85%_20%,_rgba(61,152,255,0.18),_transparent_26%),linear-gradient(145deg,_#07111f_0%,_#0d1b2e_42%,_#081423_100%)] text-white">
       <div className="min-h-screen bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] [background-size:96px_96px]">
       <div className="grid min-h-screen lg:grid-cols-[1.1fr_0.9fr]">
         <section className="flex flex-col justify-between px-6 py-8 sm:px-10 lg:px-14 lg:py-12">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <Link
               href={routes.home}
               className="inline-flex items-center gap-3 text-sm font-medium tracking-[0.28em] text-white/72 uppercase"
@@ -40,13 +41,16 @@ export function AuthShell({
               <span className="inline-flex h-3 w-3 rounded-full bg-[#ff8e3d] shadow-[0_0_24px_rgba(255,142,61,0.85)]" />
               AI HOOPS CLOUD
             </Link>
-            <Button
-              asChild
-              variant="ghost"
-              className="rounded-full border border-white/12 bg-white/6 px-4 text-white hover:bg-white/12"
-            >
-              <Link href={routes.pose2d.main}>Back to Studio</Link>
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                asChild
+                variant="ghost"
+                className="rounded-full border border-white/12 bg-white/6 px-4 text-white hover:bg-white/12"
+              >
+                <Link href={routes.pose2d.main}>Back to Studio</Link>
+              </Button>
+              <ThemeToggle />
+            </div>
           </div>
 
           <div className="max-w-xl py-16 lg:py-20">

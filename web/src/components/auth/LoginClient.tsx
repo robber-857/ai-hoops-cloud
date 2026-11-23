@@ -17,6 +17,7 @@ import {
 
 import { BackToLandingLink } from "@/components/auth/BackToLandingLink";
 import { normalizeAuthRole, resolveLoginRedirect } from "@/lib/authRedirect";
+import { withClassInvite } from "@/lib/classInvite";
 import { routes } from "@/lib/routes";
 import { authService } from "@/services/auth";
 import { useAuthStore } from "@/store/authStore";
@@ -443,7 +444,7 @@ export function LoginClient() {
             <footer className="mt-8 text-center text-sm text-white/56">
               Apply for Membership:
               <Link
-                href={routes.auth.register}
+                href={withClassInvite(routes.auth.register, searchParams.get("next"))}
                 className="ml-1 font-bold text-[#ff9f4a] underline-offset-4 transition hover:underline"
               >
                 Register
