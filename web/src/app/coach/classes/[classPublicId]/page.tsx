@@ -220,14 +220,14 @@ export default function CoachClassDetailPage() {
         setTasks(tasksResponse.items);
         setAnnouncements(announcementsResponse.items);
         if (!currentClass) {
-          setError(t("Class not found."));
+          setError("Class not found.");
         }
       })
       .catch((fetchError) => {
         if (!isActive) {
           return;
         }
-        setError(fetchError instanceof Error ? fetchError.message : t("Unable to load class."));
+        setError(fetchError instanceof Error ? fetchError.message : "Unable to load class.");
       })
       .finally(() => {
         if (isActive) {
@@ -313,7 +313,7 @@ export default function CoachClassDetailPage() {
     try {
       await refreshTasks();
     } catch (filterError) {
-      setError(filterError instanceof Error ? filterError.message : t("Unable to filter tasks."));
+      setError(filterError instanceof Error ? filterError.message : "Unable to filter tasks.");
     }
   };
 
@@ -324,7 +324,7 @@ export default function CoachClassDetailPage() {
       await refreshAnnouncements();
     } catch (filterError) {
       setError(
-        filterError instanceof Error ? filterError.message : t("Unable to filter announcements."),
+        filterError instanceof Error ? filterError.message : "Unable to filter announcements.",
       );
     }
   };
@@ -342,7 +342,7 @@ export default function CoachClassDetailPage() {
       );
       setActivityMessage(t("Task \"{0}\" moved to {1}.", updatedTask.title, t(updatedTask.status)));
     } catch (updateError) {
-      setError(updateError instanceof Error ? updateError.message : t("Unable to update task."));
+      setError(updateError instanceof Error ? updateError.message : "Unable to update task.");
     } finally {
       setUpdatingTaskId(null);
     }
@@ -359,7 +359,7 @@ export default function CoachClassDetailPage() {
       );
       setActivityMessage(t("Task \"{0}\" updated.", updatedTask.title));
     } catch (updateError) {
-      setError(updateError instanceof Error ? updateError.message : t("Unable to update task."));
+      setError(updateError instanceof Error ? updateError.message : "Unable to update task.");
       throw updateError;
     } finally {
       setUpdatingTaskId(null);
@@ -385,7 +385,7 @@ export default function CoachClassDetailPage() {
       setSelectedTaskIds([]);
       setActivityMessage(t("{0} tasks moved to {1}.", response.items.length, t(status)));
     } catch (updateError) {
-      setError(updateError instanceof Error ? updateError.message : t("Unable to bulk update tasks."));
+      setError(updateError instanceof Error ? updateError.message : "Unable to bulk update tasks.");
     } finally {
       setIsBulkUpdating(false);
     }
@@ -412,7 +412,7 @@ export default function CoachClassDetailPage() {
       setActivityMessage(t("Announcement \"{0}\" updated.", updatedAnnouncement.title));
     } catch (updateError) {
       setError(
-        updateError instanceof Error ? updateError.message : t("Unable to update announcement."),
+        updateError instanceof Error ? updateError.message : "Unable to update announcement.",
       );
     } finally {
       setUpdatingAnnouncementId(null);
@@ -443,7 +443,7 @@ export default function CoachClassDetailPage() {
       setActivityMessage(t("{0} announcements updated.", response.items.length));
     } catch (updateError) {
       setError(
-        updateError instanceof Error ? updateError.message : t("Unable to bulk update announcements."),
+        updateError instanceof Error ? updateError.message : "Unable to bulk update announcements.",
       );
     } finally {
       setIsBulkUpdating(false);
@@ -487,7 +487,7 @@ export default function CoachClassDetailPage() {
       {error ? (
         <div className="flex items-start gap-3 rounded-lg border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-100">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{error}</span>
+          <span>{t(error)}</span>
         </div>
       ) : null}
 
