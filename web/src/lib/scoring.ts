@@ -79,7 +79,7 @@ function getMetricTitle(metric: Metric): string {
   );
 }
 
-function getGrade(score: number): Grade {
+export function getGrade(score: number): Grade {
   if (score >= 90) return "S";
   if (score >= 85) return "A";
   if (score >= 75) return "B";

@@ -12,7 +12,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import Session
 
-from app.models import AnalysisReport, ReportSnapshot, TrainingSession, User, Video
+from app.models import AnalysisReport, Notification, ReportSnapshot, TrainingSession, User, Video
 from app.models.training_template import TrainingTemplate
 from app.models.training_template_version import TrainingTemplateVersion
 from app.models.base import Base
@@ -247,6 +247,18 @@ class ReportAgeReanalysisTests(unittest.TestCase):
         self.assertEqual(self.db.scalar(select(func.count(ReportSnapshot.id))), 0)
         saved = self.service.reanalyze_report_age(self.user, self.original.public_id, self.payload)
         self.assertEqual(saved.public_id, self.payload.request_id)
+
+    def test_first_report_save_for_own_video_does_not_send_ready_notification(self):
+        session = TrainingSession(student_id=self.user.id, video_id=self.video.id,
+                                  analysis_type=AnalysisType.shooting, status="uploaded")
+        self.db.add(session)
+        self.db.flush()
+        payload = SaveReportRequest(session_public_id=session.public_id, template_code="shooting",
+                                    overall_score=80, grade="B", score_data=score_result())
+        with patch.object(self.service, "_upsert_daily_growth_snapshot"):
+            saved = self.service.save_report(self.user, payload)
+        self.assertEqual(saved.overall_score, 80)
+        self.assertEqual(self.db.scalar(select(func.count(Notification.id)).where(Notification.type == "report_ready")), 0)
 
     def test_normal_save_cannot_spoof_comparison_provenance(self):
         # Shooting permits its historical free-practice save contract without a catalog entry.
