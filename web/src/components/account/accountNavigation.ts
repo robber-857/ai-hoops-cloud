@@ -17,7 +17,7 @@ import {
 import { routes } from "@/lib/routes";
 
 const overview = { href: routes.user.me, label: "Overview", icon: House, exact: true };
-const assistant = { href: routes.user.assistant, label: "AI Coach", icon: Sparkles, exact: true };
+const assistant = { href: routes.user.assistant, label: "AI Coach", icon: Sparkles, exact: false };
 const tasks = { href: routes.user.tasks, label: "Training tasks", icon: NotebookPen, exact: true };
 const reports = { href: routes.user.reports, label: "Analysis reports", icon: FileChartColumn, exact: true };
 

@@ -189,12 +189,13 @@ export function AccountCenterShell({
       </div>
       <nav aria-label={t("Personal center mobile")} className="account-bottom-bar lg:hidden">
         <div className="account-bottom-tabs">
-          {mobileTabs.map(({ href, label, icon: Icon }) => (
-            <Link key={href} href={href} aria-current={pathname === href ? "page" : undefined} className="account-bottom-tab">
+          {mobileTabs.map((item) => {
+            const { href, label, icon: Icon } = item;
+            return <Link key={href} href={href} aria-current={matches(pathname, item) ? "page" : undefined} className="account-bottom-tab">
               <span className="account-tab-icon"><Icon size={20} aria-hidden="true" /></span>
               <span>{t(label)}</span>
-            </Link>
-          ))}
+            </Link>;
+          })}
           <WorkspaceMobileDrawer title="More" sections={mobileMenuSections} />
         </div>
       </nav>

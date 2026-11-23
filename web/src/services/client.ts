@@ -75,6 +75,9 @@ function getErrorMessage(payload: JsonValue, fallback: string): string {
   if (typeof detail === "string") {
     return detail;
   }
+  if (detail && typeof detail === "object" && "message" in detail && typeof detail.message === "string") {
+    return detail.message;
+  }
 
   if (Array.isArray(detail)) {
     const messages = detail
@@ -124,7 +127,10 @@ function getErrorMessage(payload: JsonValue, fallback: string): string {
 }
 
 export class ApiError extends Error {
-  constructor(message: string, public readonly status: number) { super(message); this.name = "ApiError"; }
+  constructor(message: string, public readonly status: number, public readonly code?: string) {
+    super(message);
+    this.name = "ApiError";
+  }
 }
 
 export async function apiRequest<TResponse>(
@@ -149,7 +155,10 @@ export async function apiRequest<TResponse>(
   const payload = await parseResponse(response);
 
   if (!response.ok) {
-    throw new ApiError(getErrorMessage(payload, `Request failed with ${response.status}`), response.status);
+    const detail = payload?.detail;
+    const code = detail && typeof detail === "object" && "code" in detail && typeof detail.code === "string"
+      ? detail.code : undefined;
+    throw new ApiError(getErrorMessage(payload, `Request failed with ${response.status}`), response.status, code);
   }
 
   return payload as TResponse;

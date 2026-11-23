@@ -16,6 +16,14 @@ describe("API failures used by safe recipe retries", () => {
     await expect(apiRequest("/admin/recipes")).rejects.toBe(lost);
     expect(lost).not.toBeInstanceOf(ApiError);
   });
+  it("exposes the retryable in-progress code as well as its readable message", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "https://example.test/api/v1");
+    const detail = { code: "assistant_reply_in_progress", message: "A reply is already in progress." };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail }), { status: 409 })));
+    await expect(apiRequest("/me/assistant/conversations")).rejects.toMatchObject({
+      status: 409, code: detail.code, message: detail.message,
+    });
+  });
   it("preserves unknown and zero nutrient values in successful responses", async () => {
     vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "https://example.test/api/v1");
     const payload = {fibre: null, fat: "0.00"};
