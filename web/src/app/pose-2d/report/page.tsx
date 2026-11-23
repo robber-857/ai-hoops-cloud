@@ -290,6 +290,7 @@ function ReportContent() {
   const [dbSessionPublicId, setDbSessionPublicId] = useState<string | null>(null);
   const [dbTemplateVersion, setDbTemplateVersion] = useState<string | null>("v1");
   const [dbTemplateSnapshot, setDbTemplateSnapshot] = useState<ActionTemplate | null>(null);
+  const [legacySelectionEdited, setLegacySelectionEdited] = useState(false);
   const [dbTemplateSnapshotError, setDbTemplateSnapshotError] = useState<string | null>(null);
   const [dbCameraContext, setDbCameraContext] = useState<TrainingCameraContext | null>(null);
   const [reportSyncState, setReportSyncState] = useState<ReportSyncState>("idle");
@@ -356,8 +357,8 @@ function ReportContent() {
         }
     }
     
-    // 云端重算 (切模板直接出分)
-    if (reportId && dbSavedMetrics && selectedTemplateId) {
+    // A saved report initially displays the result and handedness from storage.
+    if (reportId && legacySelectionEdited && !dbTemplateSnapshot && dbSavedMetrics && selectedTemplateId) {
         const template = getTemplateById(selectedTemplateId);
         if (template) {
           if (template.mode === "training") return;
@@ -366,7 +367,7 @@ function ReportContent() {
           setDbResult(calculateRealScore(template, metricsForScoring, { ageGroup, handedness: "right" }));
         }
     }
-  }, [selectedTemplateId, currentAngles, currentTimeline, ageGroup, reportId, dbSavedMetrics, dbTimeline]);
+  }, [selectedTemplateId, currentAngles, currentTimeline, ageGroup, reportId, dbSavedMetrics, dbTemplateSnapshot, legacySelectionEdited]);
 
   // 4. Load report detail from the backend by public id.
   useEffect(() => {
@@ -388,6 +389,7 @@ function ReportContent() {
       setDbSavedMetrics(null);
       setDbSessionPublicId(null);
       setDbTemplateSnapshot(null);
+      setLegacySelectionEdited(false);
       setDbTemplateSnapshotError(null);
       setDbCameraContext(null);
       try {
@@ -406,7 +408,9 @@ function ReportContent() {
         setDbSessionPublicId(data.session_public_id);
         setDbTemplateVersion(data.template_version ?? "v1");
         const templateSnapshot = parseActionTemplateSnapshot(
-          data.template_snapshot ?? scoreData.template_snapshot,
+          data.analysis_type === "training"
+            ? data.template_snapshot ?? scoreData.template_snapshot
+            : scoreData.template_snapshot,
           {
             templateId: data.template_code,
             version: data.template_version ?? "v1",
@@ -470,7 +474,7 @@ function ReportContent() {
   }, [isSharedView, reportId, reportKey, reportLoadAttempt]);
 
   useEffect(() => {
-    if (isSharedView || !reportId || loading || loadedReportKey !== reportKey || !dbSessionPublicId || !dbSavedMetrics || !dbResult || !selectedTemplateId) {
+    if (isSharedView || !legacySelectionEdited || dbTemplateSnapshot || !reportId || loading || loadedReportKey !== reportKey || !dbSessionPublicId || !dbSavedMetrics || !dbResult || !selectedTemplateId) {
       return;
     }
 
@@ -538,10 +542,12 @@ function ReportContent() {
     dbSavedMetrics,
     dbSessionPublicId,
     dbTemplateVersion,
+    dbTemplateSnapshot,
     dbTimeline,
     isSharedView,
     loading,
     loadedReportKey,
+    legacySelectionEdited,
     reportKey,
     reportId,
     selectedTemplateId,
@@ -606,7 +612,7 @@ function ReportContent() {
   const rawFinalSavedMetrics = reportId ? dbSavedMetrics : currentAngles;
   const selectedTemplate = useMemo(
     () => {
-      if (reportId && selectedMode === "training") {
+      if (reportId && (dbTemplateSnapshot || selectedMode === "training")) {
         return dbTemplateSnapshot;
       }
       return selectedTemplateId ? getTemplateById(selectedTemplateId) ?? null : null;
@@ -867,15 +873,18 @@ function ReportContent() {
                 <select
                   className="report-select w-full appearance-none text-sm rounded-xl p-2.5 pr-9 outline-none cursor-pointer transition-all disabled:cursor-not-allowed disabled:opacity-60"
                   value={selectedTemplateId}
-                  onChange={(e) => setSelectedTemplateId(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedTemplateId(e.target.value);
+                    if (reportId) setLegacySelectionEdited(true);
+                  }}
                   disabled={
                     Boolean(reportId) &&
-                    (!dbSavedMetrics || selectedMode === "training")
+                    (!dbSavedMetrics || selectedMode === "training" || dbTemplateSnapshot !== null)
                   }
                 >
                   {templates.map((t) => (
                     <option key={t.templateId} value={t.templateId}>
-                      {t.displayName}
+                      {dbTemplateSnapshot?.templateId === t.templateId ? dbTemplateSnapshot.displayName : t.displayName}
                     </option>
                   ))}
                 </select>
@@ -898,9 +907,11 @@ function ReportContent() {
                     setAgeGroup(e.target.value);
                     setAgeSaveError(null);
                     setReportSyncState("idle");
+                    if (reportId && selectedMode !== "training") setLegacySelectionEdited(true);
                   }}
-                  disabled={Boolean(reportId) && selectedMode === "training" &&
-                    (isSharedView || !canReanalyzeAge || !dbTemplateSnapshot || !dbSavedMetrics?.length || reportSyncState === "saving")}
+                  disabled={Boolean(reportId) && (selectedMode === "training"
+                    ? isSharedView || !canReanalyzeAge || !dbTemplateSnapshot || !dbSavedMetrics?.length || reportSyncState === "saving"
+                    : dbTemplateSnapshot !== null)}
                 >
                   {Object.keys(globalConfig.ageToleranceScale).map((age) => (
                     <option key={age} value={age}>

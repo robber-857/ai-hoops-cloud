@@ -91,7 +91,7 @@ python -m app.import_afcd --source-dir ../tmp/afcd-release-3 --commit --expect-f
 
 This tool refuses source conflicts and verifies repeated imports without overwriting history. Do not use development-only `tools.import_training_foods` or demo seed scripts against production. Openpyxl is needed for import, not for serving food requests.
 
-Publish the five missing Training `v2` defaults through the [targeted administrator sync](student-workspace-development.md#恢复五个训练模板). Use the preview and its matching token. Published historical versions remain available to saved reports.
+Publish the five missing Training `v2` defaults and the specific front narrow crossover Dribbling `v2` through the [targeted administrator sync](student-workspace-development.md#发布与核对动作模板). Use the preview and its matching token for each mode. Published historical versions remain available to saved reports.
 
 ## Release order and acceptance
 
@@ -100,7 +100,7 @@ Publish the five missing Training `v2` defaults through the [targeted administra
 3. Migrate the production database and provision the approved system administrator. Import official AFCD data if the environment still needs it.
 4. Deploy the exact release commit to Render. Verify the live commit, schema, authenticated endpoints, and CORS.
 5. Push the verified release to `main` and wait for Vercel's Production deployment to succeed for that exact commit.
-6. Publish the targeted Training template versions after the new frontend is available. Check all ten templates, an older saved report, and the [student workspace acceptance cases](student-workspace-development.md#验收用例).
+6. Coordinate the targeted Training and Dribbling template publication with the frontend release. Check all 17 templates, an older saved report, and the [student workspace acceptance cases](student-workspace-development.md#验收用例).
 7. Use an approved test class and test player for real email registration, private upload, signed playback, coach feedback and AI smoke testing. Check the existing food and profile flows.
 
 The food endpoint `/api/v1/training-foods?limit=100` must return ready, 28 selected entries, zero missing foods, and the official fingerprint. `/api/v1/exercise-activities` must expose the expected nine activities and versioned estimation rules.

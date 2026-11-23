@@ -9,6 +9,7 @@ export type UploadInitPayload = {
   file_size: number;
   template_code?: string;
   template_version?: string;
+  template_content_hash?: string;
   class_public_id?: string;
   task_assignment_public_id?: string;
   source_type?: string;

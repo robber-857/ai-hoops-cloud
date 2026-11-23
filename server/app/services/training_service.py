@@ -31,6 +31,7 @@ from app.schemas.training import (
     UploadInitResponse,
     VideoRead,
 )
+from app.services.template_rules import version_rules_hash
 
 
 STUDENT_ROLES = {UserRole.user, UserRole.student}
@@ -115,13 +116,15 @@ class TrainingService:
             if not class_row and task_assignment.camp_class:
                 class_row = task_assignment.camp_class
 
-        if payload.analysis_type == AnalysisType.training or task_assignment:
+        if payload.analysis_type == AnalysisType.training or task_assignment or payload.template_content_hash:
             template, template_version, content_hash = self._resolve_template_context(
                 payload,
                 task_assignment,
             )
         else:
             template, template_version, content_hash = None, None, None
+        if payload.template_content_hash and payload.template_content_hash != content_hash:
+            raise HTTPException(status_code=409, detail="The selected movement rules changed. Refresh and choose the movement again.")
 
         session = TrainingSession(
             student_id=current_user.id,
@@ -347,6 +350,11 @@ class TrainingService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail="The selected training template version is not active or does not exist.",
             )
+
+        if payload.template_content_hash:
+            if version.version != template.current_version:
+                raise HTTPException(status_code=409, detail="The published movement version changed. Refresh before uploading.")
+            return template, version, version_rules_hash(version)
 
         summary_template = version.summary_template if isinstance(version.summary_template, dict) else {}
         content_hash = summary_template.get("content_hash")

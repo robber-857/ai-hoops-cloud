@@ -22,6 +22,7 @@ export type SaveReportPayload = {
   session_public_id: string;
   template_code: string;
   template_version?: string | null;
+  template_content_hash?: string;
   overall_score?: number | null;
   grade?: string | null;
   score_data: Record<string, unknown>;

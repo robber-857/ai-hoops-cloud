@@ -9,11 +9,13 @@ import {
 } from "lucide-react";
 
 import type { TrainingTemplateCatalogItem } from "@/lib/trainingTemplateCatalog";
+import { getMovementPresentation } from "./movementExamples";
 
 type Props = {
   items: TrainingTemplateCatalogItem[];
   selectedCode: string | null;
-  lockedCode?: string | null;
+  locked?: boolean;
+  selectionDisabled?: boolean;
   loading?: boolean;
   error?: string | null;
   onSelect: (templateCode: string) => void;
@@ -23,26 +25,27 @@ function cameraLabel(camera: "front" | "side") {
   return camera === "front" ? "Front view" : "Side view";
 }
 
-export default function TrainingTemplatePicker({
+export default function MovementTemplatePicker({
   items,
   selectedCode,
-  lockedCode,
+  locked = false,
+  selectionDisabled = false,
   loading = false,
   error,
   onSelect,
 }: Props) {
   return (
-    <section aria-labelledby="training-template-heading" className="py-2">
+    <section aria-labelledby="movement-template-heading" className="py-2">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2
-            id="training-template-heading"
+            id="movement-template-heading"
             className="text-xl font-semibold text-[var(--ui-text)] sm:text-2xl"
           >
             Choose your movement
           </h2>
         </div>
-        {lockedCode ? (
+        {locked ? (
           <div className="inline-flex min-h-10 items-center gap-2 self-start rounded-lg border border-[var(--ui-border)] bg-[var(--ui-subtle)] px-3 py-2 text-sm text-[var(--ui-muted)] sm:self-auto">
             <LockKeyhole className="h-4 w-4 shrink-0" aria-hidden="true" />
             Coach task locked
@@ -71,14 +74,14 @@ export default function TrainingTemplatePicker({
           {items.map((item) => {
             const isSelected = selectedCode === item.template.templateId;
             const isReady = item.availability === "ready";
-            const isLockedOut = Boolean(lockedCode && lockedCode !== item.template.templateId);
-            const disabled = isLockedOut;
+            const isLockedOut = locked && !isSelected;
+            const presentation = getMovementPresentation(item.template);
 
             return (
               <button
                 key={item.template.templateId}
                 type="button"
-                disabled={disabled}
+                disabled={locked || selectionDisabled}
                 aria-pressed={isSelected}
                 onClick={() => onSelect(item.template.templateId)}
                 className={[
@@ -86,13 +89,13 @@ export default function TrainingTemplatePicker({
                   isSelected
                     ? "border-[var(--ui-accent)] bg-[var(--ui-accent-soft)]"
                     : "border-[var(--ui-border)] bg-[var(--ui-surface)] enabled:hover:bg-[var(--ui-subtle)]",
-                  disabled ? "cursor-not-allowed opacity-55" : "cursor-pointer",
+                  isLockedOut ? "cursor-not-allowed opacity-55" : locked || selectionDisabled ? "cursor-default" : "cursor-pointer",
                 ].join(" ")}
               >
                 <div className="flex w-full items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="break-words text-base font-semibold leading-6 text-[var(--ui-text)]">
-                      {item.template.displayName}
+                      {presentation.title}
                     </div>
                     <div className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-[var(--ui-muted)]">
                       <Camera className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -109,7 +112,7 @@ export default function TrainingTemplatePicker({
                 </div>
 
                 <p className="mt-3 text-sm leading-6 text-[var(--ui-muted)]">
-                  {item.template.cameraInstructions}
+                  {presentation.filming}
                 </p>
 
                 <div

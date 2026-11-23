@@ -18,6 +18,7 @@ import {
 } from '@/services/uploads';
 
 import type { AnalysisType } from './types';
+import { getLocalTemplateVersion } from '@/lib/trainingTemplateCatalog';
 
 interface UploadDropzoneProps {
   analysisType?: AnalysisType;
@@ -28,6 +29,7 @@ interface UploadDropzoneProps {
   templateContentHash?: string | null;
   uploadDisabled?: boolean;
   disabledReason?: string | null;
+  onUploadingChange?: (uploading: boolean) => void;
   onFileSelect: (
     file: File | null,
     videoUrl?: string,
@@ -172,6 +174,7 @@ export default function UploadDropzone({
   templateContentHash,
   uploadDisabled = false,
   disabledReason,
+  onUploadingChange,
   onFileSelect,
 }: UploadDropzoneProps) {
   const [uploading, setUploading] = useState(false);
@@ -183,22 +186,25 @@ export default function UploadDropzone({
       if (!file) return;
 
       setUploading(true);
+      onUploadingChange?.(true);
       setErrorMsg('');
 
       try {
-        const metadataPromise = readLocalVideoMetadata(file);
         const templates = getAllTemplates(analysisType);
         const selectedTemplate = templates.find(
           (template) => template.templateId === templateCode,
         );
         const activeTemplate =
-          selectedTemplate ?? (analysisType === 'training' ? undefined : templates[0]);
+          selectedTemplate ?? (templateCode || analysisType === 'training' ? undefined : templates[0]);
         if (!activeTemplate) {
-          throw new Error('Choose an available training exercise before uploading.');
+          throw new Error('Choose an available movement before uploading.');
         }
 
-        const requestedVersion =
-          templateVersion ?? activeTemplate.version ?? undefined;
+        const localVersion = getLocalTemplateVersion(activeTemplate);
+        const requestedVersion = templateVersion ?? localVersion;
+        if (templateContentHash && requestedVersion !== localVersion) {
+          throw new Error('The selected movement version changed. Refresh before uploading.');
+        }
         const uploadInit = await uploadService.init({
           analysis_type: analysisType,
           file_name: file.name,
@@ -206,26 +212,20 @@ export default function UploadDropzone({
           file_size: file.size,
           template_code: activeTemplate.templateId,
           template_version: requestedVersion,
+          template_content_hash: templateContentHash ?? undefined,
           class_public_id: classPublicId ?? undefined,
           task_assignment_public_id: taskAssignmentPublicId ?? undefined,
           source_type: taskAssignmentPublicId ? 'coach_task' : 'free_practice',
         });
 
-        if (analysisType === 'training') {
-          if (
-            uploadInit.template_code !== activeTemplate.templateId
-            || uploadInit.template_version !== requestedVersion
-          ) {
-            throw new Error('The server resolved a different training template. Refresh and try again.');
-          }
-          if (
-            templateContentHash
-            && uploadInit.template_content_hash !== templateContentHash
-          ) {
-            throw new Error('The training rules changed. Refresh the template catalog before uploading.');
-          }
+        if (uploadInit.template_code !== activeTemplate.templateId || uploadInit.template_version !== requestedVersion) {
+          throw new Error('The server resolved a different movement template. Refresh and try again.');
+        }
+        if (templateContentHash && uploadInit.template_content_hash !== templateContentHash) {
+          throw new Error('The movement rules changed. Refresh the template catalog before uploading.');
         }
 
+        const metadataPromise = readLocalVideoMetadata(file);
         const storageUpload = await uploadVideoToStorage(file, uploadInit);
         const localVideoMetadata = await metadataPromise;
 
@@ -266,12 +266,14 @@ export default function UploadDropzone({
         setErrorMsg(message || 'Upload failed');
       } finally {
         setUploading(false);
+        onUploadingChange?.(false);
       }
     },
     [
       analysisType,
       classPublicId,
       onFileSelect,
+      onUploadingChange,
       taskAssignmentPublicId,
       templateCode,
       templateContentHash,

@@ -1,5 +1,6 @@
 {
   "templateId": "dribble_front_narrow_crossover",
+  "version": "v2",
   "mode": "dribbling",
   "camera": "front",
   "displayName": "正面｜窄距 Crossover",
