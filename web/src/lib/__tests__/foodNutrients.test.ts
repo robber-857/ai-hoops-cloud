@@ -1,10 +1,11 @@
+import { readdirSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { TrainingFood } from "@/services/foods";
 import { FoodNutrientCard, FoodSourceNote } from "@/components/foods/FoodNutritionParts";
 import { FoodNutritionList } from "@/components/foods/FoodNutritionList";
-import { AFCD_SOURCE_URL } from "@/lib/foodLanguage";
+import { AFCD_SOURCE_URL, ENGLISH_FOOD_LABELS } from "@/lib/foodLanguage";
 import type { AppLanguage } from "@/lib/language";
 
 const state = vi.hoisted(() => ({
@@ -42,8 +43,26 @@ describe("read-only food nutrient presentation", () => {
     expect(html).not.toMatch(/\p{Script=Han}/u);
     expect(html).not.toContain("<details");
     expect(html).not.toContain("100 mL");
-    expect(html).not.toContain(milk.food_key);
+    expect(html.replace(/<[^>]+>/g, "")).not.toContain(milk.food_key);
     expect(html).not.toContain("<input");
+  });
+
+  it("ships a local photo for each curated preparation and uses the same photo in both languages", () => {
+    const files = readdirSync(new URL("../../../public/images/foods/", import.meta.url));
+    for (const food_key of Object.keys(ENGLISH_FOOD_LABELS)) {
+      expect(files).toContain(food_key + ".webp");
+      for (const language of ["en", "zh-CN"] as const) {
+        const html = renderToStaticMarkup(createElement(FoodNutrientCard, { food: { ...milk, food_key }, language }));
+        expect(html).toContain(`src="/images/foods/${food_key}.webp"`);
+      }
+    }
+  });
+
+  it("keeps a future food readable without requesting an unrelated photo", () => {
+    const food = { ...milk, food_key: "F999999", source_name: "Future food" };
+    const html = renderToStaticMarkup(createElement(FoodNutrientCard, { food }));
+    expect(html).toContain("Future food");
+    expect(html).not.toContain("<img");
   });
 
   it("shows null as unavailable while retaining official zero in another nutrient", () => {
