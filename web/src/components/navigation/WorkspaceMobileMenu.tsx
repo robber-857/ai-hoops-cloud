@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ChevronRight, Menu, X } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 import { LogoutButton } from "@/components/account/LogoutButton";
 import { useAuthStore } from "@/store/authStore";
@@ -15,6 +16,7 @@ export type WorkspaceMobileNavItem = {
   href: string;
   label: string;
   exact?: boolean;
+  icon?: LucideIcon;
 };
 
 type WorkspaceMobileMenuProps = {
@@ -162,7 +164,7 @@ function FullscreenWorkspaceMenu({
               {isOpen ? (
                 <motion.div
             id={menuId}
-            className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-[#05070c] px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[calc(5.75rem+env(safe-area-inset-top))] text-white lg:hidden"
+            className="theme-workspace fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-[#05070c] px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[calc(5.75rem+env(safe-area-inset-top))] text-white lg:hidden"
             role="dialog"
             aria-modal="true"
             aria-label={`${eyebrow} navigation`}

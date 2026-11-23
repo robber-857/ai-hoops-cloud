@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { isAdminRole } from "@/lib/authRedirect";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -58,7 +59,7 @@ export default function AdminHomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminRole(user?.role);
 
   useEffect(() => {
     if (!hasInitialized || !user || !isAdmin) {

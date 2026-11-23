@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { ArrowUpRight, Bell, MessageCircle } from "lucide-react";
+import { routes } from "@/lib/routes";
 import { meService, type NotificationSummaryRead } from "@/services/me";
 
 export function NotificationInboxSection() {
@@ -52,11 +55,8 @@ export function NotificationInboxSection() {
   };
 
   return (
-    <section className="min-w-0 border-t border-white/15 py-6">
-      <h2 className="text-xl font-semibold">Notifications</h2>
-      <p className="mt-2 text-sm text-white/65">
-        Latest 100 account notifications.
-      </p>
+    <section className="ui-panel min-w-0 p-4 sm:p-6">
+      <h2 className="text-xl font-semibold">Inbox</h2>
       {loading && (
         <p role="status" className="mt-4">
           Loading notifications…
@@ -78,29 +78,37 @@ export function NotificationInboxSection() {
       )}
       <div className="mt-4 divide-y divide-white/10">
         {items.map((item) => (
-          <button
-            key={item.public_id}
-            aria-expanded={expanded === item.public_id}
-            onClick={() => void toggle(item)}
-            className="block w-full min-w-0 py-4 text-left hover:bg-white/5"
-          >
-            <span className="block break-words font-medium">
-              {item.title}
-              {!item.is_read && (
-                <span className="ml-2 text-xs text-[#d8ff5d]">Unread</span>
-              )}
-            </span>
-            <span className="mt-1 block text-sm text-white/65">
-              {new Intl.DateTimeFormat("en-AU", { dateStyle: "medium" }).format(
-                new Date(item.created_at),
-              )}
-            </span>
-            {expanded === item.public_id && (
-              <span className="mt-3 block whitespace-pre-wrap break-words text-sm leading-6 text-white/80">
-                {item.content || "No additional details."}
+          <article key={item.public_id}>
+            <button
+              aria-expanded={expanded === item.public_id}
+              onClick={() => void toggle(item)}
+              className="flex w-full min-w-0 items-start gap-3 rounded-xl px-2 py-4 text-left hover:bg-[var(--ui-subtle)]"
+            >
+              <span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[var(--ui-accent-soft)] text-[var(--ui-accent)]">
+                {item.report_public_id ? <MessageCircle size={17} /> : <Bell size={17} />}
               </span>
+              <span className="min-w-0">
+                <span className="block break-words font-semibold">
+                  {item.title}
+                  {!item.is_read && <span className="ml-2 text-xs text-[var(--ui-accent)]">Unread</span>}
+                </span>
+                <time dateTime={item.created_at} className="mt-1 block text-sm text-[var(--ui-muted)]">
+                  {new Intl.DateTimeFormat("en-AU", { dateStyle: "medium" }).format(new Date(item.created_at))}
+                </time>
+              </span>
+            </button>
+            {expanded === item.public_id && (
+              <div className="space-y-2 pb-4 pl-[3.25rem] text-sm leading-6">
+                <p className="whitespace-pre-wrap break-words">{item.content || "No additional details."}</p>
+                {item.report_public_id && <Link
+                  href={`${routes.pose2d.report}?id=${encodeURIComponent(item.report_public_id)}&returnTo=${encodeURIComponent(routes.user.messages)}#coach-feedback`}
+                  className="ui-link inline-flex min-h-10 items-center gap-1.5"
+                >
+                  Open report feedback <ArrowUpRight size={15} />
+                </Link>}
+              </div>
             )}
-          </button>
+          </article>
         ))}
       </div>
     </section>

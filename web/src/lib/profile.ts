@@ -122,3 +122,17 @@ export function measurementBmi(record: {
   }
   return deriveBmi(record.height_cm, record.weight_kg);
 }
+
+export function measurementTrendByDate<T extends { measured_on: string }>(
+  newestRevisionsFirst: readonly T[],
+): T[] {
+  const latestByDay = new Map<string, T>();
+  for (const record of newestRevisionsFirst) {
+    if (parseDate(record.measured_on) && !latestByDay.has(record.measured_on)) {
+      latestByDay.set(record.measured_on, record);
+    }
+  }
+  return [...latestByDay.values()].sort((left, right) =>
+    left.measured_on.localeCompare(right.measured_on),
+  );
+}

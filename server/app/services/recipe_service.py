@@ -2,7 +2,7 @@ from decimal import Decimal, ROUND_HALF_UP, localcontext
 from uuid import UUID
 from fastapi import HTTPException
 from sqlalchemy import select, func, text
-from app.models.enums import UserRole
+from app.models.enums import ADMIN_ROLES
 from app.models.food_catalog import FoodRelease, FoodEntry
 from app.models.recipe import Recipe, RecipePublication
 from app.schemas.recipe import RecipeContent
@@ -88,7 +88,7 @@ class RecipeService:
         self.db = db
 
     def admin(self, user):
-        if user.role != UserRole.admin:
+        if user.role not in ADMIN_ROLES:
             raise HTTPException(403, "Only administrators can maintain recipes.")
 
     def _recipe(self, recipe_id, lock=False):

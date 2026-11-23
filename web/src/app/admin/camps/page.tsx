@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { isAdminRole } from "@/lib/authRedirect";
 import { AlertTriangle, Loader2, Pencil, Plus, Save } from "lucide-react";
 
 import {
@@ -45,7 +46,7 @@ export default function AdminCampsPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminRole(user?.role);
 
   const loadCamps = async () => {
     const response = await adminService.listCamps();

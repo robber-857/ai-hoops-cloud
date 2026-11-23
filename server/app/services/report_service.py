@@ -8,15 +8,17 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from pydantic import ValidationError
 from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.achievement import Achievement
 from app.models.analysis_report import AnalysisReport
 from app.models.class_member import ClassMember
-from app.models.enums import AnalysisType, ReportStatus, UserRole
+from app.models.enums import ADMIN_ROLES, AnalysisType, ReportStatus, UserRole
 from app.models.notification import Notification
 from app.models.report_snapshot import ReportSnapshot
+from app.models.report_feedback import ReportFeedback
 from app.models.student_achievement import StudentAchievement
 from app.models.student_growth_snapshot import StudentGrowthSnapshot
 from app.models.training_session import TrainingSession
@@ -24,10 +26,14 @@ from app.models.training_task_assignment import TrainingTaskAssignment
 from app.models.training_template import TrainingTemplate
 from app.models.training_template_version import TrainingTemplateVersion
 from app.models.user import User
-from app.schemas.report import ReportListItem, ReportRead, SaveReportRequest, ReanalyzeReportAgeRequest, ReanalyzedScoreResult
+from app.schemas.report import (
+    CreateReportFeedbackRequest, ReportFeedbackRead, ReportFeedbackThreadRead,
+    ReportListItem, ReportRead, SaveReportRequest, ReanalyzeReportAgeRequest, ReanalyzedScoreResult,
+)
+from app.services.display_names import staff_display_name
 
 
-COACH_ROLES = {UserRole.coach, UserRole.admin}
+COACH_ROLES = ADMIN_ROLES | {UserRole.coach}
 STUDENT_ROLES = {UserRole.user, UserRole.student}
 
 
@@ -526,7 +532,7 @@ class ReportService:
         return result
 
     def _can_access_report(self, current_user: User, report: AnalysisReport) -> bool:
-        if current_user.role == UserRole.admin:
+        if current_user.role in ADMIN_ROLES:
             return True
         if report.user_id == current_user.id:
             return True
@@ -553,14 +559,94 @@ class ReportService:
             )
         )
         membership = self.db.scalar(
-            select(ClassMember).where(
+            select(ClassMember.id).where(
                 ClassMember.class_id.in_(student_class_ids),
                 ClassMember.user_id == current_user.id,
                 ClassMember.member_role == "coach",
                 ClassMember.status == "active",
-            )
+            ).limit(1)
             )
         return membership is not None
+
+    def _feedback_report(self, current_user: User, public_id: UUID) -> AnalysisReport:
+        report = self.db.scalar(
+            select(AnalysisReport)
+            .options(selectinload(AnalysisReport.session), selectinload(AnalysisReport.user))
+            .where(
+                AnalysisReport.public_id == public_id,
+                AnalysisReport.deleted_at.is_(None),
+                AnalysisReport.status == ReportStatus.completed,
+            )
+        )
+        if report is None or not self._can_access_report(current_user, report):
+            raise HTTPException(status_code=404, detail="Report feedback is unavailable.")
+        return report
+
+    @staticmethod
+    def _can_write_feedback(current_user: User, report: AnalysisReport) -> bool:
+        return (
+            current_user.role in COACH_ROLES
+            and report.user.role in STUDENT_ROLES
+            and current_user.id != report.user_id
+        )
+
+    @staticmethod
+    def _feedback_read(item: ReportFeedback, author: User) -> ReportFeedbackRead:
+        return ReportFeedbackRead(
+            public_id=item.public_id,
+            author_name=staff_display_name(author),
+            body=item.body,
+            created_at=item.created_at,
+        )
+
+    def get_feedback(self, current_user: User, public_id: UUID) -> ReportFeedbackThreadRead:
+        report = self._feedback_report(current_user, public_id)
+        rows = self.db.execute(
+            select(ReportFeedback, User)
+            .join(User, ReportFeedback.author_id == User.id)
+            .where(ReportFeedback.report_id == report.id)
+            .order_by(ReportFeedback.created_at, ReportFeedback.public_id)
+        )
+        return ReportFeedbackThreadRead(
+            items=[self._feedback_read(item, author) for item, author in rows],
+            can_write=self._can_write_feedback(current_user, report),
+        )
+
+    def add_feedback(
+        self, current_user: User, public_id: UUID, payload: CreateReportFeedbackRequest,
+    ) -> ReportFeedbackRead:
+        report = self._feedback_report(current_user, public_id)
+        if not self._can_write_feedback(current_user, report):
+            raise HTTPException(status_code=403, detail="Only authorized staff can post feedback.")
+
+        item = self.db.scalar(
+            insert(ReportFeedback)
+            .values(report_id=report.id, author_id=current_user.id, body=payload.body, request_id=payload.request_id)
+            .on_conflict_do_nothing(constraint="uq_report_feedback_request")
+            .returning(ReportFeedback)
+        )
+        if item is None:
+            item = self.db.scalar(
+                select(ReportFeedback).where(
+                    ReportFeedback.report_id == report.id,
+                    ReportFeedback.author_id == current_user.id,
+                    ReportFeedback.request_id == payload.request_id,
+                )
+            )
+            if item is None or item.body != payload.body:
+                raise HTTPException(status_code=409, detail="This feedback request was already used.")
+        else:
+            self.db.add(Notification(
+                user_id=report.user_id,
+                type="report",
+                title="New coach feedback",
+                content=item.body,
+                business_type="report_feedback",
+                business_id=report.id,
+            ))
+        result = self._feedback_read(item, current_user)
+        self.db.commit()
+        return result
 
     def get_shared_report_detail(self, report_public_id: UUID) -> ReportRead:
         report = self.db.scalar(

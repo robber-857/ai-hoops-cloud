@@ -22,7 +22,9 @@ export default function Pose2DLayout({
 }) {
   return (
     <Suspense fallback={<Pose2DRouteFallback />}>
-      <ProtectedRoute>{children}</ProtectedRoute>
+      <div className="theme-workspace">
+        <ProtectedRoute>{children}</ProtectedRoute>
+      </div>
     </Suspense>
   );
 }

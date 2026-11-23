@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 
 import PoseWorkspaceShell from '@/components/Pose2D/PoseWorkspaceShell';
+import TrainingMovementPreview from '@/components/Pose2D/TrainingMovementPreview';
 import TrainingTemplatePicker from '@/components/Pose2D/TrainingTemplatePicker';
 import { getAllTemplates } from '@/config/templates';
 import {
@@ -23,6 +24,7 @@ const PoseAnalysisView = dynamic(
   () => import('../../../components/Pose2D/PoseAnalysisView'),
   { ssr: false }
 );
+const trainingTemplates = getAllTemplates('training');
 
 export default function TrainingPage() {
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -97,7 +99,7 @@ export default function TrainingPage() {
       .listTemplates(false, 'training')
       .then((remoteTemplates) =>
         buildTrainingTemplateCatalog(
-          getAllTemplates('training'),
+          trainingTemplates,
           remoteTemplates,
         ),
       )
@@ -135,18 +137,15 @@ export default function TrainingPage() {
     url?: string,
     session?: CompletedUploadSession,
   ) => {
-    console.log('File Selected:', file?.name);
-    console.log('Cloud URL Received:', url);
-
     setVideoFile(file);
-    if (url) {
-      setCloudVideoUrl(url);
-    }
+    setCloudVideoUrl(url ?? null);
     setUploadSession(session ?? null);
   };
 
   const selectedCatalogItem =
     catalog.find((item) => item.template.templateId === selectedTemplateCode) ?? null;
+  const selectedTemplate = trainingTemplates.find((template) => template.templateId === selectedTemplateCode);
+  const hasUpload = Boolean(videoFile || cloudVideoUrl);
   const selectedTemplateReady = selectedCatalogItem?.availability === 'ready';
   const pickerError = taskError ?? catalogError;
   const uploadDisabled =
@@ -158,7 +157,20 @@ export default function TrainingPage() {
       : 'Choose one exercise before uploading your video.');
 
   return (
-    <PoseWorkspaceShell mode="training" hasUpload={Boolean(videoFile || cloudVideoUrl)}>
+    <PoseWorkspaceShell
+      mode="training"
+      hasUpload={hasUpload}
+      trainingPreview={!hasUpload && (
+        <TrainingMovementPreview
+          templates={trainingTemplates}
+          selectedTemplate={selectedTemplate}
+          catalogItem={selectedCatalogItem}
+          locked={Boolean(taskContext.templateCode)}
+          loading={taskLoading}
+          onSelect={setSelectedTemplateCode}
+        />
+      )}
+    >
       {videoFile || cloudVideoUrl ? (
         <PoseAnalysisView
           file={videoFile}
@@ -179,17 +191,19 @@ export default function TrainingPage() {
             error={pickerError}
             onSelect={setSelectedTemplateCode}
           />
-          <UploadDropzone
-            analysisType="training"
-            classPublicId={taskContext.classPublicId}
-            taskAssignmentPublicId={taskContext.taskAssignmentPublicId}
-            templateCode={selectedTemplateCode}
-            templateVersion={selectedCatalogItem?.template.version}
-            templateContentHash={selectedCatalogItem?.contentHash}
-            uploadDisabled={uploadDisabled}
-            disabledReason={disabledReason}
-            onFileSelect={handleFileSelect}
-          />
+          <div id="training-video-upload" tabIndex={-1} className="scroll-mt-6">
+            <UploadDropzone
+              analysisType="training"
+              classPublicId={taskContext.classPublicId}
+              taskAssignmentPublicId={taskContext.taskAssignmentPublicId}
+              templateCode={selectedTemplateCode}
+              templateVersion={selectedCatalogItem?.template.version}
+              templateContentHash={selectedCatalogItem?.contentHash}
+              uploadDisabled={uploadDisabled}
+              disabledReason={disabledReason}
+              onFileSelect={handleFileSelect}
+            />
+          </div>
         </div>
       )}
     </PoseWorkspaceShell>

@@ -3,9 +3,12 @@
 "use client";
 
 import React, { useState, useEffect, Suspense, useMemo, useRef } from "react";
+import { isAdminRole } from "@/lib/authRedirect";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AccountEntryButton } from "@/components/account/AccountEntryButton";
+import { ReportFeedbackPanel } from "@/components/Pose2D/ReportFeedbackPanel";
+import { ThemeToggle } from "@/components/navigation/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +26,7 @@ import { mergeTrainingTimelineMetrics } from "@/lib/trainingCalculator";
 import { rescoreTrainingReportForAge } from "@/lib/trainingReport";
 import { useAnalysisStore, FrameSample } from "@/store/analysisStore";
 import MetricTimelineCard from "@/components/Pose2D/MetricTimelineCard";
-import { ChevronLeft, Download, Activity, CheckCircle2, AlertCircle, Check, Link as LinkIcon, AlertTriangle } from "lucide-react";
+import { ChevronLeft, Download, Activity, CheckCircle2, AlertCircle, Check, Link as LinkIcon, AlertTriangle, MessageCircle } from "lucide-react";
 import { reportService } from "@/services/reports";
 import { useAuthStore } from "@/store/authStore";
 import Image from "next/image";
@@ -647,7 +650,7 @@ function ReportContent() {
   const roleBackHref =
     user?.role === "coach"
       ? routes.coach.reports
-      : user?.role === "admin"
+      : isAdminRole(user?.role)
         ? routes.admin.home
         : trainingBackHref;
   const backHref = returnTo ?? (isSharedView ? routes.home : roleBackHref);
@@ -818,6 +821,7 @@ function ReportContent() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 relative z-10">
+            <ThemeToggle />
             <AccountEntryButton
               compact
               className="min-h-0 h-8 px-2.5 sm:h-9 sm:px-3 border-white/20 bg-white/[0.06] text-white/80 hover:bg-white/[0.1] lg:pr-4"
@@ -848,7 +852,11 @@ function ReportContent() {
       </header>
 
       <main className="max-w-7xl mx-auto p-3 sm:p-6 space-y-4 sm:space-y-6 relative z-10">
-        
+        {reportId && user && !isSharedView && (
+          <div className="flex justify-end">
+            <a className="ui-button" href="#coach-feedback"><MessageCircle size={16} /> Coach feedback</a>
+          </div>
+        )}
         <section className="report-module rounded-2xl p-3 sm:p-4">
           <div className="flex flex-col md:flex-row md:items-end gap-3 sm:gap-4">
             <div className="w-full md:max-w-sm relative">
@@ -1272,6 +1280,7 @@ function ReportContent() {
             <p className="text-sm font-semibold text-white/72">Ready for Analysis</p>
           </div>
         )}
+        {reportId && user && !isSharedView && <ReportFeedbackPanel key={`${user.public_id}:${reportId}`} reportId={reportId} />}
       </main>
 
       <style jsx global>{`

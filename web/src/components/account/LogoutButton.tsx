@@ -45,6 +45,7 @@ export function LogoutButton({
   return (
     <Button
       type="button"
+      aria-label={label || "Log out"}
       onClick={handleLogout}
       disabled={isPending}
       className={cn(

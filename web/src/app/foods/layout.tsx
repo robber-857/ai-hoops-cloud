@@ -1,6 +1,7 @@
 "use client";
 
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { isAdminRole } from "@/lib/authRedirect";
 import { AccountCenterShell } from "@/components/account/AccountCenterShell";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { CoachShell } from "@/components/coach/CoachShell";
@@ -12,7 +13,7 @@ export default function FoodLayout({ children }: { children: React.ReactNode }) 
   return (
     <ProtectedRoute>
       <LanguagePreferenceProvider key={user?.public_id ?? "anonymous"}>
-      {user?.role === "admin" ? (
+      {user && isAdminRole(user.role) ? (
         <AdminShell user={user} title="Food nutrients" breadcrumb={["Food nutrients"]}>
           {children}
         </AdminShell>

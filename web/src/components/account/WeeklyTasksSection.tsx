@@ -156,6 +156,12 @@ export function WeeklyTasksSection({
     () => tasks.find((task) => task.id === selectedTaskId) ?? null,
     [selectedTaskId, tasks],
   );
+  useEffect(() => {
+    const targetId = window.location.hash.slice(1);
+    if (targetId.startsWith("task-")) {
+      document.getElementById(targetId)?.scrollIntoView({ block: "nearest" });
+    }
+  }, [tasks]);
   const selectedTaskDetail = selectedTask
     ? taskDetailsById[selectedTask.id]
     : undefined;
@@ -252,7 +258,8 @@ export function WeeklyTasksSection({
             return (
               <article
                 key={task.id}
-                className="min-w-0 rounded-[22px] border border-white/10 bg-white/[0.03] p-3 transition-all duration-200 hover:border-white/16 hover:bg-white/[0.05] sm:rounded-[24px] sm:p-4"
+                id={`task-${task.id}`}
+                className="min-w-0 scroll-mt-24 rounded-[22px] border border-white/10 bg-white/[0.03] p-3 transition-all duration-200 hover:border-white/16 hover:bg-white/[0.05] target:ring-2 target:ring-[var(--ui-accent)] sm:rounded-[24px] sm:p-4"
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">

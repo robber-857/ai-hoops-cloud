@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { isAdminRole } from "@/lib/authRedirect";
 import { CircleUserRound } from "lucide-react";
 
 import { routes } from "@/lib/routes";
@@ -22,7 +23,7 @@ function getInitial(username?: string | null, nickname?: string | null): string 
 }
 
 function getAccountEntry(userRole?: string | null) {
-  if (userRole === "admin") {
+  if (isAdminRole(userRole)) {
     return { href: routes.admin.home, label: "Admin" };
   }
   if (userRole === "coach") {

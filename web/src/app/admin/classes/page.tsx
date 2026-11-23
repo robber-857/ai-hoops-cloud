@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { isAdminRole } from "@/lib/authRedirect";
 import Link from "next/link";
 import { AlertTriangle, Loader2, Plus, UsersRound } from "lucide-react";
 
@@ -46,7 +47,7 @@ export default function AdminClassesPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminRole(user?.role);
 
   const loadData = async () => {
     const [campsResponse, classesResponse] = await Promise.all([

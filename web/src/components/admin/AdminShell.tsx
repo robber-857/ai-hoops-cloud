@@ -17,6 +17,7 @@ import {
 
 import { LogoutButton } from "@/components/account/LogoutButton";
 import { WorkspaceMobileMenu } from "@/components/navigation/WorkspaceMobileMenu";
+import { ThemeToggle } from "@/components/navigation/ThemeToggle";
 import { routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import type { AuthUser } from "@/types/auth";
@@ -48,7 +49,7 @@ const mobileNavItems = navItems.map((item, index) => ({
 
 export function AdminLoadingSurface() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#05070c] text-white">
+    <main className="theme-workspace flex min-h-screen items-center justify-center bg-[#05070c] text-white">
       <div className="rounded-lg border border-white/10 bg-white/[0.055] px-8 py-7 text-center shadow-[0_20px_70px_rgba(0,0,0,0.28)] backdrop-blur-2xl">
         <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-[#65f7ff]/60 border-t-transparent" />
         <div className="mt-4 text-[0.72rem] uppercase tracking-[0.28em] text-white/48">
@@ -81,8 +82,8 @@ export function AdminShell({ children, user, title, breadcrumb }: AdminShellProp
   const username = user.nickname?.trim() || user.username;
 
   return (
-    <main className="min-h-screen bg-[#05070c] text-white">
-      <div className="fixed inset-0 bg-[radial-gradient(circle_at_12%_8%,rgba(101,247,255,0.12),transparent_28%),radial-gradient(circle_at_88%_16%,rgba(216,255,93,0.08),transparent_24%),linear-gradient(135deg,#05070c_0%,#08111d_48%,#05070c_100%)]" />
+    <main className="theme-workspace min-h-screen bg-[#05070c] text-white">
+      <div className="workspace-dark-decoration fixed inset-0 bg-[radial-gradient(circle_at_12%_8%,rgba(101,247,255,0.12),transparent_28%),radial-gradient(circle_at_88%_16%,rgba(216,255,93,0.08),transparent_24%),linear-gradient(135deg,#05070c_0%,#08111d_48%,#05070c_100%)]" />
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[16rem] border-r border-white/10 bg-[#07111d]/68 px-4 py-5 shadow-[18px_0_60px_rgba(0,0,0,0.24)] backdrop-blur-2xl lg:block">
         <Link href={routes.admin.home} className="flex items-center gap-3 px-2">
           <span className="flex h-11 w-11 items-center justify-center rounded-lg border border-[#65f7ff]/28 bg-[#65f7ff]/12 text-[#65f7ff]">
@@ -152,6 +153,7 @@ export function AdminShell({ children, user, title, breadcrumb }: AdminShellProp
                 label="Log out"
                 className="hidden min-h-10 rounded-lg border-white/10 bg-white/[0.045] px-3 text-xs text-white/72 hover:bg-white/[0.08] lg:inline-flex"
               />
+              <ThemeToggle />
               <WorkspaceMobileMenu
                 items={mobileNavItems}
                 eyebrow="Admin workspace"

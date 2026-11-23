@@ -45,10 +45,9 @@ export default function MyPlansPage() {
   }
   return (
     <section className="min-w-0">
-      <h1 className="text-3xl font-semibold">Training plans</h1>
-      <p className="mt-3 max-w-prose text-white/75">
-        Your coach’s published class and personal plans. Planned activities do
-        not record attendance or completed training.
+      <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Training plans</h1>
+      <p className="mt-2 max-w-prose text-sm leading-6 text-[var(--ui-muted)]">
+        See what your coach has planned for your class or for you.
       </p>
       {error && (
         <div role="alert" className="mt-5 text-red-200">
@@ -67,13 +66,13 @@ export default function MyPlansPage() {
         </p>
       )}
       {!loading && !error && items.length === 0 && (
-        <p className="mt-8 text-white/75">
+        <p className="ui-panel mt-6 p-5 text-sm text-[var(--ui-muted)]">
           No published plans yet. Your coach’s plans will appear here.
         </p>
       )}
-      <div className="mt-8 divide-y divide-white/20">
+      <div className="mt-6 grid gap-4">
         {items.map((plan) => (
-          <article key={plan.public_id} className="py-6">
+          <article key={plan.public_id} className="ui-panel p-4 sm:p-6">
             <PlanDetails plan={plan} />
           </article>
         ))}
@@ -81,7 +80,7 @@ export default function MyPlansPage() {
       {more && (
         <button
           disabled={loading}
-          className="mt-4 min-h-11 rounded-lg border border-white/30 px-5 disabled:opacity-50"
+          className="ui-button mt-4"
           onClick={loadMore}
         >
           Load more plans

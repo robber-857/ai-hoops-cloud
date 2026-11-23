@@ -30,7 +30,7 @@ export default function AccountLayout({
   if (!hasInitialized || !isAuthenticated || !user || !canAccess) {
     return (
       <main
-        className="flex min-h-screen items-center justify-center bg-[#090b0f] text-white"
+        className="flex min-h-screen items-center justify-center bg-[var(--ui-bg)] text-[var(--ui-text)]"
         role="status"
       >
         Loading personal center…

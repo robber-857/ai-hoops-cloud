@@ -1,5 +1,6 @@
 "use client";
 import { staffName, staffContact } from "@/lib/staffNames";
+import { isAdminRole } from "@/lib/authRedirect";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { CoachShell } from "@/components/coach/CoachShell";
@@ -73,7 +74,7 @@ export default function CoachPlansPage() {
     [templateError, setTemplateError] = useState("");
   const requestId = useRef<string | null>(null),
     inFlight = useRef(false);
-  const allowed = user?.role === "coach" || user?.role === "admin";
+  const allowed = user?.role === "coach" || isAdminRole(user?.role);
   useEffect(() => {
     if (!allowed) return;
     let active = true;

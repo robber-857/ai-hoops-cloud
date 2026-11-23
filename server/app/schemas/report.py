@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime
 from uuid import UUID
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from app.models.enums import AnalysisType
 
@@ -46,6 +46,23 @@ class ReportRead(ReportListItem):
     can_reanalyze_age: bool = False
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class CreateReportFeedbackRequest(BaseModel):
+    request_id: UUID
+    body: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
+
+
+class ReportFeedbackRead(BaseModel):
+    public_id: UUID
+    author_name: str
+    body: str
+    created_at: datetime
+
+
+class ReportFeedbackThreadRead(BaseModel):
+    items: list[ReportFeedbackRead]
+    can_write: bool
 
 
 class ReanalyzeReportAgeRequest(BaseModel):

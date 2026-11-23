@@ -1,4 +1,5 @@
 import { apiRequest } from "@/services/client";
+import type { MeasurementReadBMI } from "@/services/me";
 
 export type PlayerMeasurementInput = {
   request_id: string;
@@ -8,7 +9,7 @@ export type PlayerMeasurementInput = {
   weight_kg: string;
   sex: "female" | "male" | null;
 };
-export type PlayerMeasurement = Omit<PlayerMeasurementInput, "request_id"> & {
+export type PlayerMeasurement = Omit<PlayerMeasurementInput, "request_id"> & MeasurementReadBMI & {
   public_id: string;
   created_at: string;
 };

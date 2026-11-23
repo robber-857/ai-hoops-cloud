@@ -52,7 +52,7 @@ export function WorkspaceMobileDrawer({
           dialog.current?.showModal();
           setOpen(true);
         }}
-        className="flex h-11 w-11 items-center justify-center rounded-lg border border-white/20 text-white lg:hidden"
+        className="ui-icon-button workspace-drawer-trigger"
       >
         <Menu size={20} />
       </button>
@@ -84,9 +84,9 @@ export function WorkspaceMobileDrawer({
         onClick={(event) => {
           if (event.target === event.currentTarget) close();
         }}
-        className="fixed inset-0 m-0 h-[100dvh] max-h-none w-full max-w-none border-0 bg-transparent p-0 text-white backdrop:bg-black/65"
+        className="fixed inset-0 m-0 h-[100dvh] max-h-none w-full max-w-none border-0 bg-transparent p-0 text-[var(--ui-text)] backdrop:bg-black/65"
       >
-        <div className="ml-auto flex h-full w-[min(88vw,380px)] flex-col overflow-y-auto border-l border-white/15 bg-[#10141b] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] motion-safe:animate-[drawer-enter_180ms_ease-out]">
+        <div className="ml-auto flex h-full w-[min(88vw,380px)] flex-col overflow-y-auto border-l border-[var(--ui-border)] bg-[var(--ui-sidebar)] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] motion-safe:animate-[drawer-enter_180ms_ease-out]">
           <div className="mb-5 flex items-center justify-between gap-3">
             <h2 id={`${id}-title`} className="text-lg font-semibold">
               {title}
@@ -95,7 +95,7 @@ export function WorkspaceMobileDrawer({
               type="button"
               aria-label="Close workspace menu"
               onClick={close}
-              className="flex h-11 w-11 items-center justify-center rounded-lg border border-white/20"
+              className="ui-icon-button"
             >
               <X size={20} />
             </button>
@@ -104,23 +104,24 @@ export function WorkspaceMobileDrawer({
             aria-label="Personal center mobile"
             className="flex flex-1 flex-col gap-1"
           >
-            {items.map((item, index) => (
+            {items.map(({ href, label, exact, icon: Icon }) => (
               <Link
-                key={item.href}
-                href={item.href}
+                key={href}
+                href={href}
                 onClick={close}
-                aria-current={pathname === item.href ? "page" : undefined}
-                className={`flex min-h-12 items-center rounded-lg px-3 text-sm font-medium ${index === items.length - 1 ? "mt-auto" : ""} ${pathname === item.href ? "bg-[#d8ff5d]/12 text-[#e8ff9a]" : "text-white/80 hover:bg-white/5"}`}
+                aria-current={pathname === href || (!exact && pathname.startsWith(`${href}/`)) ? "page" : undefined}
+                className="account-nav-item"
               >
-                {item.label}
+                {Icon && <Icon size={17} aria-hidden="true" />}
+                {label}
               </Link>
             ))}
           </nav>
-          <div className="mt-5 border-t border-white/15 pt-4">
+          <div className="mt-5 border-t border-[var(--ui-border)] pt-4">
             <Link
               href="/"
               onClick={close}
-              className="flex min-h-11 items-center px-3 text-sm text-white/75"
+              className="account-nav-item"
             >
               AI Hoops home
             </Link>

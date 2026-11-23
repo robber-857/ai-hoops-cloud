@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { isAdminRole } from "@/lib/authRedirect";
 import { AlertTriangle, Bell, CheckCircle2, Eye, Loader2, Search } from "lucide-react";
 
 import {
@@ -26,7 +27,7 @@ import { useAuthStore } from "@/store/authStore";
 const fieldClass =
   "min-h-11 w-full rounded-lg border border-white/10 bg-black/24 px-3 text-sm text-white outline-none transition placeholder:text-white/28 focus:border-[#65f7ff]/46 focus:bg-black/34 focus:ring-2 focus:ring-[#65f7ff]/12";
 const labelClass = "text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-white/46";
-const roles: AdminUserRole[] = ["student", "coach", "admin"];
+const roles: AdminUserRole[] = ["student", "coach", "admin", "super_admin"];
 const notificationTypes = ["announcement", "task", "report", "system"];
 const businessTypes = ["announcement", "training_task", "report", "class_member"];
 
@@ -62,7 +63,7 @@ export default function AdminNotificationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminRole(user?.role);
 
   const loadNotifications = async () => {
     const response = await adminService.listNotifications({

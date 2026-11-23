@@ -1,0 +1,258 @@
+:root {
+  --ui-bg: #111211;
+  --ui-surface: #1a1c1a;
+  --ui-sidebar: #151715;
+  --ui-subtle: #222522;
+  --ui-border: #323630;
+  --ui-text: #f0f2eb;
+  --ui-muted: #adb2a7;
+  --ui-accent: #d3ee7b;
+  --ui-accent-soft: #2b3420;
+  --ui-action: #d3ee7b;
+  --ui-action-text: #1e2910;
+  --ui-danger: #ffb0a8;
+  --ui-chart-orange: #fbb579;
+  --ui-chart-teal: #80d8d0;
+  --ui-chart-violet: #cdb7fc;
+  --ui-chart-green: #cbe768;
+  --ui-shadow: 0 12px 30px rgb(0 0 0 / 0.12);
+}
+
+:root[data-theme="light"] {
+  --ui-bg: #f6f7f3;
+  --ui-surface: #fff;
+  --ui-sidebar: #f0f2ec;
+  --ui-subtle: #f3f5ef;
+  --ui-border: #dce0d5;
+  --ui-text: #23271f;
+  --ui-muted: #565f50;
+  --ui-accent: #415922;
+  --ui-accent-soft: #e7efd8;
+  --ui-action: #d3ee7b;
+  --ui-action-text: #1e2910;
+  --ui-danger: #a32929;
+  --ui-chart-orange: #a75428;
+  --ui-chart-teal: #1a7470;
+  --ui-chart-violet: #714bba;
+  --ui-chart-green: #53701d;
+  --ui-shadow: 0 12px 30px rgb(34 49 17 / 0.05);
+}
+
+.ui-panel {
+  min-width: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: 1rem;
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow);
+}
+
+.ui-button,
+.ui-icon-button {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 0.65rem;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  padding-inline: 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 650;
+  transition: background-color 150ms, border-color 150ms;
+}
+
+.ui-button:hover,
+.ui-icon-button:hover {
+  background: var(--ui-subtle);
+}
+
+.ui-button[aria-pressed="true"] {
+  border-color: transparent;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
+}
+
+.ui-button:disabled {
+  opacity: 0.55;
+}
+
+.ui-icon-button {
+  width: 2.75rem;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+@media (min-width: 64rem) {
+  .workspace-drawer-trigger {
+    display: none;
+  }
+}
+
+.ui-primary {
+  border-color: var(--ui-action);
+  background: var(--ui-action);
+  color: var(--ui-action-text);
+}
+
+.ui-primary:hover {
+  background: color-mix(in srgb, var(--ui-action) 90%, white);
+}
+
+.ui-link {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--ui-accent);
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.ui-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+
+.theme-workspace :is(a, button, input, select, textarea, summary):focus-visible,
+.ui-icon-button:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+.account-nav-item {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.65rem;
+  border-radius: 0.6rem;
+  padding-inline: 0.65rem;
+  color: var(--ui-muted);
+  font-size: 0.865rem;
+  font-weight: 550;
+}
+
+.account-nav-item:hover {
+  background: var(--ui-subtle);
+  color: var(--ui-text);
+}
+
+.account-nav-item[aria-current] {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
+  font-weight: 700;
+}
+
+/* Keep existing route markup legible while sharing the light palette. */
+:root[data-theme="light"] .theme-workspace {
+  --color-white: var(--ui-text);
+  color: var(--ui-text);
+}
+
+:root[data-theme="light"] .theme-workspace :where([class*="text-white/"]) {
+  color: var(--ui-muted);
+}
+
+:root[data-theme="light"] .theme-workspace :where(
+  [class*="text-[#d8ff5d]"], [class*="text-[#e8ff9a]"], [class*="text-[#f1ffc1]"],
+  [class*="text-[#efffb8]"], [class*="text-[#f3ffcd]"], [class*="text-lime-"]
+) {
+  color: var(--ui-accent);
+}
+
+:root[data-theme="light"] .theme-workspace :where(
+  [class*="text-[#65f7ff]"], [class*="text-[#dffbff]"], [class*="text-[#bafcff]"],
+  [class*="text-sky-1"], [class*="text-sky-2"], [class*="text-sky-3"],
+  [class*="text-cyan-1"], [class*="text-cyan-2"], [class*="text-cyan-3"],
+  [class*="text-emerald-1"], [class*="text-emerald-2"], [class*="text-emerald-3"]
+) {
+  color: #17635e;
+}
+
+:root[data-theme="light"] .theme-workspace :where(
+  [class*="text-red-1"], [class*="text-red-2"], [class*="text-red-3"],
+  [class*="text-rose-1"], [class*="text-rose-2"], [class*="text-rose-3"]
+) {
+  color: var(--ui-danger);
+}
+
+:root[data-theme="light"] .theme-workspace :where(
+  [class*="text-[#ff9f4a]"], [class*="text-[#ffb27d]"], [class*="text-amber-1"], [class*="text-amber-2"], [class*="text-amber-3"],
+  [class*="text-orange-1"], [class*="text-orange-2"], [class*="text-orange-3"]
+) {
+  color: #914509;
+}
+
+:root[data-theme="light"] .theme-workspace :where(
+  .text-slate-50, .text-slate-100, .text-slate-200, .text-slate-300, .text-slate-400,
+  .text-neutral-300, .text-neutral-400, .text-gray-300, .text-gray-400
+) {
+  color: var(--ui-muted);
+}
+
+:root[data-theme="light"] .theme-workspace :where(
+  .analysis-surface, [class~="bg-[#10141b]"], [class*="bg-[#080d16]"],
+  [class*="bg-[#07111d]"], [class*="bg-[#071018]"], [class*="bg-[#070b10]"],
+  [class~="bg-slate-800"], [class~="bg-slate-900"],
+  .workspace-auth-surface, .workspace-report-surface
+) {
+  background: var(--ui-surface);
+}
+
+:root[data-theme="light"] .theme-workspace :where(.analysis-surface) {
+  box-shadow: var(--ui-shadow);
+}
+
+:root[data-theme="light"] .theme-workspace :where(
+  [class*="bg-[#030712]"], [class*="bg-[#05070c]"], [class*="bg-[#07080b]"],
+  [class*="bg-[#090b0f]"], [class*="bg-[#090b10]"], [class~="bg-slate-950"]
+) {
+  background: var(--ui-bg);
+}
+
+:root[data-theme="light"] .theme-workspace :where(
+  [class~="bg-white"], [class*="bg-black/"]
+) {
+  background-color: var(--ui-subtle);
+}
+
+:root[data-theme="light"] .theme-workspace :where(
+  [class*="border-white/"], [class*="border-slate-800"]
+) {
+  border-color: var(--ui-border);
+}
+
+:root[data-theme="light"] .theme-workspace :where(.workspace-dark-decoration) {
+  display: none;
+}
+
+:root[data-theme="light"] .theme-workspace .report-shell {
+  background: var(--ui-bg);
+  color: var(--ui-text);
+}
+
+:root[data-theme="light"] .theme-workspace .report-shell > .pointer-events-none {
+  display: none;
+}
+
+:root[data-theme="light"] .theme-workspace .report-shell header,
+:root[data-theme="light"] .theme-workspace .report-module,
+:root[data-theme="light"] .theme-workspace .report-select,
+:root[data-theme="light"] .theme-workspace .report-findings-note {
+  border-color: var(--ui-border);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow);
+  color: var(--ui-text);
+}
+
+:root[data-theme="light"] .theme-workspace .report-module-header {
+  border-color: var(--ui-border);
+  background: var(--ui-subtle);
+}
+
+@media print {
+  .ui-icon-button {
+    display: none;
+  }
+}

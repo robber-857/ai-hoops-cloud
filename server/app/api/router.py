@@ -8,9 +8,11 @@ from app.api.v1.auth import router as auth_router
 from app.api.v1.coach import router as coach_router
 from app.api.v1.camp_plans import router as camp_plans_router
 from app.api.v1.camp_lessons import router as camp_lessons_router
+from app.api.v1.class_collaboration import router as class_collaboration_router
 from app.api.v1.me import router as me_router
 from app.api.v1.reports import router as reports_router
 from app.api.v1.training_templates import router as templates_router
+from app.api.v1.training_assistant import router as training_assistant_router
 from app.api.v1.uploads import router as uploads_router
 
 api_router = APIRouter()
@@ -21,12 +23,14 @@ api_router.include_router(auth_router, prefix="/auth", tags=["auth"])
 api_router.include_router(uploads_router, prefix="/uploads", tags=["uploads"])
 api_router.include_router(reports_router, prefix="/reports", tags=["reports"])
 api_router.include_router(me_router, prefix="/me", tags=["me"])
+api_router.include_router(training_assistant_router, tags=["training-assistant"])
 api_router.include_router(templates_router, prefix="/training-templates", tags=["training-templates"])
 api_router.include_router(coach_router, prefix="/coach", tags=["coach"])
 api_router.include_router(admin_router, prefix="/admin", tags=["admin"])
 
 api_router.include_router(camp_plans_router, tags=['camp-plans'])
 api_router.include_router(camp_lessons_router, tags=['camp-lessons'])
+api_router.include_router(class_collaboration_router, tags=["class-collaboration"])
 
 from app.api.v1.class_reports import router as class_reports_router
 api_router.include_router(class_reports_router, tags=['class-reports'])

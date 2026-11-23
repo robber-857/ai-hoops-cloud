@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useAccountCenter } from "./AccountDataProvider";
 import {
   playerProfileService,
   type PlayerMeasurement,
   type PlayerMeasurementInput,
 } from "@/services/playerProfile";
-import type { MeasurementReadBMI } from "@/services/me";
+import { routes } from "@/lib/routes";
 import { ageYears, deriveBmi, measurementBmi, sydneyDateKey } from "@/lib/profile";
 import { formatDateInput, formatProfileDateTime, parseDateInput, validateDateInput } from "@/lib/dateInput";
 import { ProfileDateInput } from "./ProfileDateInput";
@@ -30,7 +31,7 @@ export function PlayerMeasurementsSection() {
       sex: "",
     },
   );
-  const [items, setItems] = useState<(PlayerMeasurement & MeasurementReadBMI)[]>([]);
+  const [items, setItems] = useState<PlayerMeasurement[]>([]);
   const [more, setMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -184,7 +185,7 @@ export function PlayerMeasurementsSection() {
   const bmi = deriveBmi(form.height_cm, form.weight_kg);
 
   return (
-    <section className="min-w-0 border-t border-white/15 pt-6">
+    <section id="player-measurements" className="min-w-0 scroll-mt-20 border-t border-white/15 pt-6">
       <h2 className="text-xl font-semibold">Player measurements</h2>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-white/70">
         For players of all ages. A parent can enter these details on the player’s
@@ -327,6 +328,9 @@ export function PlayerMeasurementsSection() {
         Newest measurement date first. Correct a record by saving a new version
         with the same date.
       </p>
+      <Link href={`${routes.user.trends}#measurement-trends`} className="ui-link">
+        View measurement trends
+      </Link>
       {!loading && !loadError && !items.length && (
         <p className="mt-4 text-white/70">No measurements saved yet.</p>
       )}

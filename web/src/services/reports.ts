@@ -43,7 +43,27 @@ export type MyReportsResponse = {
   items: ReportListItem[];
 };
 
+export type ReportFeedback = {
+  public_id: string;
+  author_name: string;
+  body: string;
+  created_at: string;
+};
+
 export const reportService = {
+  getFeedback(reportPublicId: string, signal?: AbortSignal) {
+    return apiRequest<{ items: ReportFeedback[]; can_write: boolean }>(
+      `/reports/${reportPublicId}/feedback`, { signal },
+    );
+  },
+
+  addFeedback(reportPublicId: string, body: string, requestId: string) {
+    return apiRequest<ReportFeedback>(`/reports/${reportPublicId}/feedback`, {
+      method: "POST",
+      body: JSON.stringify({ body, request_id: requestId }),
+    });
+  },
+
   reanalyzeAge(reportPublicId: string, payload: {
     request_id: string;
     age_group: string;

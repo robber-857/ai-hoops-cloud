@@ -1,6 +1,7 @@
 "use client";
 
 import { staffName } from "@/lib/staffNames";
+import { isAdminRole } from "@/lib/authRedirect";
 import Link from "next/link";
 import { routes } from "@/lib/routes";
 import { useEffect, useMemo, useState } from "react";
@@ -38,8 +39,12 @@ import { cn } from "@/lib/utils";
 const fieldClass =
   "min-h-11 w-full rounded-lg border border-white/10 bg-black/24 px-3 text-sm text-white outline-none transition placeholder:text-white/28 focus:border-[#65f7ff]/46 focus:bg-black/34 focus:ring-2 focus:ring-[#65f7ff]/12";
 const labelClass = "text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-white/46";
-const roles: AdminUserRole[] = ["student", "coach", "admin"];
+const roles: AdminUserRole[] = ["student", "coach", "admin", "super_admin"];
 const statuses: AdminUserStatus[] = ["active", "disabled", "locked"];
+
+function roleLabel(role: AdminUserRole) {
+  return role === "super_admin" ? "System administrator" : role;
+}
 
 function statusTone(status: string) {
   if (status === "active") {
@@ -100,7 +105,13 @@ export default function AdminUsersPage() {
   const [editPassword, setEditPassword] = useState("");
   const [editClassIds, setEditClassIds] = useState<string[]>([]);
 
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminRole(user?.role);
+  const isSystemAdmin = user?.role === "super_admin";
+  const editableRoles: AdminUserRole[] = isSystemAdmin ? ["student", "coach", "admin"] : ["student", "coach"];
+  const canEditSelection = selectedUser && (
+    isSystemAdmin || !isAdminRole(selectedUser.role) || selectedUser.public_id === user?.public_id
+  );
+  const selectionRoleLocked = selectedUser?.public_id === user?.public_id || selectedUser?.role === "super_admin";
 
   const loadUsers = async () => {
     const response = await adminService.listUsers({
@@ -243,7 +254,7 @@ export default function AdminUsersPage() {
 
   const saveSelectedUser = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!selectedUser) {
+    if (!selectedUser || !canEditSelection) {
       return;
     }
     setIsSaving(true);
@@ -322,7 +333,7 @@ export default function AdminUsersPage() {
                 <option value="">All roles</option>
                 {roles.map((role) => (
                   <option key={role} value={role}>
-                    {role}
+                    {roleLabel(role)}
                   </option>
                 ))}
               </select>
@@ -374,7 +385,7 @@ export default function AdminUsersPage() {
                         <div>{item.email || "--"}</div>
                         <div className="mt-1 text-xs text-white/40">{item.phone_number}</div>
                       </td>
-                      <td className="px-4 py-4 text-white/72">{item.role}</td>
+                      <td className="px-4 py-4 text-white/72">{roleLabel(item.role)}</td>
                       <td className="px-4 py-4 text-white/62">
                         <div className="max-w-[16rem] truncate">
                           {item.class_names.length > 0 ? item.class_names.join(", ") : "--"}
@@ -402,7 +413,8 @@ export default function AdminUsersPage() {
                             <Eye className="h-4 w-4" />
                             Detail
                           </button>
-                          {item.status === "active" ? (
+                          {item.public_id !== user.public_id && item.role !== "super_admin"
+                            && (isSystemAdmin || !isAdminRole(item.role)) && (item.status === "active" ? (
                             <button
                               type="button"
                               onClick={() => setUserStatus(item, "disabled")}
@@ -420,7 +432,7 @@ export default function AdminUsersPage() {
                               <RotateCcw className="h-4 w-4" />
                               Restore
                             </button>
-                          )}
+                          ))}
                         </div>
                       </td>
                     </tr>
@@ -444,7 +456,14 @@ export default function AdminUsersPage() {
             </div>
           </div>
 
-          {selectedUser ? (
+          {selectedUser && !canEditSelection && (
+            <section className="mt-5 rounded-lg border border-white/10 p-4">
+              <h2 className="text-lg font-semibold">{displayName(selectedUser)}</h2>
+              <p className="mt-1 text-sm text-white/65">{roleLabel(selectedUser.role)} · {selectedUser.status}</p>
+              <p className="mt-1 text-sm text-white/65">A system administrator can manage this account.</p>
+            </section>
+          )}
+          {selectedUser && canEditSelection ? (
             <form className="mt-5 rounded-lg border border-white/10 bg-black/16 p-4" onSubmit={saveSelectedUser}>
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div>
@@ -482,17 +501,17 @@ export default function AdminUsersPage() {
                 </label>
                 <label className="block space-y-2">
                   <span className={labelClass}>Role</span>
-                  <select className={fieldClass} value={editRole} onChange={(event) => setEditRole(event.target.value as AdminUserRole)}>
-                    {roles.map((role) => (
+                  <select className={fieldClass} value={editRole} disabled={selectionRoleLocked} onChange={(event) => setEditRole(event.target.value as AdminUserRole)}>
+                    {(selectionRoleLocked ? [selectedUser.role] : editableRoles).map((role) => (
                       <option key={role} value={role}>
-                        {role}
+                        {roleLabel(role)}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label className="block space-y-2">
                   <span className={labelClass}>Status</span>
-                  <select className={fieldClass} value={editStatus} onChange={(event) => setEditStatus(event.target.value as AdminUserStatus)}>
+                  <select className={fieldClass} value={editStatus} disabled={selectionRoleLocked} onChange={(event) => setEditStatus(event.target.value as AdminUserStatus)}>
                     {statuses.map((status) => (
                       <option key={status} value={status}>
                         {status}
@@ -522,7 +541,7 @@ export default function AdminUsersPage() {
                         type="checkbox"
                         checked={editClassIds.includes(classItem.public_id)}
                         onChange={(event) => toggleEditClass(classItem.public_id, event.target.checked)}
-                        disabled={editRole === "admin"}
+                        disabled={isAdminRole(editRole)}
                         className="h-4 w-4 shrink-0 accent-[#d8ff5d] disabled:opacity-40"
                       />
                     </label>
@@ -547,7 +566,7 @@ export default function AdminUsersPage() {
               <div>
                 <div className={labelClass}>Create account</div>
                 <h2 className="font-[var(--font-display)] text-xl font-bold text-white">
-                  Add coach or student
+                  {isSystemAdmin ? "Add coach, student or admin" : "Add coach or student"}
                 </h2>
               </div>
             </div>
@@ -566,6 +585,7 @@ export default function AdminUsersPage() {
                   <select className={fieldClass} value={createForm.role} onChange={(event) => setCreateForm((current) => ({ ...current, role: event.target.value as AdminUserRole }))}>
                     <option value="student">student</option>
                     <option value="coach">coach</option>
+                    {isSystemAdmin && <option value="admin">admin</option>}
                   </select>
                 </label>
                 <label className="block space-y-2">

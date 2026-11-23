@@ -1,6 +1,6 @@
 # Training 五模板下一阶段状态、风险与开发计划
 
-> 2026-09-27 文档导航更新：新增 [假期班开发交接](./holiday-camp-development-handoff-2026-09-27.md)。本文件仍是动作评分/模板/真实视频验收的主索引；新训练计划、课次、营养与 UI 进度见 [假期班开发计划](./holiday-camp-development-plan.md)。本次未重新验证以下 9 月 22 日测试和本地数据库状态，也未修改评分规则。
+> 历史评分验证记录。当前模板示例、发布和验收见[当前开发与验收](student-workspace-development.md#恢复五个训练模板)。同期训练计划、课次及营养背景见[假期班开发计划](holiday-camp-development-plan.md)。
 
 更新日期：2026-09-22
 适用分支：`developbranch` 当前工作区  

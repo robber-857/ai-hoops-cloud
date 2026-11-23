@@ -6,7 +6,10 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, get_db
 from app.models.user import User
 from app.schemas.me import MeReportsResponse
-from app.schemas.report import ReportRead, SaveReportRequest, ReanalyzeReportAgeRequest
+from app.schemas.report import (
+    CreateReportFeedbackRequest, ReportFeedbackRead, ReportFeedbackThreadRead,
+    ReportRead, SaveReportRequest, ReanalyzeReportAgeRequest,
+)
 from app.services.report_service import ReportService
 
 router = APIRouter()
@@ -59,3 +62,22 @@ def get_report_detail(
 ) -> ReportRead:
     service = ReportService(db)
     return service.get_report_detail(current_user, report_public_id)
+
+
+@router.get("/{report_public_id}/feedback", response_model=ReportFeedbackThreadRead)
+def get_report_feedback(
+    report_public_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ReportFeedbackThreadRead:
+    return ReportService(db).get_feedback(current_user, report_public_id)
+
+
+@router.post("/{report_public_id}/feedback", response_model=ReportFeedbackRead, status_code=201)
+def add_report_feedback(
+    report_public_id: UUID,
+    payload: CreateReportFeedbackRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ReportFeedbackRead:
+    return ReportService(db).add_feedback(current_user, report_public_id, payload)

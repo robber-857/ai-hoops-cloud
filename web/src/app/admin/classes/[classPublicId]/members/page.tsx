@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { isAdminRole } from "@/lib/authRedirect";
 import { useParams } from "next/navigation";
 import { AlertTriangle, Loader2, UserMinus } from "lucide-react";
 
@@ -32,7 +33,7 @@ export default function AdminClassMembersPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminRole(user?.role);
   const classItem = useMemo(
     () => classes.find((item) => item.public_id === classPublicId) ?? null,
     [classPublicId, classes],

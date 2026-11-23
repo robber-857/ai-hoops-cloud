@@ -4,6 +4,7 @@ import {
   deriveBmi,
   isValidPastDate,
   measurementBmi,
+  measurementTrendByDate,
   sydneyDateKey,
   trainingDuration,
   trainingDurationLabel,
@@ -53,6 +54,19 @@ describe("profile dates", () => {
     expect(trainingDurationLabel("2026-10-03", "2026-10-03")).toBe("Less than 1 month");
     expect(trainingDurationLabel("2025-09-03", "2026-10-03")).toBe("1 year · 1 month");
     expect(trainingDurationLabel("2024-10-03", "2026-10-03")).toBe("2 years");
+  });
+});
+
+describe("measurement trends", () => {
+  it("keeps the newest saved revision for each date and presents dates chronologically", () => {
+    const latest = { measured_on: "2026-11-23", height_cm: "155" };
+    const previous = { measured_on: "2026-10-04", height_cm: "153" };
+    expect(measurementTrendByDate([
+      latest,
+      { measured_on: "2026-11-23", height_cm: "154" },
+      previous,
+      { measured_on: "2026-09-31", height_cm: "100" },
+    ])).toEqual([previous, latest]);
   });
 });
 

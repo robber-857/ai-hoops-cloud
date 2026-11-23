@@ -99,6 +99,7 @@ export type NotificationSummaryRead = {
   content: string | null;
   business_type: string | null;
   business_id: number | null;
+  report_public_id?: string | null;
   is_read: boolean;
   read_at: string | null;
   created_at: string;

@@ -24,6 +24,8 @@ Required backend settings include:
 - `SESSION_COOKIE_SECURE=true`, `SESSION_COOKIE_SAMESITE=none`, `SESSION_COOKIE_DOMAIN` empty.
 - `CORS_ORIGINS` including the exact website origins `https://apexsportai.com`, `https://www.apexsportai.com`, and `https://ai-hoops-cloud.vercel.app`.
 - `UPLOAD_VIDEO_BUCKET=user-videos` and `TEMPLATE_VIDEO_BUCKET=template-videos`, unless the existing project explicitly uses different buckets.
+- For class videos, configure backend-only `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` and create the private bucket named by `CLASS_VIDEO_BUCKET` (default `class-videos`). Allow MP4 and WebM up to 50 MB. Keep service credentials out of frontend variables. The analysis-video upload flow still uses its existing bucket.
+- For AI Coach, configure backend-only `TRAINING_ASSISTANT_OPENAI_API_KEY` and optionally `TRAINING_ASSISTANT_MODEL` (default `gpt-4.1-mini`). Test with synthetic player data and an enabled model before enabling student access.
 
 `SESSION_COOKIE_SECUR` is a typo and does not set the Secure flag. `APP_ENV=production` does not automatically change cookie settings.
 
@@ -59,7 +61,15 @@ For upgrades from `20260503_0003`, verify all users have a nonempty phone or ema
 python -m alembic upgrade head
 ```
 
-The current head is `20261006_0014`. Migration `0014` permits measurements on the date of birth by relaxing `ck_profile_dates` to `date_of_birth <= measured_on`; it does not rewrite existing records. Existing `20261003_0012` databases also need the additive language migration: `users.preferred_language`, non-null default `en`, constrained to `en` or `zh-CN`. Apply this before deploying the new backend, then publish the frontend. Confirm profile/lesson/food/report tables and all six history protection triggers. `/health` is liveness only: there is no `/ready` endpoint, and a successful health response does not verify migrations or data readiness.
+The current head is `20261123_0016`. Migration `0015` adds class invitations, join requests and class videos. Migration `0016` adds report feedback and the `super_admin` role. Migration `0014` previously relaxed the profile date constraint so measurements may be taken on the date of birth. Migrate before starting the new backend. Verify the migration revision, tables and authenticated routes in addition to the `/health` liveness check.
+
+After migration, provision the first system administrator from the approved existing active Admin account. With the intended database already configured in the operator's shell, run this from `server/`:
+
+```bash
+python -m tools.provision_system_admin --user-id <admin-public-uuid>
+```
+
+The command records an audit entry and can be rerun for the same account. The system administrator can then manage Admin roles through Users.
 
 AFCD import is a separate deployment step. In the importing Python environment install `requirements-data.txt`, fetch the pinned official files, and review a preview before committing:
 
@@ -81,16 +91,17 @@ python -m app.import_afcd --source-dir ../tmp/afcd-release-3 --commit --expect-f
 
 This tool refuses source conflicts and verifies repeated imports without overwriting history. Do not use development-only `tools.import_training_foods` or demo seed scripts against production. Openpyxl is needed for import, not for serving food requests.
 
-Initialize missing training templates through the administrator sync preview and its matching preview token. Preserve existing referenced versions; never overwrite their rules. The five new v1 codes are `jump_rope_basic_front`, `jumping_jack_reps_front`, `lunge_same_side_reps_side`, `pushup_reps_side`, and `single_leg_stand_front`.
+Publish the five missing Training `v2` defaults through the [targeted administrator sync](student-workspace-development.md#恢复五个训练模板). Use the preview and its matching token. Published historical versions remain available to saved reports.
 
 ## Release order and acceptance
 
 1. Inspect current targets, commits, environment names, and database identity. Record a provider-side backup and pre-release counts.
 2. Prepare a clean release; complete appropriate source tests, type checks, production build, and dependency checks.
-3. Migrate the production database, import official AFCD data, and initialize only missing templates.
+3. Migrate the production database and provision the approved system administrator. Import official AFCD data if the environment still needs it.
 4. Deploy the exact release commit to Render. Verify the live commit, schema, authenticated endpoints, and CORS.
 5. Push the verified release to `main` and wait for Vercel's Production deployment to succeed for that exact commit.
-6. Use an authenticated browser to check Profile, fixed `yyyy/mm/dd` dates, saved English/Chinese language after reload and re-login, food search, existing reports, actual file upload, analysis/save, and refresh/reopen. Verify coach publication and parent visibility using a real class when available.
+6. Publish the targeted Training template versions after the new frontend is available. Check all ten templates, an older saved report, and the [student workspace acceptance cases](student-workspace-development.md#验收用例).
+7. Use an approved test class and test player for real email registration, private upload, signed playback, coach feedback and AI smoke testing. Check the existing food and profile flows.
 
 The food endpoint `/api/v1/training-foods?limit=100` must return ready, 28 selected entries, zero missing foods, and the official fingerprint. `/api/v1/exercise-activities` must expose the expected nine activities and versioned estimation rules.
 

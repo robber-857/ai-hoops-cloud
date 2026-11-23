@@ -729,7 +729,7 @@ function useAccountData() {
           {
             label: "Total reports",
             value: String(liveStats.total_reports),
-            helper: "From backend dashboard",
+            helper: "Saved video analyses",
             accent: true,
           },
           {
@@ -743,15 +743,15 @@ function useAccountData() {
               liveStats.best_score !== null
                 ? String(Math.round(liveStats.best_score))
                 : "--",
-            helper: "Top result across all reports",
+            helper: "Your personal best",
           },
           {
             label: "Active tasks",
             value: String(liveStats.active_tasks),
             helper:
               liveStats.unread_notifications > 0
-                ? `${liveStats.unread_notifications} unread notices`
-                : "No unread notices",
+                ? `${liveStats.unread_notifications} unread ${liveStats.unread_notifications === 1 ? "notification" : "notifications"}`
+                : "No unread notifications",
           },
         ]
       : [
@@ -760,7 +760,7 @@ function useAccountData() {
             value: String(activityReports.length),
             helper:
               reportSource === "live"
-                ? "Pulled from your history"
+                ? "Saved video analyses"
                 : "No reports yet",
             accent: true,
           },
@@ -772,7 +772,7 @@ function useAccountData() {
           {
             label: "Best score",
             value: bestScore > 0 ? String(Math.round(bestScore)) : "--",
-            helper: "Top result across visible reports",
+            helper: "Your personal best",
           },
           {
             label: "Last analysis",

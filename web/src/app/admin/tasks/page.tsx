@@ -1,5 +1,6 @@
 "use client";
 import { staffName } from "@/lib/staffNames";
+import { isAdminRole } from "@/lib/authRedirect";
 
 import { useEffect, useState } from "react";
 import {
@@ -87,7 +88,7 @@ export default function AdminTasksPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminRole(user?.role);
 
   const loadTasks = async () => {
     const response = await adminService.listTasks({
