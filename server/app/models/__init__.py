@@ -1,6 +1,7 @@
 """SQLAlchemy models."""
 
 from app.models.achievement import Achievement
+from app.models.assistant_conversation import AssistantConversation, AssistantConversationTurn
 from app.models.recipe import Recipe, RecipePublication
 from app.models.food_catalog import FoodRelease, FoodEntry
 from app.models.analysis_report import AnalysisReport
@@ -33,6 +34,8 @@ from app.models.verification_code import VerificationCode
 from app.models.video import Video
 
 __all__ = [
+    "AssistantConversation",
+    "AssistantConversationTurn",
     "Recipe",
     "RecipePublication",
     "FoodRelease",

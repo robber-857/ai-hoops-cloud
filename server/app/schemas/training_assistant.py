@@ -1,6 +1,8 @@
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from pydantic import BaseModel, ConfigDict, Field, OnErrorOmit, PrivateAttr, StringConstraints, model_validator
+
+from app.schemas.assistant_priority import TrainingPriority
 
 
 class AssistantMessage(BaseModel):
@@ -34,10 +36,26 @@ class AssistantRecommendation(BaseModel):
 class AssistantResponse(BaseModel):
     answer: str
     recommendations: list[AssistantRecommendation]
+    _training_priorities: list[dict[str, str]] = PrivateAttr(default_factory=list)
+
+
+class ModelRecommendation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    answer_quote: str
+
+
+class ModelTrainingPriority(TrainingPriority):
+    evidence: str
 
 
 class ModelAnswer(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     answer: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2400)]
-    recommended_ids: list[str]
+    intent: Literal["discussion", "guided_practice", "requested_drill_list"]
+    request_quote: str
+    recommendations: list[ModelRecommendation]
+    # A malformed optional note must not suppress an otherwise valid coaching reply.
+    training_priorities: list[OnErrorOmit[ModelTrainingPriority]] = Field(default_factory=list)

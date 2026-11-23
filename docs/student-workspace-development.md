@@ -9,7 +9,7 @@
 | 小班 | `/coach/classes/[classPublicId]`、`/join/[token]`、`/me/class-videos` | `class_collaboration.py`、`ClassCollaborationService`、私有对象存储 |
 | 报告评语 | `/pose-2d/report?id=…`、`/me/messages` | `ReportService`、`report_feedback`、`notifications` |
 | 管理员 | `/admin/users` | `ADMIN_ROLES`、`AdminService`、`operation_logs` |
-| AI Coach | `/me/assistant` | `TrainingAssistant`，使用 OpenAI Responses API |
+| AI Coach | `/me/assistant`、`/me/assistant/history` | `TrainingAssistant` 调用 OpenAI Responses API，`AssistantConversationService` 管理学员的对话与归档 |
 | 学生界面 | `AccountCenterShell`、`/me/plans`、`/me/class-reports`、`/me/trends` | 现有班级报告、训练结果和 Player measurements API |
 | 动作目录 | `/pose-2d/training`、`/pose-2d/dribbling`、`/pose-2d/shooting`、`/admin/templates` | 现有目录、版本快照和带预览令牌的同步接口 |
 
@@ -18,7 +18,9 @@
 - 权限由服务端判定。邀请只保存随机令牌的哈希，视频播放前校验班级授权。归档视频或移除成员会阻止签发新播放地址，已签发地址最长十分钟到期。
 - 评语和站内通知在同一事务写入。客户端重试复用 `request_id`。通知链接使用报告公开 ID，仍走认证和报告授权。公开分享接口只返回原报告内容。
 - 角色提升和撤回写入 `operation_logs`。普通 Admin 无法提升 Admin 或修改其他管理员账号，权限更新以后端读取的账号角色为准。
-- AI 请求最多携带九条消息、八条当前任务、六条原始报告摘要。报告上下文包含运动类型、匹配目录中的动作名称、分数、等级和日期。模型返回的推荐必须匹配服务端已构造的任务或动作链接。模型输出按文本显示，模型请求配置 `store: false`，应用不保存会话记录。
+- 学员的对话和已完成的问答保存在项目数据库，模型请求使用 `store: false`。打开旧对话时，服务端按时间取最近四轮问答、这次的问题和有限的早期相关片段。归档后可以查看原文，恢复后可继续提问。
+- 每次提问还可参考本人其他未归档对话中最近表达的三项训练重点，例如左手终结。模型在回答时识别学员明确表达的目标、困难或偏好。服务端核对依据出自这次提问，再保存技能、用手和场上位置等标签。归档后，该对话的标签会从其他对话的参考范围移出。
+- 模型可参考本人最多八条任务和六条报告摘要，包括运动类型、动作名、分数、等级和日期。知识和战术问题直接用文字回答。单项训练指导最多附一张对应卡片，学员明确要多个练习时最多附三张。链接由服务端从当前学员可见的动作和任务中选取。
 - `AccountTrendChart` 使用数值时间轴和按宽度调整的日期刻度。评分使用每日聚合，连续日期以实线连接。有缺口的评分图使用浅虚线连接相邻的实际记录，图上只显示线和观测点。测量点按实际测量日期定位，同日使用最新保存版本。浮层和数据表读取原始观测值和对应单位。
 - 趋势接口按悉尼日历日汇总学生已保存的原始评分报告。Growth trends 为当前项目请求 `range=all`，用 7 天或 30 天窗口浏览完整历史。Overview 保留有界的 `90d` 请求，活动图只展示最近七天。
 

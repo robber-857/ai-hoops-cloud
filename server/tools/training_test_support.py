@@ -10,7 +10,7 @@ SERVER_ROOT = REPO_ROOT / "server"
 TMP_ROOT = REPO_ROOT / "tmp"
 UNIT_DATABASE = "ai_hoops_p2_test"
 E2E_DATABASE = "ai_hoops_e2e_test"
-EXPECTED_REVISION = "20261123_0016"
+EXPECTED_REVISION = "20261123_0017"
 
 
 def test_database_url(database_url: str | None, app_env: str | None, allowed_names):
@@ -75,9 +75,13 @@ def require_migrated_schema(connection) -> None:
         "users", "training_camps", "camp_classes", "class_members",
         "camp_plans", "camp_lessons", "camp_lesson_revisions",
         "player_profile_revisions", "food_releases", "food_entries",
+        "assistant_conversations", "assistant_conversation_turns",
     }
     if not required_tables.issubset(schema.get_table_names(schema="public")):
         raise ValueError("The migrated training/food schema is incomplete.")
+    turn_columns = {column["name"] for column in schema.get_columns("assistant_conversation_turns", schema="public")}
+    if "training_priorities" not in turn_columns:
+        raise ValueError("The assistant conversation priority field is missing.")
     columns = {column["name"]: column for column in schema.get_columns("users", schema="public")}
     training_start = columns.get("training_started_on")
     if training_start is None or not training_start["nullable"]:

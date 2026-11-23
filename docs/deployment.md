@@ -25,7 +25,8 @@ Required backend settings include:
 - `CORS_ORIGINS` including the exact website origins `https://apexsportai.com`, `https://www.apexsportai.com`, and `https://ai-hoops-cloud.vercel.app`.
 - `UPLOAD_VIDEO_BUCKET=user-videos` and `TEMPLATE_VIDEO_BUCKET=template-videos`, unless the existing project explicitly uses different buckets.
 - For class videos, configure backend-only `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` and create the private bucket named by `CLASS_VIDEO_BUCKET` (default `class-videos`). Allow MP4 and WebM up to 50 MB. Keep service credentials out of frontend variables. The analysis-video upload flow still uses its existing bucket.
-- For AI Coach, configure backend-only `TRAINING_ASSISTANT_OPENAI_API_KEY` and optionally `TRAINING_ASSISTANT_MODEL` (default `gpt-4.1-mini`). Test with synthetic player data and an enabled model before enabling student access.
+- For AI Coach, configure backend-only `TRAINING_ASSISTANT_OPENAI_API_KEY`. The default `TRAINING_ASSISTANT_MODEL` is `gpt-6-luna`. The Luna request uses reasoning effort `none` to reserve the 850-token output budget for the answer and its structured fields.
+- From `server/`, run `python -m tools.eval_training_assistant` for the offline coaching checks. Run `python -m tools.eval_training_assistant --live` with the service's existing Luna access to check real replies against the same synthetic cases. The live run sends up to five billable requests and does not read student records.
 
 `SESSION_COOKIE_SECUR` is a typo and does not set the Secure flag. `APP_ENV=production` does not automatically change cookie settings.
 
@@ -61,7 +62,7 @@ For upgrades from `20260503_0003`, verify all users have a nonempty phone or ema
 python -m alembic upgrade head
 ```
 
-The current head is `20261123_0016`. Migration `0015` adds class invitations, join requests and class videos. Migration `0016` adds report feedback and the `super_admin` role. Migration `0014` previously relaxed the profile date constraint so measurements may be taken on the date of birth. Migrate before starting the new backend. Verify the migration revision, tables and authenticated routes in addition to the `/health` liveness check.
+The current head is `20261123_0017`. Migration `0017` adds player-owned AI Coach conversations and their saved turns. Migration `0016` adds report feedback and the `super_admin` role. Migration `0015` adds class invitations, join requests and class videos. Migration `0014` relaxed the profile date constraint so measurements may be taken on the date of birth. Migrate before starting the new backend. Verify the migration revision, tables and authenticated routes in addition to the `/health` liveness check.
 
 After migration, provision the first system administrator from the approved existing active Admin account. With the intended database already configured in the operator's shell, run this from `server/`:
 

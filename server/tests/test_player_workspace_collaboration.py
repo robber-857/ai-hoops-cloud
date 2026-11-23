@@ -131,7 +131,10 @@ class PlayerWorkspaceCollaborationTests(unittest.TestCase):
             "status": "completed",
             "output": [{"type": "message", "content": [{
                 "type": "output_text",
-                "text": json.dumps({"answer": "Try a short warm-up.", "recommended_ids": ["fake-id"]}),
+                "text": json.dumps({
+                    "answer": "Your report recorded 68. The score is one observation from that session.",
+                    "intent": "discussion", "request_quote": "", "recommendations": [], "training_priorities": [],
+                }),
             }]}],
         }
         with patch("app.services.training_assistant.settings.training_assistant_api_key", "test-placeholder"), patch(

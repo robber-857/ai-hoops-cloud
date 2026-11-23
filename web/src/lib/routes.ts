@@ -21,6 +21,8 @@ export const routes = {
     classReports: "/me/class-reports",
     classVideos: "/me/class-videos",
     assistant: "/me/assistant",
+    assistantHistory: "/me/assistant/history",
+    assistantChat: (id: string) => `/me/assistant/${encodeURIComponent(id)}`,
     trends: "/me/trends",
     messages: "/me/messages",
     profile: "/me/profile",
