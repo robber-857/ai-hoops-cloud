@@ -191,7 +191,7 @@ def mark_notification_read(
 
 @router.get("/trends", response_model=MeTrendsResponse, status_code=status.HTTP_200_OK)
 def get_trends(
-    range: str = Query(default="30d"),
+    range: str = Query(default="30d", description="7d, 30d, 90d, or all saved score dates."),
     analysis_type: AnalysisType | None = Query(default=None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),

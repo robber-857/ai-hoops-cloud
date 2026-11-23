@@ -1,15 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { sydneyDateKey } from "@/lib/profile";
+import { meService } from "@/services/me";
+import { normalizeTrendPoints } from "./AccountDataProvider";
 import {
   AccountTrendChart,
   formatTrendDate,
   trendDayTime,
   type ChartPoint,
 } from "./AccountTrendChart";
-import type { AccountAnalysisType, TrendPointsByType } from "./types";
+import type { AccountAnalysisType } from "./types";
 
 const DAY_MS = 86_400_000;
 const TRAINING_TYPES = [
@@ -28,22 +30,38 @@ const segmentedGroup = "inline-flex max-w-full flex-wrap items-center gap-1 roun
 const segmentedButton = "inline-flex min-h-11 items-center justify-center rounded-lg px-2.5 text-sm font-semibold text-[var(--ui-muted)] hover:text-[var(--ui-text)] aria-pressed:bg-[var(--ui-surface)] aria-pressed:text-[var(--ui-text)] aria-pressed:shadow-sm sm:px-3.5";
 const dateButton = "inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-[var(--ui-muted)] enabled:hover:bg-[var(--ui-subtle)] enabled:hover:text-[var(--ui-text)] disabled:opacity-40";
 
-export function GrowthTrendsSection({ pointsByType }: { pointsByType: TrendPointsByType }) {
-  const [selectedType, setSelectedType] = useState<AccountAnalysisType | null>(null);
+type TrendHistory = { points: ChartPoint[]; failed?: boolean };
+
+export function GrowthTrendsSection({ initialType = "shooting" }: { initialType?: AccountAnalysisType }) {
+  const [type, setType] = useState<AccountAnalysisType>(initialType);
   const [selectedDate, setSelectedDate] = useState<number | null>(null);
   const [dayCount, setDayCount] = useState<7 | 30>(7);
+  const [historyByType, setHistoryByType] = useState<Partial<Record<AccountAnalysisType, TrendHistory>>>({});
+
+  const history = historyByType[type];
+  useEffect(() => {
+    if (history) return;
+
+    let active = true;
+    meService.getTrends({ range: "all", analysisType: type })
+      .then((response) => {
+        if (!active) return;
+        const points = normalizeTrendPoints(response.points, type)
+          .map((point) => ({ time: trendDayTime(point.dateKey), value: point.score, detail: point.metaLabel }))
+          .filter(({ time }) => Number.isFinite(time))
+          .sort((left, right) => left.time - right.time);
+        setHistoryByType((current) => ({ ...current, [type]: { points } }));
+      })
+      .catch(() => {
+        if (active) setHistoryByType((current) => ({ ...current, [type]: { points: [], failed: true } }));
+      });
+    return () => { active = false; };
+  }, [history, type]);
 
   const currentDay = trendDayTime(sydneyDateKey());
-  const type = selectedType ?? TRAINING_TYPES.find(({ key }) => pointsByType[key].length)?.key ?? "shooting";
   const config = TRAINING_TYPES.find(({ key }) => key === type)!;
-  const data = pointsByType[type]
-    .map((point) => ({
-      time: trendDayTime(point.dateKey),
-      value: Math.round(point.score),
-      detail: point.metaLabel,
-    }))
-    .filter(({ time, value }) => Number.isFinite(time) && Number.isFinite(value))
-    .sort((left, right) => left.time - right.time);
+  const data = history?.points ?? [];
+  const earliestDay = data[0]?.time;
   const latestDay = data.at(-1)?.time ?? currentDay;
   const end = Math.min(currentDay, selectedDate ?? latestDay);
   const start = end - (dayCount - 1) * DAY_MS;
@@ -86,7 +104,7 @@ export function GrowthTrendsSection({ pointsByType }: { pointsByType: TrendPoint
                 type="button"
                 aria-pressed={key === type}
                 className={segmentedButton + " gap-1.5"}
-                onClick={() => setSelectedType(key)}
+                onClick={() => setType(key)}
               >
                 <span aria-hidden="true" className="size-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
                 {label}
@@ -99,6 +117,7 @@ export function GrowthTrendsSection({ pointsByType }: { pointsByType: TrendPoint
                 type="button"
                 className={dateButton}
                 aria-label="Previous trend window"
+                disabled={earliestDay === undefined || earliestDay >= start}
                 onClick={() => setSelectedDate(end - dayCount * DAY_MS)}
               >
                 <ChevronLeft size={18} aria-hidden="true" />
@@ -165,16 +184,32 @@ export function GrowthTrendsSection({ pointsByType }: { pointsByType: TrendPoint
         )}
 
         {hasUnscoredDays && <p className="mb-1 text-xs text-[var(--ui-muted)]">Gaps mark days without a saved score.</p>}
-        <AccountTrendChart
-          points={points}
-          title={`${config.label} score`}
-          unit="pts"
-          color={config.color}
-          timeRange={[start, end]}
-          valueRange={[0, 100]}
-          series="scores"
-          emptyMessage={`No ${config.label.toLowerCase()} scores in this date range.`}
-        />
+        {!history ? (
+          <p role="status" className="flex min-h-40 items-center justify-center rounded-xl bg-[var(--ui-subtle)] px-5 text-center text-sm text-[var(--ui-muted)]">Loading saved scores…</p>
+        ) : history.failed ? (
+          <div role="alert" className="flex min-h-40 flex-col items-center justify-center gap-1 rounded-xl bg-[var(--ui-subtle)] px-5 text-center text-sm text-[var(--ui-muted)]">
+            <p>Could not load saved scores.</p>
+            <button type="button" className="ui-link" onClick={() => setHistoryByType((current) => ({ ...current, [type]: undefined }))}>Retry</button>
+          </div>
+        ) : (
+          <>
+            <AccountTrendChart
+              points={points}
+              title={`${config.label} score`}
+              unit="pts"
+              color={config.color}
+              timeRange={[start, end]}
+              valueRange={[0, 100]}
+              series="scores"
+              emptyMessage={data.length
+                ? `No ${config.label.toLowerCase()} scores in this date range.`
+                : `No ${config.label.toLowerCase()} scores saved yet.`}
+            />
+            {data.length > 0 && !points.length && (
+              <button type="button" className="ui-link" onClick={() => setSelectedDate(null)}>View latest scores</button>
+            )}
+          </>
+        )}
       </div>
     </section>
   );

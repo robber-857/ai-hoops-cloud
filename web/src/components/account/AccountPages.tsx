@@ -212,8 +212,11 @@ export function AccountTrendsPage() {
         <p className="mt-2 text-sm text-[var(--ui-muted)]">Follow your training scores and body measurements over time.</p>
       </div>
       <AccountPageStatus />
-      {!d.isReportsLoading && !d.loadError && (
-        <GrowthTrendsSection pointsByType={d.dashboard.trendPointsByType} />
+      {!d.isReportsLoading && !d.loadError && d.user && (
+        <GrowthTrendsSection
+          key={d.user.public_id}
+          initialType={d.dashboard.latestReport?.analysisType}
+        />
       )}
       <MeasurementTrendsSection />
     </>

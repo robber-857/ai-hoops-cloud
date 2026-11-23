@@ -473,7 +473,7 @@ function normalizeTask(
   };
 }
 
-function normalizeTrendPoints(
+export function normalizeTrendPoints(
   points: TrendPointRead[],
   analysisType: AccountAnalysisType,
 ): TrendPoint[] {

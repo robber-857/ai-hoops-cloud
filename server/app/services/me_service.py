@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 from decimal import Decimal
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException, status
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import Date, and_, cast, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.analysis_report import AnalysisReport
@@ -13,10 +14,9 @@ from app.models.announcement import Announcement
 from app.models.announcement_read import AnnouncementRead
 from app.models.camp_class import CampClass
 from app.models.class_member import ClassMember
-from app.models.enums import ReportStatus, UserRole
+from app.models.enums import AnalysisType, ReportStatus, UserRole
 from app.models.notification import Notification
 from app.models.student_achievement import StudentAchievement
-from app.models.student_growth_snapshot import StudentGrowthSnapshot
 from app.models.training_session import TrainingSession
 from app.models.training_task import TrainingTask
 from app.models.training_task_assignment import TrainingTaskAssignment
@@ -45,6 +45,9 @@ from app.schemas.training import TrainingSessionRead
 from app.schemas.user import UserRead
 from app.services.report_service import ReportService, _original_reports_only, _report_list_item
 from app.services.training_service import _session_read
+
+
+_PLAYER_TIMEZONE = ZoneInfo("Australia/Sydney")
 
 
 def _numeric_to_float(value: Decimal | float | None) -> float | None:
@@ -401,62 +404,46 @@ class MeService:
         self,
         current_user: User,
         range_value: str,
-        analysis_type,
+        analysis_type: AnalysisType | None,
     ) -> MeTrendsResponse:
-        days = self._parse_range_days(range_value)
-        start_date = datetime.now(timezone.utc).date() - timedelta(days=days - 1)
-
-        snapshots = self.db.scalars(
-            select(StudentGrowthSnapshot)
-            .where(
-                StudentGrowthSnapshot.student_id == current_user.id,
-                StudentGrowthSnapshot.period_type == "day",
-                StudentGrowthSnapshot.snapshot_date >= start_date,
-                StudentGrowthSnapshot.analysis_type == analysis_type if analysis_type else True,
+        report_day = cast(func.timezone(_PLAYER_TIMEZONE.key, AnalysisReport.created_at), Date)
+        score = AnalysisReport.overall_score
+        query = select(
+            report_day,
+            func.round(func.avg(score), 2),
+            func.max(score),
+            func.count(),
+        ).where(
+            AnalysisReport.user_id == current_user.id,
+            AnalysisReport.status == ReportStatus.completed,
+            AnalysisReport.deleted_at.is_(None),
+            score.is_not(None),
+            _original_reports_only(),
+        )
+        if analysis_type is not None:
+            query = query.where(AnalysisReport.analysis_type == analysis_type)
+        if range_value != "all":
+            days = self._parse_range_days(range_value)
+            today = datetime.now(_PLAYER_TIMEZONE).date()
+            start_day = today - timedelta(days=days - 1)
+            end_day = today + timedelta(days=1)
+            # Filter the indexed timestamp against Sydney midnight at each boundary.
+            query = query.where(
+                AnalysisReport.created_at >= datetime.combine(start_day, time.min, _PLAYER_TIMEZONE),
+                AnalysisReport.created_at < datetime.combine(end_day, time.min, _PLAYER_TIMEZONE),
             )
-            .order_by(StudentGrowthSnapshot.snapshot_date.asc())
-        ).all()
 
-        if snapshots:
-            points = [
-                TrendPointRead(
-                    date=item.snapshot_date,
-                    average_score=_numeric_to_float(item.average_score),
-                    best_score=_numeric_to_float(item.best_score),
-                    session_count=int(item.session_count),
-                )
-                for item in snapshots
-            ]
-            return MeTrendsResponse(range=range_value, analysis_type=analysis_type, points=points)
-
-        reports = self.db.scalars(
-            select(AnalysisReport)
-            .where(
-                AnalysisReport.user_id == current_user.id,
-                AnalysisReport.created_at >= datetime.now(timezone.utc) - timedelta(days=days),
-                AnalysisReport.analysis_type == analysis_type if analysis_type else True,
-                _original_reports_only(),
+        points = [
+            TrendPointRead(
+                date=day,
+                average_score=_numeric_to_float(average_score),
+                best_score=_numeric_to_float(best_score),
+                session_count=session_count,
             )
-            .order_by(AnalysisReport.created_at.asc())
-        ).all()
-        grouped: dict[date, list[float]] = {}
-        for report in reports:
-            report_day = report.created_at.date()
-            grouped.setdefault(report_day, [])
-            if report.overall_score is not None:
-                grouped[report_day].append(float(report.overall_score))
-
-        points = []
-        for day in sorted(grouped.keys()):
-            scores = grouped[day]
-            points.append(
-                TrendPointRead(
-                    date=day,
-                    average_score=round(sum(scores) / len(scores), 2) if scores else None,
-                    best_score=max(scores) if scores else None,
-                    session_count=len(scores),
-                )
+            for day, average_score, best_score, session_count in self.db.execute(
+                query.group_by(report_day).order_by(report_day)
             )
+        ]
         return MeTrendsResponse(range=range_value, analysis_type=analysis_type, points=points)
 
     def _build_stats(self, user_id: int) -> DashboardStatsRead:
