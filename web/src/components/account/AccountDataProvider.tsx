@@ -477,17 +477,20 @@ function normalizeTrendPoints(
   points: TrendPointRead[],
   analysisType: AccountAnalysisType,
 ): TrendPoint[] {
-  return points
-    .map((point) => ({
+  return points.flatMap((point) => {
+    const score = point.average_score ?? point.best_score;
+    if (score == null || !Number.isFinite(score) || score < 0) return [];
+
+    return [{
       analysisType,
       dateKey: point.date,
       label: formatTrendLabel(point.date),
       fullLabel: formatTrendFullLabel(point.date),
-      score: Math.round(point.average_score ?? point.best_score ?? 0),
+      score: Math.round(score),
       metaLabel: `${point.session_count} ${point.session_count === 1 ? "session" : "sessions"}`,
       sessionCount: point.session_count,
-    }))
-    .filter((point) => point.score > 0);
+    }];
+  });
 }
 
 function normalizeTrendPointsByType(

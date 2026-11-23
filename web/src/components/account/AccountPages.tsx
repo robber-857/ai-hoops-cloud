@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight, ClipboardList, FileChartColumn, LineChart, Sparkles } from "lucide-react";
+import { ArrowRight, CalendarDays, ClipboardList, FileChartColumn, LineChart, Sparkles } from "lucide-react";
 import { useAccountCenter } from "./AccountDataProvider";
 import { StatOverviewRow } from "./StatOverviewRow";
+import { OverviewActivity } from "./OverviewActivity";
 import { WeeklyTasksSection } from "./WeeklyTasksSection";
 import { GrowthTrendsSection } from "./GrowthTrendsSection";
 import { MeasurementTrendsSection } from "./MeasurementTrendsSection";
@@ -49,111 +50,119 @@ export function AccountOverviewPage() {
     useAccountCenter();
   const pendingTasks = dashboard.tasks.filter((task) => task.status !== "done").slice(0, 3);
   const latestReport = dashboard.latestReport;
+  const today = sydneyDateKey();
+  const dateLabel = new Intl.DateTimeFormat("en-AU", {
+    weekday: "long", day: "numeric", month: "long", timeZone: "UTC",
+  }).format(new Date(`${today}T00:00:00Z`));
+
   return (
     <>
-      <section className="relative isolate flex min-h-56 items-center overflow-hidden rounded-2xl bg-[#202721] text-[#f7faf0] sm:min-h-[16rem]">
-        <div aria-hidden="true" className="absolute inset-y-0 right-0 -z-10 w-[70%] sm:w-[54%]">
-          <Image
-            src="/academy/basketball-court.jpg"
-            alt=""
-            fill
-            priority
-            sizes="(max-width: 640px) 70vw, 48vw"
-            className="object-cover object-[60%_58%] opacity-68"
-          />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,#202721_0%,rgba(32,39,33,0.44)_55%,rgba(32,39,33,0.1)_100%)]" />
+      <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+        <div>
+          <time dateTime={today} className="mb-2 inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--ui-muted)]">
+            <CalendarDays size={14} className="text-[var(--ui-accent)]" aria-hidden="true" /> {dateLabel}
+          </time>
+          <h1 className="text-3xl font-bold tracking-[-0.04em] sm:text-4xl">Welcome back, {displayName}</h1>
         </div>
-        <div className="max-w-xl px-5 py-7 sm:px-8 sm:py-10">
-          <h1 className="text-balance text-3xl font-bold tracking-[-0.045em] sm:text-5xl">
-            Welcome back, {displayName}
-          </h1>
-          <p className="mt-3 max-w-[26rem] text-pretty text-sm leading-6 text-[#dde5d8] sm:text-base">
-            See what your coach has assigned and pick your next practice.
-          </p>
-          <Link href={routes.user.tasks} className="ui-button ui-primary mt-5">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href={routes.user.tasks} className="ui-button ui-primary">
             Training tasks <ArrowRight size={16} aria-hidden="true" />
           </Link>
+          <Link href={routes.user.assistant} className="ui-button">
+            <Sparkles size={16} aria-hidden="true" /> AI Coach
+          </Link>
         </div>
-      </section>
+      </header>
       <AccountPageStatus />
       {!isReportsLoading && !loadError && (
-        <>
-          <StatOverviewRow items={dashboard.stats} />
-          <div className="grid min-w-0 gap-4 xl:grid-cols-[1.15fr_1fr]">
-            <section className="ui-panel p-4 sm:p-5">
-              <div className="flex flex-wrap items-center justify-between gap-x-3">
-                <h2 className="flex items-center gap-2 text-lg font-bold">
-                  <ClipboardList size={19} className="text-[var(--ui-chart-violet)]" aria-hidden="true" /> Up next
+        <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(17rem,1fr)] xl:[reading-flow:grid-rows]">
+          <div className="grid min-w-0 gap-4 sm:grid-cols-2 xl:col-start-2 xl:row-start-1 xl:grid-cols-1">
+            <section className="ui-panel overflow-hidden" aria-labelledby="overview-up-next">
+              <div className="relative isolate flex min-h-20 items-end bg-[#202721] px-4 py-3 sm:px-5">
+                <Image
+                  src="/academy/basketball-court.jpg"
+                  alt=""
+                  fill
+                  sizes="(min-width: 1280px) 28vw, (min-width: 640px) 50vw, 100vw"
+                  className="-z-20 object-cover object-[65%_54%] opacity-75"
+                />
+                <div aria-hidden="true" className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,#202721_0%,rgba(32,39,33,0.83)_42%,rgba(32,39,33,0.23)_100%)]" />
+                <h2 id="overview-up-next" className="flex items-center gap-2 text-lg font-bold text-[#f7faf0]">
+                  <ClipboardList size={19} aria-hidden="true" /> Up next
                 </h2>
-                <Link href={routes.user.tasks} className="ui-link">View all tasks <ArrowRight size={14} aria-hidden="true" /></Link>
               </div>
-              {pendingTasks.length ? (
-                <ul className="mt-1 divide-y divide-[var(--ui-border)]">
-                  {pendingTasks.map((task) => (
-                    <li key={task.id}>
-                      <Link href={routes.user.tasks} className="flex min-h-14 items-center justify-between gap-3 py-2.5 hover:underline">
-                        <span className="min-w-0">
-                          <span className="block font-semibold">{task.title}</span>
-                          <span className="mt-0.5 block text-sm text-[var(--ui-muted)]">
-                            {task.className} · {task.dueLabel}
+              {pendingTasks.length > 0 ? (
+                <ul className="divide-y divide-[var(--ui-border)] px-4 sm:px-5">
+                  {pendingTasks.map((task) => {
+                    const progress = Math.round(task.progress * 100);
+                    return (
+                      <li key={task.id}>
+                        <Link href={routes.user.tasks} className="group flex min-h-14 items-center justify-between gap-3 rounded-md py-3">
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-semibold group-hover:underline">{task.title}</span>
+                            <span className="mt-1 block text-xs text-[var(--ui-muted)]">
+                              {task.className} · {task.dueLabel}
+                            </span>
+                            {progress > 0 && (
+                              <span className="mt-2 flex items-center gap-2">
+                                <span aria-hidden="true" className="h-1.5 max-w-32 flex-1 overflow-hidden rounded-full bg-[var(--ui-subtle)]">
+                                  <span className="block h-full rounded-full bg-[var(--ui-chart-green)]" style={{ width: `${progress}%` }} />
+                                </span>
+                                <span className="text-xs font-semibold text-[var(--ui-muted)]">{progress}% complete</span>
+                              </span>
+                            )}
                           </span>
-                        </span>
-                        <ArrowRight size={16} className="shrink-0 text-[var(--ui-muted)]" aria-hidden="true" />
-                      </Link>
-                    </li>
-                  ))}
+                          <ArrowRight size={15} className="shrink-0 text-[var(--ui-muted)]" aria-hidden="true" />
+                        </Link>
+                      </li>
+                    );
+                  })}
                 </ul>
               ) : (
-                <p className="mt-2 rounded-xl bg-[var(--ui-subtle)] px-3 py-4 text-sm text-[var(--ui-muted)]">
-                  No pending tasks. You can still start a video analysis anytime.
+                <p className="px-4 py-5 text-sm text-[var(--ui-muted)] sm:px-5">
+                  No pending tasks.
                 </p>
               )}
             </section>
-            <section className="ui-panel p-4 sm:p-5">
-              <div className="flex flex-wrap items-center justify-between gap-x-3">
-                <h2 className="flex items-center gap-2 text-lg font-bold">
-                  <FileChartColumn size={19} className="text-[var(--ui-chart-teal)]" aria-hidden="true" /> Latest analysis
+            <section className="ui-panel p-4 sm:p-5" aria-labelledby="overview-latest-analysis">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5">
+                <h2 id="overview-latest-analysis" className="flex items-center gap-2 text-base font-bold">
+                  <FileChartColumn size={17} className="text-[var(--ui-accent)]" aria-hidden="true" /> Latest analysis
                 </h2>
-                <Link href={routes.user.reports} className="ui-link">View reports <ArrowRight size={14} aria-hidden="true" /></Link>
+                <Link href={routes.user.reports} className="ui-link">All reports <ArrowRight size={14} aria-hidden="true" /></Link>
               </div>
               {latestReport ? (
                 <Link
                   href={`${routes.pose2d.report}?id=${encodeURIComponent(latestReport.id)}`}
-                  className="mt-2 flex min-h-16 items-center gap-3 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-subtle)] p-3 hover:underline"
+                  className="mt-1 flex min-h-14 items-center gap-3 rounded-xl bg-[var(--ui-subtle)] p-3 hover:underline"
                 >
-                  <span className="shrink-0 rounded-lg bg-[var(--ui-accent-soft)] px-3 py-2 text-lg font-bold tabular-nums text-[var(--ui-accent)]">
-                    {Math.round(latestReport.score)} <span className="text-xs">pts</span>
-                  </span>
                   <span className="min-w-0 flex-1 text-sm font-semibold">{latestReport.templateName}</span>
-                  <ArrowRight size={16} aria-hidden="true" />
+                  <span className="shrink-0 text-xl font-bold tabular-nums text-[var(--ui-accent)]">
+                    {Math.round(latestReport.score)} <span className="text-xs font-semibold">pts</span>
+                  </span>
                 </Link>
               ) : (
-                <p className="mt-2 rounded-xl bg-[var(--ui-subtle)] px-3 py-4 text-sm text-[var(--ui-muted)]">
-                  Your saved analysis reports will appear here.
+                <p className="mt-1 text-sm leading-6 text-[var(--ui-muted)]">
+                  No saved analysis reports yet.
                 </p>
               )}
             </section>
           </div>
-        </>
+          <section className="ui-panel p-4 sm:p-5 xl:col-start-1 xl:row-start-1" aria-labelledby="overview-progress-title">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+              <h2 id="overview-progress-title" className="flex items-center gap-2 text-lg font-bold tracking-tight">
+                <LineChart size={19} className="text-[var(--ui-accent)]" aria-hidden="true" /> Training progress
+              </h2>
+              <Link href={routes.user.trends} className="ui-link">
+                Growth trends <ArrowRight size={14} aria-hidden="true" />
+              </Link>
+            </div>
+            <StatOverviewRow items={dashboard.stats} />
+            <OverviewActivity pointsByType={dashboard.trendPointsByType} today={today} />
+          </section>
+        </div>
       )}
       <TrainingNutritionOverview userPublicId={user?.public_id ?? null} />
-      <section aria-label="Explore your training" className="grid gap-4 sm:grid-cols-2">
-        {[
-          { href: routes.user.trends, title: "Growth trends", detail: "See your scores and measurements over time.", icon: LineChart },
-          { href: routes.user.assistant, title: "AI Coach", detail: "Get ideas for what to practice next.", icon: Sparkles },
-        ].map(({ href, title, detail, icon: Icon }) => (
-          <Link key={href} href={href} className="ui-panel flex items-center gap-3 p-4 hover:bg-[var(--ui-subtle)]">
-            <span className="rounded-lg bg-[var(--ui-accent-soft)] p-2.5 text-[var(--ui-accent)]">
-              <Icon size={20} aria-hidden="true" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block font-bold">{title}</span>
-              <span className="mt-1 block text-sm text-[var(--ui-muted)]">{detail}</span>
-            </span>
-            <ArrowRight size={17} className="shrink-0 text-[var(--ui-muted)]" aria-hidden="true" />
-          </Link>
-        ))}
-      </section>
     </>
   );
 }
