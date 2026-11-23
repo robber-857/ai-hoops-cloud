@@ -2,11 +2,12 @@
 
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 import os
 from threading import Barrier, Event
 from time import monotonic
 import unittest
+from unittest.mock import patch
 from uuid import uuid4
 
 from fastapi import HTTPException
@@ -327,7 +328,7 @@ class ReportAgePostgresTests(unittest.TestCase):
         coach_history = coach.list_class_reports(self.coach, self.klass.public_id)
         self.assertEqual(len(coach_history), 2)
         self.assertEqual(sum(item.is_age_comparison for item in coach_history), 1)
-        # Exercise the no-growth-snapshot trend fallback without altering committed fixtures.
+        # Trends use original saved reports even when a snapshot is missing.
         self.db.delete(snapshot)
         self.db.flush()
         trends = me.get_trends(self.user, "30d", AnalysisType.training)
@@ -335,3 +336,63 @@ class ReportAgePostgresTests(unittest.TestCase):
         service._upsert_daily_growth_snapshot(self.user_id, self.original)
         replacement = self.db.scalar(select(StudentGrowthSnapshot).where(StudentGrowthSnapshot.student_id == self.user_id))
         self.assertEqual((replacement.session_count, float(replacement.average_score), float(replacement.best_score)), (1, 70, 70))
+
+    def test_trends_group_saved_scores_by_sydney_day_across_ranges(self):
+        def add_report(timestamp, score, **attributes):
+            report = self.make_source()
+            report.created_at = datetime.fromisoformat(timestamp)
+            report.overall_score = score
+            for name, value in attributes.items():
+                setattr(report, name, value)
+            return report
+
+        self.original.created_at = datetime.fromisoformat("2026-07-06T14:00:00+00:00")
+        add_report("2026-07-07T13:59:59+00:00", 81)
+        add_report("2026-07-07T14:00:00+00:00", 80)
+        add_report("2026-07-07T13:00:00+00:00", 98, score_data={
+            "score_context": {"source_report_public_id": str(self.original_uuid)},
+        })
+        add_report("2026-07-07T14:30:00+00:00", 99, deleted_at=datetime.now(timezone.utc))
+        add_report("2026-08-10T00:00:00+00:00", 97, status=ReportStatus.processing)
+        add_report("2026-08-11T00:00:00+00:00", None)
+        add_report("2026-07-07T13:30:00+00:00", 96, user_id=self.peer.id)
+        add_report("2026-07-07T13:45:00+00:00", 45, analysis_type=AnalysisType.dribbling)
+        add_report("2026-09-28T13:59:59+00:00", 60)
+        add_report("2026-09-28T14:00:00+00:00", 62)
+        add_report("2026-10-04T13:00:00+00:00", 69)
+        add_report("2026-10-05T13:00:00+00:00", 71)
+        self.db.add(StudentGrowthSnapshot(
+            student_id=self.user_id, analysis_type=AnalysisType.training, period_type="day",
+            snapshot_date=date(2026, 10, 5), session_count=1, average_score=1, best_score=1,
+        ))
+        self.db.execute(text("SET LOCAL TIME ZONE 'UTC'"))
+        self.db.flush()
+        service = MeService(self.db)
+
+        def assert_points(range_value, expected, analysis_type=AnalysisType.training):
+            result = service.get_trends(self.user, range_value, analysis_type)
+            self.assertEqual(result.range, range_value)
+            self.assertEqual(result.analysis_type, analysis_type)
+            self.assertEqual([
+                (point.date.isoformat(), point.average_score, point.best_score, point.session_count)
+                for point in result.points
+            ], expected)
+
+        first_july = ("2026-07-07", 75.5, 81, 2)
+        second_july = ("2026-07-08", 80, 80, 1)
+        recent = [("2026-09-29", 62, 62, 1), ("2026-10-05", 69, 69, 1)]
+        last_month = [("2026-09-28", 60, 60, 1), *recent]
+        tomorrow = ("2026-10-06", 71, 71, 1)
+        now = datetime.fromisoformat("2026-10-04T13:20:00+00:00")
+
+        with patch("app.services.me_service.datetime", wraps=datetime) as trend_clock:
+            trend_clock.now.side_effect = now.astimezone
+            assert_points("all", [first_july, second_july, *last_month, tomorrow])
+            assert_points("7d", recent)
+            assert_points("30d", last_month)
+            assert_points("90d", [second_july, *last_month])
+            assert_points("unknown", last_month)
+            assert_points("all", [("2026-07-07", 45, 45, 1)], AnalysisType.dribbling)
+            assert_points("all", [
+                ("2026-07-07", 65.33, 81, 3), second_july, *last_month, tomorrow,
+            ], None)
